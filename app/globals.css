@@ -1,0 +1,96 @@
+@import 'tailwindcss';
+
+/* Design tokens from docs/design/README.md, exposed under shadcn/ui variable names. */
+:root {
+  --background: #0e1014;
+  --foreground: #e9ebf0;
+  --panel: #121419;
+  --card: #171a20;
+  --card-foreground: #e9ebf0;
+  --popover: #171a20;
+  --popover-foreground: #e9ebf0;
+  --primary: #7fa7ff;
+  --primary-hover: #a9c3ff;
+  --primary-foreground: #0e1014;
+  --secondary: #1e222a;
+  --secondary-foreground: #e9ebf0;
+  --muted: #242933;
+  --muted-foreground: #a2a9b6;
+  --subtle: #8b93a1;
+  --faint: #6f7785;
+  --accent: #1e222a;
+  --accent-foreground: #e9ebf0;
+  --destructive: #f26d6d;
+  --border: #2a2f39;
+  --divider: #1f242d;
+  --input: #2a2f39;
+  --ring: #7fa7ff;
+  --ok: #4cc38a;
+  --warn: #f2b544;
+  --err: #f26d6d;
+  --radius: 12px;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-panel: var(--panel);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-subtle: var(--subtle);
+  --color-faint: var(--faint);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-divider: var(--divider);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-ok: var(--ok);
+  --color-warn: var(--warn);
+  --color-err: var(--err);
+  --radius-lg: var(--radius);
+  --radius-md: 9px;
+  --radius-sm: 8px;
+  --font-sans: var(--font-plex), system-ui, sans-serif;
+  --font-heading: var(--font-manrope), system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, monospace;
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+  html,
+  body {
+    background: var(--background);
+    color: var(--foreground);
+  }
+  body {
+    font-family: var(--font-sans);
+    font-size: 14px;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-heading);
+    font-weight: 700;
+  }
+  a {
+    color: var(--primary);
+  }
+  a:hover {
+    color: var(--primary-hover);
+  }
+}

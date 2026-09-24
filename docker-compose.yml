@@ -1,0 +1,33 @@
+# For the NAS: the hub joins the same docker network as Jackett, qBittorrent and TorrServe.
+# Secrets live in .env next to this file (chmod 600), see .env.example.
+services:
+  hub:
+    image: ghcr.io/${GHCR_OWNER:-you}/home-mcp-hub:latest
+    restart: unless-stopped
+    environment:
+      BASE_URL: ${BASE_URL}
+      HUB_MASTER_KEY: ${HUB_MASTER_KEY}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
+      ADMIN_EMAIL: ${ADMIN_EMAIL}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD} # only used on first start
+      TRUST_PROXY: '1'
+      LOG_LEVEL: info
+    volumes:
+      - ./hub-data:/data
+    networks: [media]
+    # No published port: only newt talks to the hub.
+    # For a LAN test before Pangolin, uncomment and set BASE_URL=http://<nas-ip>:3000, TRUST_PROXY=0:
+    # ports: ['3000:3000']
+
+  newt:
+    image: fosrl/newt
+    restart: unless-stopped
+    environment:
+      PANGOLIN_ENDPOINT: ${PANGOLIN_ENDPOINT}
+      NEWT_ID: ${NEWT_ID}
+      NEWT_SECRET: ${NEWT_SECRET}
+    networks: [media]
+
+networks:
+  media:
+    external: true
