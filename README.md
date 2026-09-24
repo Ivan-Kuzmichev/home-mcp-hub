@@ -15,6 +15,41 @@ pnpm lint && pnpm typecheck && pnpm test
 
 ## Развёртывание на NAS
 
+Минимальный `docker-compose.yml` — только хаб (Newt и Watchtower — в полном файле в корне репозитория):
+
+```yaml
+services:
+  hub:
+    image: ghcr.io/ivan-kuzmichev/home-mcp-hub:latest
+    container_name: hub
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_PATH: /data/hub.db
+      TRUST_PROXY: '1'
+      TZ: Europe/Moscow
+    volumes:
+      - ./hub-data:/data
+    networks: [media]
+    # Проверка по LAN до Pangolin: раскомментировать,
+    # в .env BASE_URL=http://<ip-nas>:3000 и TRUST_PROXY=0
+    # ports: ['3000:3000']
+
+networks:
+  media:
+    external: true   # сеть, где живут Jackett, qBittorrent и TorrServe (docker network ls)
+```
+
+`.env` рядом с ним:
+
+```bash
+BASE_URL=https://hub.example.com
+HUB_MASTER_KEY=
+BETTER_AUTH_SECRET=
+ADMIN_EMAIL=you@example.com
+ADMIN_PASSWORD=
+```
+
 1. **Образ.** Каждый push в `main` собирает образ в GitHub Actions и публикует в GHCR
    (`ghcr.io/<you>/home-mcp-hub:latest` и `sha-<commit>`). Пакет по умолчанию приватный:
    на NAS один раз `docker login ghcr.io` с токеном `read:packages` — или сделать пакет публичным, секретов в образе нет.
