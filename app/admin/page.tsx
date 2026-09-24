@@ -3,18 +3,14 @@ import { PageHeader } from '@/components/admin/page-header'
 import { Card } from '@/components/ui/card'
 import { Pill, StatusDot } from '@/components/ui/pill'
 import { isClaudeConnected } from '@/lib/access'
+import { connectorSummaries } from '@/lib/connectors/summary'
+import { formatAgo } from '@/lib/format'
 import { href } from '@/lib/prefix'
 import { HUB_VERSION } from '@/lib/version'
 
 export const dynamic = 'force-dynamic'
 
-// Placeholders until connectors land (stage 3) and prototypes (stage 4).
-const SERVICES = [
-  { name: 'Jackett', unit: 'индексаторов', path: '/admin/connectors' },
-  { name: 'qBittorrent', unit: 'МБ/с', path: '/admin/connectors' },
-  { name: 'TorrServe', unit: 'в базе', path: '/admin/connectors' },
-  { name: 'Прототипы', unit: 'опубликовано', path: '/admin/prototypes' },
-]
+const TONE_LABEL = { ok: 'OK', warn: 'Не отвечает', err: 'Ошибка', muted: 'Не настроен' } as const
 
 function formatToday(): string {
   const s = new Intl.DateTimeFormat('ru-RU', { weekday: 'short', day: 'numeric', month: 'long' }).format(new Date())
@@ -45,23 +41,34 @@ export default function DashboardPage() {
       />
 
       <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4 md:gap-3.5">
-        {SERVICES.map((s) => (
-          <Link key={s.name} href={href(s.path)} className="text-inherit no-underline hover:text-inherit">
-            <Card className="flex h-full flex-col gap-1.5 p-3 md:gap-2.5 md:p-4">
-              <div className="flex items-center justify-between">
-                <span className="text-[13px] font-semibold md:text-sm">{s.name}</span>
-                <span className="hidden md:inline-flex">
-                  <Pill tone="muted">Не настроен</Pill>
-                </span>
-                <StatusDot tone="muted" className="md:hidden" />
-              </div>
-              <div className="font-heading text-xl font-bold md:text-[22px]">
-                — <span className="font-sans text-xs font-medium text-muted-foreground md:text-[13px]">{s.unit}</span>
-              </div>
-              <div className="text-[11px] text-subtle md:text-xs">Ещё не подключён</div>
-            </Card>
-          </Link>
-        ))}
+        {connectorSummaries().map((c) => {
+          const label = c.configured && !c.enabled ? 'Выключен' : TONE_LABEL[c.tone]
+          const detail = c.lastCheckAt ? `проверено ${formatAgo(c.lastCheckAt)}` : c.configured ? 'ещё не проверялся' : 'Настроить'
+          return (
+            <Link key={c.id} href={href(`/admin/connectors/${c.id}`)} className="text-inherit no-underline hover:text-inherit">
+              <Card className={`flex h-full flex-col gap-1.5 p-3 md:gap-2.5 md:p-4 ${c.tone === 'warn' || c.tone === 'err' ? 'border-warn/40' : ''}`}>
+                <div className="flex items-center justify-between">
+                  <span className="text-[13px] font-semibold md:text-sm">{c.name}</span>
+                  <span className="hidden md:inline-flex">
+                    <Pill tone={c.tone}>{label}</Pill>
+                  </span>
+                  <StatusDot tone={c.tone} className="md:hidden" />
+                </div>
+                <div className="line-clamp-2 text-[13px] text-muted-foreground">{c.line}</div>
+                <div className={`text-[11px] md:text-xs ${c.tone === 'warn' || c.tone === 'err' ? 'text-warn' : 'text-subtle'}`}>{detail}</div>
+              </Card>
+            </Link>
+          )
+        })}
+        <Link href={href('/admin/prototypes')} className="text-inherit no-underline hover:text-inherit">
+          <Card className="flex h-full flex-col gap-1.5 p-3 md:gap-2.5 md:p-4">
+            <div className="flex items-center justify-between">
+              <span className="text-[13px] font-semibold md:text-sm">Прототипы</span>
+              <StatusDot tone="muted" />
+            </div>
+            <div className="text-[13px] text-muted-foreground">скоро</div>
+          </Card>
+        </Link>
       </div>
 
       <Card className="flex flex-col gap-3.5 p-3.5 md:p-[18px]">

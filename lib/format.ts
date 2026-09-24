@@ -14,3 +14,13 @@ export function formatWhen(date: Date | null | undefined, now = new Date()): str
 export function shortId(id: string): string {
   return id.length > 12 ? `${id.slice(0, 6)}…${id.slice(-3)}` : id
 }
+
+/** «только что», «3 мин назад», «2 ч назад», «вчера 21:40» */
+export function formatAgo(date: Date | null | undefined, now = new Date()): string {
+  if (!date) return '—'
+  const min = Math.round((now.getTime() - date.getTime()) / 60_000)
+  if (min < 1) return 'только что'
+  if (min < 60) return `${min} мин назад`
+  if (min < 12 * 60) return `${Math.floor(min / 60)} ч назад`
+  return formatWhen(date, now)
+}
