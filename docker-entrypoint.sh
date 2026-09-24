@@ -16,6 +16,11 @@ if [ "$(id -u)" = "0" ]; then
     echo "Setting owner of $DATA_DIR to $RUN_UID:$RUN_GID"
     chown -R "$RUN_UID:$RUN_GID" "$DATA_DIR" || echo "WARNING: chown failed"
   fi
+  # The folder may come without the write bit (seen on Synology: dr-xr-xr-x): the owner needs rwx.
+  if [ ! -w "$DATA_DIR" ] || [ "$(stat -c %A "$DATA_DIR" | cut -c3)" != "w" ]; then
+    echo "Adding write permission for the owner of $DATA_DIR"
+    chmod -R u+rwX "$DATA_DIR" || echo "WARNING: chmod failed"
+  fi
   # chown is not enough where ACLs rule (Synology shares): check that writing really works.
   if ! su-exec "$RUN_UID:$RUN_GID" sh -c "touch '$DATA_DIR/.write-test' && rm -f '$DATA_DIR/.write-test'" 2>/dev/null; then
     echo "ERROR: user $RUN_UID:$RUN_GID cannot write to $DATA_DIR ($(stat -c '%U:%G %A' "$DATA_DIR"))."
