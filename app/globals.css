@@ -29,6 +29,9 @@
   --warn: #f2b544;
   --err: #f26d6d;
   --radius: 12px;
+  --font-manrope: 'Manrope Variable';
+  --font-plex: 'IBM Plex Sans';
+  --font-jetbrains: 'JetBrains Mono Variable';
   color-scheme: dark;
 }
 

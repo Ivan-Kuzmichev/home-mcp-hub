@@ -1,10 +1,12 @@
 import type { Metadata, Viewport } from 'next'
-import { IBM_Plex_Sans, JetBrains_Mono, Manrope } from 'next/font/google'
+// Fonts come from npm (@fontsource), not Google Fonts: the build needs no network and the
+// files are served from /_next/static/media like any other asset. Subsets load by unicode-range.
+import '@fontsource-variable/manrope'
+import '@fontsource/ibm-plex-sans/400.css'
+import '@fontsource/ibm-plex-sans/500.css'
+import '@fontsource/ibm-plex-sans/600.css'
+import '@fontsource-variable/jetbrains-mono'
 import './globals.css'
-
-const manrope = Manrope({ subsets: ['latin', 'cyrillic'], weight: ['600', '700', '800'], variable: '--font-manrope' })
-const plex = IBM_Plex_Sans({ subsets: ['latin', 'cyrillic'], weight: ['400', '500', '600'], variable: '--font-plex' })
-const jetbrains = JetBrains_Mono({ subsets: ['latin', 'cyrillic'], weight: ['400', '500'], variable: '--font-jetbrains' })
 
 export const metadata: Metadata = {
   title: 'Home Hub',
@@ -21,7 +23,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ru" className={`${manrope.variable} ${plex.variable} ${jetbrains.variable}`}>
+    <html lang="ru">
       <body className="min-h-dvh">{children}</body>
     </html>
   )
