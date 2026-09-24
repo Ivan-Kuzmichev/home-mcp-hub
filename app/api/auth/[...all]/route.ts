@@ -1,4 +1,6 @@
 import { authSubpath, getAuth, hubUrls, isMcpAvailable, toPublicAuthRequest } from '@/lib/auth'
+import { recordAuthEvent } from '@/lib/auth-events'
+import { clientIp } from '@/lib/net'
 import { guardAuthRequest, withDefaultResource } from '@/lib/oauth-guard'
 
 export const dynamic = 'force-dynamic'
@@ -20,7 +22,10 @@ async function handle(request: Request): Promise<Response> {
     ;({ url, body } = withDefaultResource({ method: request.method, path, url, body, contentType }, hubUrls().resource))
   }
 
-  return auth.handler(toPublicAuthRequest(new Request(url, { method: request.method, headers: request.headers }), body))
+  const originalBody = body
+  const response = await auth.handler(toPublicAuthRequest(new Request(url, { method: request.method, headers: request.headers }), body))
+  await recordAuthEvent({ method: request.method, path, body: originalBody, response, ip: clientIp(request.headers) })
+  return response
 }
 
 export { handle as GET, handle as POST }

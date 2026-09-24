@@ -4,7 +4,9 @@ import { Card } from '@/components/ui/card'
 import { Pill, StatusDot } from '@/components/ui/pill'
 import { isClaudeConnected } from '@/lib/access'
 import { connectorSummaries } from '@/lib/connectors/summary'
-import { formatAgo } from '@/lib/format'
+import { formatAgo, formatWhen } from '@/lib/format'
+import { failedSignIns, lastToolCall, recentToolCalls } from '@/lib/journal'
+import { resultText } from '@/lib/journal-view'
 import { href } from '@/lib/prefix'
 import { HUB_VERSION } from '@/lib/version'
 
@@ -19,6 +21,10 @@ function formatToday(): string {
 
 export default function DashboardPage() {
   const connected = isClaudeConnected()
+  const last = lastToolCall()
+  const calls = recentToolCalls(5)
+  const failed = failedSignIns(new Date(Date.now() - 86_400_000))
+  const claudeText = connected ? `Claude подключён${last ? ` · вызов ${formatAgo(last.createdAt)}` : ''}` : 'Claude не подключён'
   return (
     <>
       <PageHeader
@@ -30,12 +36,12 @@ export default function DashboardPage() {
         }
         actions={
           <Pill tone={connected ? 'ok' : 'muted'} dot>
-            {connected ? 'Claude подключён' : 'Claude не подключён'}
+            {claudeText}
           </Pill>
         }
         mobileAside={
           <Pill tone={connected ? 'ok' : 'muted'} dot>
-            Claude
+            Claude{connected && last ? ` · ${formatAgo(last.createdAt).replace(' назад', '')}` : ''}
           </Pill>
         }
       />
@@ -69,13 +75,28 @@ export default function DashboardPage() {
             Журнал
           </Link>
         </div>
-        <div className="py-6 text-center text-[13px] text-subtle">
-          Claude ещё ничего не вызывал. Подключение настраивается на экране{' '}
-          <Link href={href('/admin/access')} className="no-underline">
-            «Доступ Claude»
-          </Link>
-          .
-        </div>
+        {calls.length === 0 ? (
+          <div className="py-6 text-center text-[13px] text-subtle">
+            Claude ещё ничего не вызывал. Подключение настраивается на экране{' '}
+            <Link href={href('/admin/access')} className="no-underline">
+              «Доступ Claude»
+            </Link>
+            .
+          </div>
+        ) : (
+          <div className="flex flex-col">
+            {calls.map((c) => (
+              <div key={c.id} className="flex items-center gap-3 border-b border-divider py-2.5 last:border-b-0">
+                <span className="w-[88px] shrink-0 font-mono text-xs text-subtle">{formatWhen(c.createdAt).replace('сегодня ', '')}</span>
+                <span className="w-[150px] shrink-0 truncate font-mono text-[13px]">{c.tool}</span>
+                <span className="hidden min-w-0 flex-1 truncate text-muted-foreground md:block">{c.argsRedacted}</span>
+                <span className="ml-auto shrink-0 md:ml-0">
+                  <Pill tone={c.ok ? 'ok' : 'err'}>{c.ok ? `OK · ${((c.durationMs ?? 0) / 1000).toLocaleString('ru-RU', { maximumFractionDigits: 1 })} с` : resultText(c).slice(0, 24)}</Pill>
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
       </Card>
 
       <div className="flex gap-3.5 px-0.5 text-xs text-muted-foreground md:hidden">
@@ -88,6 +109,14 @@ export default function DashboardPage() {
           {connected ? 'Claude подключён' : 'Claude не подключён'}
         </span>
       </div>
+
+      {failed > 0 && (
+        <Link href={`${href('/admin/activity')}?connector=auth&status=error&period=1`} className="no-underline">
+          <Card className="border-warn/40 px-4 py-3 text-[13px] text-warn">
+            {failed} {failed === 1 ? 'неудачная попытка' : failed < 5 ? 'неудачные попытки' : 'неудачных попыток'} входа за сутки — открыть журнал
+          </Card>
+        </Link>
+      )}
     </>
   )
 }

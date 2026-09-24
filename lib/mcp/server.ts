@@ -1,12 +1,14 @@
 import type { McpServer } from '@modelcontextprotocol/server'
 import { createMcpHandler } from 'mcp-handler'
 import { z } from 'zod'
-import { activeConfig, connectorStates, type ConnectorState } from '../connectors/active'
+import { activeConfig, connectorStates } from '../connectors/active'
 import { scrub } from '../connectors/http'
 import { resolveResult, type JackettLinkAccess } from '../connectors/resolve'
-import { recordCheck } from '../connectors/store'
-import { ToolError, type ErasedTool, type TestResult } from '../connectors/types'
+import { checkConnector } from '../connectors/health'
+import { ToolError, type ErasedTool } from '../connectors/types'
+import { logToolCall } from '../journal'
 import { logger } from '../logger'
+import { mcpContext } from './context'
 import { HUB_VERSION } from '../version'
 
 export const MCP_INSTRUCTIONS = [
@@ -38,31 +40,36 @@ function jackettAccess(): JackettLinkAccess | null {
   return cfg?.baseUrl && cfg.apiKey ? { baseUrl: cfg.baseUrl, apiKey: cfg.apiKey } : null
 }
 
-function registerConnectorTool(server: McpServer, tool: ErasedTool, config: unknown): void {
+/** Run a tool, turn errors into short messages and write the journal entry. */
+async function runLogged(name: string, connectorId: string, args: unknown, fn: () => Promise<string>) {
+  const started = Date.now()
+  const ctx = mcpContext.getStore()
+  const log = (ok: boolean, message: string) =>
+    logToolCall({ tool: name, connectorId, args, ok, [ok ? 'result' : 'error']: message, durationMs: Date.now() - started, clientId: ctx?.clientId, ip: ctx?.ip })
+  try {
+    const result = await fn()
+    log(true, result)
+    return text(result)
+  } catch (error) {
+    let message: string
+    if (error instanceof ToolError) message = error.message
+    else if (error instanceof z.ZodError) message = `Неверные параметры: ${error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ')}`
+    else {
+      message = `Внутренняя ошибка хаба: ${scrub(error instanceof Error ? error.message : String(error))}`
+      logger.error({ tool: name, err: message }, 'tool failed')
+    }
+    log(false, message)
+    return text(message, true)
+  }
+}
+
+function registerConnectorTool(server: McpServer, connectorId: string, tool: ErasedTool, config: unknown): void {
   server.registerTool(
     tool.name,
     { title: tool.title, description: tool.description, inputSchema: tool.inputSchema, annotations: tool.annotations },
-    async (args: unknown) => {
-      try {
-        return text(await tool.run(args, { config, resolveResult: (id) => resolveResult(id, jackettAccess()) }))
-      } catch (error) {
-        if (error instanceof ToolError) return text(error.message, true)
-        if (error instanceof z.ZodError) return text(`Неверные параметры: ${error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ')}`, true)
-        const message = scrub(error instanceof Error ? error.message : String(error))
-        logger.error({ tool: tool.name, err: message }, 'tool failed')
-        return text(`Внутренняя ошибка хаба: ${message}`, true)
-      }
-    },
+    async (args: unknown) =>
+      runLogged(tool.name, connectorId, args, () => tool.run(args, { config, resolveResult: (id) => resolveResult(id, jackettAccess()) })),
   )
-}
-
-async function checkWithTimeout(state: Extract<ConnectorState, { status: 'active' }>): Promise<TestResult> {
-  const timeout = new Promise<TestResult>((resolve) =>
-    setTimeout(() => resolve({ ok: false, summary: `не ответил за ${STATUS_CHECK_TIMEOUT_MS / 1000} с`, details: [] }), STATUS_CHECK_TIMEOUT_MS),
-  )
-  const result = await Promise.race([state.connector.test(state.config), timeout])
-  recordCheck(state.connector.id, result)
-  return result
 }
 
 async function hubStatus(): Promise<string> {
@@ -78,7 +85,7 @@ async function hubStatus(): Promise<string> {
         case 'invalid':
           return `• ${name}: настройки неполные — открой админку`
         case 'active': {
-          const r = await checkWithTimeout(s)
+          const r = await checkConnector(s, STATUS_CHECK_TIMEOUT_MS)
           const tools = s.connector.tools.filter((t) => !s.row.disabledTools.includes(t.name)).length
           return r.ok ? `• ${name}: OK · ${r.summary} · ${tools} инстр.` : `• ${name}: ошибка — ${r.summary}`
         }
@@ -98,13 +105,13 @@ function initializeServer(server: McpServer): void {
       inputSchema: z.object({}),
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
-    async () => text(await hubStatus()),
+    async (args: unknown) => runLogged('hub_status', 'hub', args, hubStatus),
   )
 
   for (const state of connectorStates()) {
     if (state.status !== 'active') continue
     for (const tool of state.connector.tools) {
-      if (!state.row.disabledTools.includes(tool.name)) registerConnectorTool(server, tool, state.config)
+      if (!state.row.disabledTools.includes(tool.name)) registerConnectorTool(server, state.connector.id, tool, state.config)
     }
   }
 }

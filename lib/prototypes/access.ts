@@ -67,10 +67,4 @@ export function clearAttempts(slug: string, ip: string): void {
   attempts.delete(`${slug}|${ip}`)
 }
 
-export function clientIp(headers: Headers): string {
-  if (process.env.TRUST_PROXY === '1' || process.env.TRUST_PROXY === 'true') {
-    const forwarded = headers.get('x-forwarded-for')?.split(',')[0]?.trim()
-    if (forwarded) return forwarded
-  }
-  return headers.get('x-real-ip') ?? 'direct'
-}
+export { clientIp } from '../net'

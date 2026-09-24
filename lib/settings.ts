@@ -18,3 +18,19 @@ export function isDcrAllowed(): boolean {
 export function setDcrAllowed(allowed: boolean): void {
   setSetting('allow_dcr', allowed ? '1' : '0')
 }
+
+/** MCP allow-list: empty means everyone (OAuth still applies). */
+export function getAllowedCidrs(): string[] {
+  const raw = getSetting('allowed_cidrs')
+  if (!raw) return []
+  try {
+    const list: unknown = JSON.parse(raw)
+    return Array.isArray(list) ? list.filter((c): c is string => typeof c === 'string') : []
+  } catch {
+    return []
+  }
+}
+
+export function setAllowedCidrs(cidrs: string[]): void {
+  setSetting('allowed_cidrs', JSON.stringify(cidrs))
+}

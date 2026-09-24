@@ -1,5 +1,6 @@
 import { PageHeader } from '@/components/admin/page-header'
 import { DcrToggle } from '@/components/access/dcr-toggle'
+import { CidrForm } from '@/components/access/cidr-form'
 import { PrefixForm } from '@/components/access/prefix-form'
 import { Card } from '@/components/ui/card'
 import { ConfirmButton } from '@/components/ui/confirm-button'
@@ -10,9 +11,10 @@ import { Pill } from '@/components/ui/pill'
 import { isClaudeConnected, listActiveTokens, listClients } from '@/lib/access'
 import { CLAUDE_REDIRECT_URI, hubUrls, isMcpAvailable } from '@/lib/auth'
 import { env } from '@/lib/env'
-import { formatWhen, shortId } from '@/lib/format'
+import { formatAgo, formatWhen, shortId } from '@/lib/format'
+import { lastCallByClient, lastToolCall } from '@/lib/journal'
 import { getPrefix } from '@/lib/prefix'
-import { isDcrAllowed } from '@/lib/settings'
+import { getAllowedCidrs, isDcrAllowed } from '@/lib/settings'
 import { revokeClientAction, revokeTokenAction } from './actions'
 
 export const dynamic = 'force-dynamic'
@@ -32,9 +34,10 @@ export default function AccessPage() {
   const clients = listClients()
   const tokens = listActiveTokens()
   const connected = isClaudeConnected()
+  const last = lastToolCall()
   const status = (
     <Pill tone={connected ? 'ok' : 'muted'} dot>
-      {connected ? 'Подключён' : 'Не подключён'}
+      {connected ? `Подключён${last ? ` · последний вызов ${formatAgo(last.createdAt)}` : ''}` : 'Не подключён'}
     </Pill>
   )
 
@@ -109,6 +112,7 @@ export default function AccessPage() {
                     {shortId(c.clientId)} · с {formatWhen(c.createdAt)}
                   </span>
                 </div>
+                <LastCall clientId={c.clientId} />
                 <Pill tone={c.hasConsent ? 'ok' : 'muted'}>{c.hasConsent ? 'согласие выдано' : 'без согласия'}</Pill>
                 <span className="w-24 font-mono text-xs text-muted-foreground">
                   {c.activeTokens} {c.activeTokens === 1 ? 'активный' : 'активных'}
@@ -148,7 +152,26 @@ export default function AccessPage() {
           </div>
         )}
       </Card>
+
+      <Card className="flex flex-col gap-3 p-4 md:p-5">
+        <div className="flex flex-col gap-0.5">
+          <h2 className="text-[15px]">Ограничение по IP для MCP</h2>
+          <span className="text-xs text-subtle">Пусто — пускать всех. Claude ходит из диапазона 160.79.104.0/21. Это защита в глубину, OAuth остаётся.</span>
+        </div>
+        <CidrForm initial={getAllowedCidrs()} trustProxy={env().TRUST_PROXY} />
+      </Card>
     </>
+  )
+}
+
+function LastCall({ clientId }: { clientId: string }) {
+  const call = lastCallByClient(clientId)
+  if (!call) return <span className="w-full text-xs text-subtle sm:w-auto">вызовов не было</span>
+  return (
+    <span className="w-full text-xs text-subtle sm:w-auto">
+      {formatAgo(call.createdAt)} · <span className="font-mono">{call.tool}</span>
+      {call.ip && <span className="font-mono"> · {call.ip}</span>}
+    </span>
   )
 }
 

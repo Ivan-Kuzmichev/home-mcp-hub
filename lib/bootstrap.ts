@@ -7,6 +7,7 @@ import { getConnectorRow, saveConfig } from './connectors/store'
 import { getDb } from './db'
 import { user } from './db/schema'
 import { env } from './env'
+import { startJobs } from './jobs'
 import { logger } from './logger'
 import { generatePrefix, readPrefix, savePrefix } from './prefix'
 
@@ -28,6 +29,7 @@ export async function bootstrap(): Promise<void> {
   await ensureAdmin()
   // Built-in connectors have no settings: create their rows so they are on from the start.
   for (const c of CONNECTORS) if (c.builtin && !getConnectorRow(c.id)) saveConfig(c, {})
+  startJobs()
   logger.info('hub started')
 }
 

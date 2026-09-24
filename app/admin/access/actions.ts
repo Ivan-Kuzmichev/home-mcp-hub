@@ -6,7 +6,8 @@ import { revokeAllClients, revokeClient, revokeToken } from '@/lib/access'
 import { logger } from '@/lib/logger'
 import { getPrefix, PREFIX_PATTERN, savePrefix, withPrefix } from '@/lib/prefix'
 import { requireAdmin } from '@/lib/session'
-import { setDcrAllowed } from '@/lib/settings'
+import { isValidCidr } from '@/lib/net'
+import { setAllowedCidrs, setDcrAllowed } from '@/lib/settings'
 
 export async function setDcrAction(formData: FormData): Promise<void> {
   await requireAdmin()
@@ -41,4 +42,16 @@ export async function changePrefixAction(_prev: PrefixState, formData: FormData)
   revokeAllClients()
   logger.info('Path prefix changed, OAuth clients revoked')
   redirect(withPrefix(next, '/admin/access'))
+}
+
+export type CidrState = { error?: string; ok?: string }
+
+export async function saveCidrsAction(_prev: CidrState, formData: FormData): Promise<CidrState> {
+  await requireAdmin()
+  const list = [...new Set(String(formData.get('cidrs') ?? '').split(/[\s,]+/).map((c) => c.trim()).filter(Boolean))]
+  const bad = list.filter((c) => !isValidCidr(c))
+  if (bad.length) return { error: `Не IPv4-диапазон: ${bad.join(', ')}` }
+  setAllowedCidrs(list)
+  revalidatePath('/admin/access')
+  return { ok: list.length ? 'Сохранено' : 'Список пуст — пускаем всех' }
 }
