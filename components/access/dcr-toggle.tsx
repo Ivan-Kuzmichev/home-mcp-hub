@@ -26,7 +26,7 @@ export function DcrToggle({ allowed }: { allowed: boolean }) {
       <div className="flex flex-col">
         <span className="font-medium">Регистрация новых клиентов (DCR)</span>
         <span className={value ? 'text-xs text-warn' : 'text-xs text-subtle'}>
-          {value ? 'Включена · выключи после подключения Claude' : 'Выключена · включай только на время подключения'}
+          {value ? 'Включена · выключится сама после «Разрешить»' : 'Выключена · включай только на время подключения'}
         </span>
       </div>
     </div>

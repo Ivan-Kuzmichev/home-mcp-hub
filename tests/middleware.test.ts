@@ -11,7 +11,8 @@ process.env.DATABASE_PATH = path.join(tmp, 'hub.db')
 // Imported after DATABASE_PATH is set: the DB opens lazily on first use.
 const { decideRoute, prefixMatches, savePrefix, generatePrefix, PREFIX_PATTERN, withPrefix } = await import('@/lib/prefix')
 const { getDb } = await import('@/lib/db')
-const { middleware } = await import('@/middleware')
+const { middleware, isPagePath } = await import('@/middleware')
+const { SlidingWindow } = await import('@/lib/rate-limit')
 
 function run(pathname: string) {
   return middleware(new NextRequest(new URL(pathname, 'https://hub.example.com')))
@@ -127,5 +128,49 @@ describe('prefix helpers', () => {
   it('rejects malformed prefixes', () => {
     expect(() => savePrefix('short')).toThrow()
     expect(() => savePrefix('has/slash0000000')).toThrow()
+  })
+})
+
+describe('page CSP', () => {
+  it('gives Next pages a nonce CSP without unsafe-inline scripts', () => {
+    const res = run(`/${PREFIX}/admin`)
+    const csp = res.headers.get('content-security-policy')!
+    const nonce = /'nonce-([^']+)'/.exec(csp)?.[1]
+    expect(nonce).toBeTruthy()
+    expect(csp).toMatch(/script-src 'self' 'nonce-[^']+' 'strict-dynamic'/)
+    expect(csp).not.toMatch(/script-src[^;]*'unsafe-inline'/)
+    expect(csp).toContain("frame-ancestors 'none'")
+    // Next.js reads the nonce from the request CSP header.
+    expect(res.headers.get('x-middleware-request-content-security-policy')).toBe(csp)
+    expect(run(`/${PREFIX}/admin`).headers.get('content-security-policy')).not.toContain(nonce!)
+  })
+
+  it.each([
+    ['/admin', true],
+    ['/login', true],
+    ['/consent', true],
+    ['/p/abc/pin', true],
+    ['/p/abc', false],
+    ['/api/mcp', false],
+    ['/api/auth/get-session', false],
+    ['/admin/prototypes/123/preview', false],
+    ['/admin/activity/export', false],
+  ])('%s is a page: %s', (path, expected) => {
+    expect(isPagePath(path)).toBe(expected)
+  })
+
+  it('leaves prototype HTML to its own sandbox CSP', () => {
+    expect(run('/p/Ab3xK9qZ').headers.get('content-security-policy')).toBeNull()
+  })
+})
+
+describe('sliding window limiter', () => {
+  it('allows N hits per window, then asks to retry', () => {
+    const w = new SlidingWindow(3, 60_000)
+    const t = 1_000_000
+    expect([w.hit('a', t), w.hit('a', t), w.hit('a', t)].every((r) => r.allowed)).toBe(true)
+    expect(w.hit('a', t + 1000)).toEqual({ allowed: false, retryAfterSec: 59 })
+    expect(w.hit('b', t).allowed).toBe(true)
+    expect(w.hit('a', t + 60_001).allowed).toBe(true)
   })
 })

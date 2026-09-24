@@ -31,5 +31,9 @@ COPY --from=build --chown=hub:hub /app/lib/db/migrations ./lib/db/migrations
 USER hub
 VOLUME /data
 EXPOSE 3000
+# Without the prefix the hub answers an empty 404 — that is exactly «alive».
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+  CMD node -e "fetch('http://127.0.0.1:3000/').then(r=>process.exit(r.status===404?0:1)).catch(()=>process.exit(1))"
+
 # Migrations, first prefix and the admin user are handled in instrumentation.ts before the server takes requests.
 CMD ["node", "server.js"]

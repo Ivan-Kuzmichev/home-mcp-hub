@@ -15,6 +15,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const html = p ? readHtml(p, Number.isInteger(v) ? v : p.version) : null
   if (html === null) return new Response(null, { status: 404 })
   return new Response(html, {
-    headers: { ...PUBLIC_HEADERS, 'Content-Type': 'text/html; charset=utf-8', 'Content-Security-Policy': PROTOTYPE_CSP, 'Cache-Control': 'no-store' },
+    headers: { ...PUBLIC_HEADERS, 'Content-Type': 'text/html; charset=utf-8', // Framed by the admin card on the same origin only.
+      'Content-Security-Policy': `${PROTOTYPE_CSP}; frame-ancestors 'self'`, 'Cache-Control': 'no-store' },
   })
 }

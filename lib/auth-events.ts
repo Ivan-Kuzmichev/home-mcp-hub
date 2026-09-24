@@ -1,4 +1,5 @@
 import { logAuthEvent } from './journal'
+import { isDcrAllowed, setDcrAllowed } from './settings'
 
 type Input = { method: string; path: string; body: ArrayBuffer | undefined; response: Response; ip: string }
 
@@ -42,6 +43,10 @@ export async function recordAuthEvent({ method, path, body, response, ip }: Inpu
 
   if (path === '/oauth2/consent') {
     const accepted = req.accept === true
-    logAuthEvent({ event: 'auth.consent', ok: response.ok, detail: `${accepted ? 'разрешено' : 'отказано'} · ${ip}`, error: response.ok ? undefined : failure(response.status), ip })
+    // Claude is connected: close client registration so nobody else can register meanwhile.
+    const closeDcr = response.ok && accepted && isDcrAllowed()
+    if (closeDcr) setDcrAllowed(false)
+    const detail = [accepted ? 'разрешено' : 'отказано', closeDcr ? 'регистрация клиентов выключена' : null, ip].filter(Boolean).join(' · ')
+    logAuthEvent({ event: 'auth.consent', ok: response.ok, detail, error: response.ok ? undefined : failure(response.status), ip })
   }
 }

@@ -40,6 +40,10 @@ export function hubUrls(prefix: string = getPrefix()): HubUrls {
   }
 }
 
+export function isHttps(): boolean {
+  return env().BASE_URL.startsWith('https://')
+}
+
 /** Claude requires HTTPS; @better-auth/mcp only accepts plain http on loopback (local dev). */
 export function isMcpAvailable(): boolean {
   const url = new URL(env().BASE_URL)
@@ -83,6 +87,11 @@ function createAuth(prefix: string) {
     },
     advanced: {
       ipAddress: e.TRUST_PROXY ? { ipAddressHeaders: ['x-forwarded-for'] } : undefined,
+      // Over https every cookie is __Host-: Secure, Path=/, no Domain. better-auth would put
+      // __Secure- in front of any name, so its own prefix is off and ours carries the flag.
+      useSecureCookies: false,
+      cookiePrefix: isHttps() ? '__Host-hub' : 'hub',
+      defaultCookieAttributes: { secure: isHttps(), sameSite: 'lax', httpOnly: true, path: '/' },
     },
     plugins: [
       twoFactor({

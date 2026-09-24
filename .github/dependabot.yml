@@ -1,0 +1,18 @@
+# better-auth and the MCP SDK move fast: keep them fresh (SPEC.md → «Безопасность»).
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule: { interval: weekly }
+    open-pull-requests-limit: 10
+    groups:
+      auth-and-mcp:
+        patterns: ['better-auth', '@better-auth/*', 'auth', 'mcp-handler', '@modelcontextprotocol/*']
+      next:
+        patterns: ['next', 'react', 'react-dom', 'eslint-config-next', '@types/react*']
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: monthly }
+  - package-ecosystem: docker
+    directory: /
+    schedule: { interval: monthly }

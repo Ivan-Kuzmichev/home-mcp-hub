@@ -7,6 +7,8 @@ import { oauthClient } from '@/lib/db/schema'
 import { mcpContext } from '@/lib/mcp/context'
 import { getMcpHandler } from '@/lib/mcp/server'
 import { clientIp, ipInCidr } from '@/lib/net'
+import { logger } from '@/lib/logger'
+import { SlidingWindow } from '@/lib/rate-limit'
 import { getAllowedCidrs } from '@/lib/settings'
 
 export const dynamic = 'force-dynamic'
@@ -30,6 +32,28 @@ function unauthorized(resourceMetadata: string): Response {
   )
 }
 
+const MCP_CALLS_PER_MINUTE = 60
+const globalForLimit = globalThis as unknown as { __hubMcpLimit?: SlidingWindow }
+const limiter = (globalForLimit.__hubMcpLimit ??= new SlidingWindow(MCP_CALLS_PER_MINUTE, 60_000))
+
+function tooMany(retryAfterSec: number): Response {
+  return Response.json(
+    { jsonrpc: '2.0', error: { code: -32000, message: `Rate limit: ${MCP_CALLS_PER_MINUTE} requests per minute` }, id: null },
+    { status: 429, headers: { 'Retry-After': String(retryAfterSec) } },
+  )
+}
+
+async function serve(req: Request, claims: JWTPayload, ip: string, resourceMetadata: string): Promise<Response> {
+  if (!clientIsActive(claims)) return unauthorized(resourceMetadata)
+  const clientId = clientIdOf(claims)
+  const limit = limiter.hit(clientId ?? ip)
+  if (!limit.allowed) {
+    logger.warn({ retryAfter: limit.retryAfterSec }, 'mcp rate limit hit')
+    return tooMany(limit.retryAfterSec)
+  }
+  return mcpContext.run({ clientId, ip }, () => getMcpHandler()(req))
+}
+
 export async function POST(request: Request): Promise<Response> {
   if (!isMcpAvailable()) return new Response('MCP requires an https BASE_URL', { status: 503 })
 
@@ -43,8 +67,7 @@ export async function POST(request: Request): Promise<Response> {
   const urls = hubUrls()
   const protectedHandler = requireMcpAuth(
     getAuth(),
-    async (req, claims) =>
-      clientIsActive(claims) ? mcpContext.run({ clientId: clientIdOf(claims), ip }, () => getMcpHandler()(req)) : unauthorized(urls.resourceMetadata),
+    (req, claims) => serve(req, claims, ip, urls.resourceMetadata),
     { issuer: urls.issuer, resource: urls.resource, jwksUrl: urls.jwksLoopback, requiredScopes: [MCP_SCOPE] },
   )
   const response = await protectedHandler(request)
