@@ -15,7 +15,7 @@ pnpm lint && pnpm typecheck && pnpm test
 
 ## Развёртывание на NAS
 
-Минимальный `docker-compose.yml` — только хаб (Newt и Watchtower — в полном файле в корне репозитория):
+Минимальный `docker-compose.yml` — только хаб, в сети хоста (Newt и Watchtower — в полном файле в корне репозитория):
 
 ```yaml
 services:
@@ -23,22 +23,21 @@ services:
     image: ghcr.io/ivan-kuzmichev/home-mcp-hub:latest
     container_name: hub
     restart: unless-stopped
+    network_mode: host
     env_file: .env
     environment:
       DATABASE_PATH: /data/hub.db
+      PORT: '3000'          # порт на NAS, поменять, если занят
       TRUST_PROXY: '1'
       TZ: Europe/Moscow
     volumes:
       - ./hub-data:/data
-    networks: [media]
-    # Проверка по LAN до Pangolin: раскомментировать,
-    # в .env BASE_URL=http://<ip-nas>:3000 и TRUST_PROXY=0
-    # ports: ['3000:3000']
-
-networks:
-  media:
-    external: true   # сеть, где живут Jackett, qBittorrent и TorrServe (docker network ls)
 ```
+
+В сети хоста хаб слушает `<ip-nas>:3000` напрямую, а сервисы в коннекторах указываются через localhost:
+`http://127.0.0.1:8080` (qBittorrent), `http://127.0.0.1:9117` (Jackett), `http://127.0.0.1:8090` (TorrServe).
+Для qBittorrent в режиме «без авторизации» хватит галочки «Пропускать аутентификацию для клиентов на localhost».
+В Pangolin target — `<ip-nas>:3000` (или `localhost:3000`, если Newt тоже в сети хоста).
 
 `.env` рядом с ним:
 
