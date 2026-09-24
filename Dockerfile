@@ -19,12 +19,14 @@ RUN pnpm build
 FROM node:22-alpine AS runner
 WORKDIR /app
 ARG HUB_GIT_SHA=dev
+ARG HUB_VERSION=dev
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
     PORT=3000 \
     HOSTNAME=0.0.0.0 \
     DATABASE_PATH=/data/hub.db \
-    HUB_GIT_SHA=${HUB_GIT_SHA}
+    HUB_GIT_SHA=${HUB_GIT_SHA} \
+    HUB_VERSION=${HUB_VERSION}
 # su-exec: drop from root to the app user after fixing /data ownership (docker-entrypoint.sh).
 RUN apk add --no-cache su-exec \
  && addgroup -S -g 1001 hub && adduser -S -u 1001 -G hub hub \

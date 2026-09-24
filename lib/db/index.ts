@@ -12,8 +12,14 @@ const globalForDb = globalThis as unknown as { __hubDb?: DbHandle }
 
 function open(): DbHandle {
   const file = process.env.DATABASE_PATH ?? '/data/hub.db'
-  fs.mkdirSync(path.dirname(path.resolve(file)), { recursive: true })
-  const sqlite = new Database(file)
+  let sqlite: Database.Database
+  try {
+    fs.mkdirSync(path.dirname(path.resolve(file)), { recursive: true })
+    sqlite = new Database(file)
+  } catch (error) {
+    const uid = typeof process.getuid === 'function' ? process.getuid() : '?'
+    throw new Error(`Cannot open database ${file} as uid ${uid}: ${error instanceof Error ? error.message : String(error)} — check that the data directory is writable`)
+  }
   sqlite.pragma('journal_mode = WAL')
   sqlite.pragma('foreign_keys = ON')
   sqlite.pragma('busy_timeout = 5000')
