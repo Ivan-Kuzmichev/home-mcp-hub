@@ -47,7 +47,7 @@ export function LoginForm({ initialStep, oauth }: { initialStep: 'password' | 's
     setError(null)
     const { data, error } = await auth.signIn.email({ email, password })
     setBusy(false)
-    if (error) return setError(authErrorMessage(error, 'Неверный email или пароль.'))
+    if (error) return setError(authErrorMessage(error, error.status === 401 ? 'Неверный email или пароль.' : `Не получилось войти (ошибка ${error.status ?? '?'})`))
     if (data && 'twoFactorRedirect' in data && data.twoFactorRedirect) return go('totp')
     // Signed in, but 2FA is not set up yet: it is mandatory for the admin.
     go('setup')

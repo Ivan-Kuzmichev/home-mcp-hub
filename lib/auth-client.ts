@@ -40,6 +40,10 @@ export function authErrorMessage(error: AuthError, fallback = 'Не получи
   if (!error) return fallback
   if (error.status === 429) return 'Слишком много попыток. Подожди 15 минут.'
   switch (error.code) {
+    case 'INVALID_ORIGIN':
+    case 'MISSING_OR_NULL_ORIGIN':
+    case 'CROSS_SITE_NAVIGATION_LOGIN_BLOCKED':
+      return 'Вход с этого адреса отклонён: он не совпадает с BASE_URL в .env хаба.'
     case 'INVALID_EMAIL_OR_PASSWORD':
       return 'Неверный email или пароль.'
     case 'INVALID_PASSWORD':
