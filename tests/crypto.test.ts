@@ -20,7 +20,8 @@ describe('secret encryption', () => {
     const v = encryptSecret('hunter2', KEY)
     expect(() => decryptSecret(v, OTHER)).toThrow()
     const [ver, nonce, ct, tag] = v.split(':')
-    const flipped = ct!.slice(0, -1) + (ct!.endsWith('A') ? 'B' : 'A')
+    // Change the first character: the last one may only carry padding bits.
+    const flipped = (ct!.startsWith('A') ? 'B' : 'A') + ct!.slice(1)
     expect(() => decryptSecret([ver, nonce, flipped, tag].join(':'), KEY)).toThrow()
   })
 

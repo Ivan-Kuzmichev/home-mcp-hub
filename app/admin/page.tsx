@@ -60,15 +60,6 @@ export default function DashboardPage() {
             </Link>
           )
         })}
-        <Link href={href('/admin/prototypes')} className="text-inherit no-underline hover:text-inherit">
-          <Card className="flex h-full flex-col gap-1.5 p-3 md:gap-2.5 md:p-4">
-            <div className="flex items-center justify-between">
-              <span className="text-[13px] font-semibold md:text-sm">Прототипы</span>
-              <StatusDot tone="muted" />
-            </div>
-            <div className="text-[13px] text-muted-foreground">скоро</div>
-          </Card>
-        </Link>
       </div>
 
       <Card className="flex flex-col gap-3.5 p-3.5 md:p-[18px]">

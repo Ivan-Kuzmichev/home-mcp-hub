@@ -103,6 +103,8 @@ export type Connector<C> = {
   id: string
   name: string
   description: string
+  /** Built into the hub: no settings, enabled from the first start */
+  builtin?: boolean
   docsUrl?: string
   configSchema: z.ZodType<C> & { shape: Record<string, z.ZodType> }
   test: (config: C) => Promise<TestResult>
@@ -127,6 +129,7 @@ export type RegisteredConnector = {
   id: string
   name: string
   description: string
+  builtin: boolean
   docsUrl?: string
   shape: Record<string, z.ZodType>
   parseConfig: (raw: unknown) => { ok: true; config: unknown } | { ok: false; errors: Record<string, string> }
@@ -141,6 +144,7 @@ export function defineConnector<C>(c: Connector<C>): RegisteredConnector {
     id: c.id,
     name: c.name,
     description: c.description,
+    builtin: c.builtin ?? false,
     docsUrl: c.docsUrl,
     shape: c.configSchema.shape,
     parseConfig(raw) {

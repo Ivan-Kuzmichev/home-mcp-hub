@@ -82,6 +82,11 @@ describe('middleware', () => {
     expect(res.headers.get('x-middleware-next')).toBe('1')
   })
 
+  it('marks prototypes noindex', () => {
+    expect(run('/p/Ab3xK9qZ').headers.get('x-robots-tag')).toContain('noindex')
+    expect(run(`/${PREFIX}/admin`).headers.get('x-robots-tag')).toBeNull()
+  })
+
   it('sets no-referrer so the prefix does not leak via links', () => {
     expect(run(`/${PREFIX}/admin`).headers.get('referrer-policy')).toBe('no-referrer')
   })

@@ -33,3 +33,20 @@ export const searchResult = sqliteTable('search_result', {
   payloadJson: text('payload_json').notNull(),
   expiresAt: integer('expires_at', { mode: 'timestamp_ms' }).notNull(),
 })
+
+/** HTML prototypes; files live in /data/prototypes/{id}/v{version}.html */
+export const prototype = sqliteTable('prototype', {
+  id: text('id').primaryKey(),
+  slug: text('slug').notNull().unique(),
+  title: text('title').notNull(),
+  pinHash: text('pin_hash'),
+  /** Bumped on every pin change: invalidates access cookies */
+  pinVersion: integer('pin_version').notNull().default(0),
+  expiresAt: integer('expires_at', { mode: 'timestamp_ms' }),
+  sizeBytes: integer('size_bytes').notNull(),
+  version: integer('version').notNull().default(1),
+  views: integer('views').notNull().default(0),
+  lastViewedAt: integer('last_viewed_at', { mode: 'timestamp_ms' }),
+  createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+  updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+})

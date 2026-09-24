@@ -41,5 +41,7 @@ export function middleware(request: NextRequest): NextResponse {
     }
   }
   for (const [k, v] of Object.entries(SECURITY_HEADERS)) response.headers.set(k, v)
+  // Prototypes and pin pages are shared by link, never indexed.
+  if (request.nextUrl.pathname.startsWith('/p/')) response.headers.set('X-Robots-Tag', 'noindex, nofollow')
   return response
 }
