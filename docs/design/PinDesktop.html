@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Пинкод прототипа — десктоп</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+body{margin:0;background:#0E1014;color:#E9EBF0;font-family:'IBM Plex Sans',system-ui,sans-serif;font-size:14px;-webkit-font-smoothing:antialiased}
+a{color:#7FA7FF}a:hover{color:#A9C3FF}
+h1,h2{font-family:'Manrope',sans-serif;margin:0}
+.mono{font-family:'JetBrains Mono',monospace}
+.card{background:#171A20;border:1px solid #2A2F39;border-radius:16px}
+.cell{width:64px;height:76px;border-radius:12px;border:1px solid #2A2F39;background:#0E1014;color:#E9EBF0;font-family:'JetBrains Mono',monospace;font-size:30px;text-align:center;padding:0}
+.cell.filled{border-color:#7FA7FF}
+.btn{display:inline-flex;align-items:center;justify-content:center;height:44px;border-radius:10px;font-weight:600;font-size:14px;border:1px solid #7FA7FF;background:#7FA7FF;color:#0E1014;font-family:inherit;cursor:pointer;width:100%}
+</style>
+</helmet>
+<div style="width: 1280px; height: 800px; box-sizing: border-box; padding: 40px 48px; display: flex; flex-direction: column; background: #0E1014">
+  <div style="display: flex; align-items: center; gap: 10px">
+    <div style="width: 32px; height: 32px; border-radius: 9px; background: #7FA7FF; display: flex; align-items: center; justify-content: center; color: #0E1014">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="3"></circle><path d="M12 3v6M12 15v6M3 12h6M15 12h6"></path></svg>
+    </div>
+    <div style="font-family: 'Manrope', sans-serif; font-weight: 700; font-size: 16px">Home Hub</div>
+    <div class="mono" style="font-size: 12px; color: #8B93A1">hub.example.com/p/k3x9pq2m</div>
+  </div>
+
+  <div style="flex-grow: 1; display: flex; align-items: center; justify-content: center">
+    <div class="card" style="width: 460px; box-sizing: border-box; padding: 40px; display: flex; flex-direction: column; gap: 26px">
+      <div style="display: flex; align-items: center; gap: 14px">
+        <div style="width: 44px; height: 44px; border-radius: 12px; background: #1E222A; border: 1px solid #2A2F39; display: flex; align-items: center; justify-content: center; color: #A2A9B6; flex-shrink: 0">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 3px">
+          <span style="font-size: 12px; font-weight: 600; color: #8B93A1; letter-spacing: 0.06em; text-transform: uppercase">Прототип</span>
+          <h1 style="font-size: 22px; font-weight: 700; line-height: 28px">Дашборд аналитики v3</h1>
+        </div>
+      </div>
+
+      <p style="margin: 0; color: #A2A9B6; line-height: 22px">Страница закрыта пинкодом. Его знает тот, кто прислал ссылку — введи 4 цифры с клавиатуры.</p>
+
+      <div style="display: flex; justify-content: space-between">
+        <input class="cell filled" type="text" inputmode="numeric" maxlength="1" value="4" aria-label="Цифра 1">
+        <input class="cell filled" type="text" inputmode="numeric" maxlength="1" value="8" aria-label="Цифра 2">
+        <input class="cell" type="text" inputmode="numeric" maxlength="1" value="" aria-label="Цифра 3">
+        <input class="cell" type="text" inputmode="numeric" maxlength="1" value="" aria-label="Цифра 4">
+      </div>
+
+      <button class="btn" type="button">Открыть</button>
+
+      <div style="display: flex; justify-content: space-between; font-size: 12px; color: #6F7785">
+        <span>Доступ сохранится в этом браузере на 24 часа</span>
+        <span>5 попыток за 10 минут</span>
+      </div>
+    </div>
+  </div>
+
+  <div style="display: flex; justify-content: space-between; font-size: 12px; color: #6F7785">
+    <span>Опубликовано через Home Hub · страница не индексируется</span>
+    <span class="mono">noindex</span>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":800}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

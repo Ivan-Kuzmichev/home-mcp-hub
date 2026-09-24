@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Вход в Home Hub</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+body{margin:0;background:#0E1014;color:#E9EBF0;font-family:'IBM Plex Sans',system-ui,sans-serif;font-size:14px;-webkit-font-smoothing:antialiased}
+a{color:#7FA7FF}a:hover{color:#A9C3FF}
+h1,h2,h3{font-family:'Manrope',sans-serif;margin:0}
+.mono{font-family:'JetBrains Mono',monospace}
+.card{background:#171A20;border:1px solid #2A2F39;border-radius:14px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:40px;padding:0 16px;border-radius:9px;font-weight:600;font-size:14px;border:1px solid #2A2F39;background:#1E222A;color:#E9EBF0;font-family:inherit;cursor:pointer}
+.btn.primary{background:#7FA7FF;color:#0E1014;border-color:#7FA7FF}
+.input{height:40px;padding:0 12px;border-radius:9px;border:1px solid #2A2F39;background:#0E1014;color:#E9EBF0;font-family:inherit;font-size:14px;width:100%;box-sizing:border-box}
+label{font-size:12px;font-weight:500;color:#A2A9B6}
+.cell{width:48px;height:56px;border-radius:10px;border:1px solid #2A2F39;background:#0E1014;color:#E9EBF0;font-family:'JetBrains Mono',monospace;font-size:24px;text-align:center;padding:0}
+.cell.filled{border-color:#7FA7FF}
+</style>
+</helmet>
+<div style="width: 1280px; height: 800px; box-sizing: border-box; padding: 40px 48px; display: flex; flex-direction: column; background: #0E1014">
+  <div style="display: flex; align-items: center; gap: 10px">
+    <div style="width: 32px; height: 32px; border-radius: 9px; background: #7FA7FF; display: flex; align-items: center; justify-content: center; color: #0E1014">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="3"></circle><path d="M12 3v6M12 15v6M3 12h6M15 12h6"></path></svg>
+    </div>
+    <div style="font-family: 'Manrope', sans-serif; font-weight: 700; font-size: 16px">Home Hub</div>
+    <div class="mono" style="font-size: 12px; color: #8B93A1">hub.example.com/gfgsfv2rfd/login</div>
+  </div>
+
+  <div style="flex-grow: 1; display: flex; align-items: center; justify-content: center; gap: 48px">
+    <div style="display: flex; flex-direction: column; gap: 14px; width: 400px">
+      <div style="font-size: 12px; font-weight: 600; color: #8B93A1; letter-spacing: 0.06em; text-transform: uppercase">Шаг 1 · Пароль</div>
+      <div class="card" style="box-sizing: border-box; padding: 32px; display: flex; flex-direction: column; gap: 20px">
+        <div style="display: flex; flex-direction: column; gap: 6px">
+          <h1 style="font-size: 24px; font-weight: 700">Вход в админку</h1>
+          <div style="color: #A2A9B6">Один аккаунт, зарегистрироваться нельзя.</div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 6px">
+          <label for="email">Email</label>
+          <input id="email" class="input" type="email" value="evan@example.com">
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 6px">
+          <label for="password">Пароль</label>
+          <input id="password" class="input" type="password" value="••••••••••••">
+        </div>
+        <button class="btn primary" type="button" style="width: 100%">Продолжить</button>
+        <div style="font-size: 12px; color: #8B93A1; text-align: center">5 неудачных попыток за 15 минут — блокировка IP на час</div>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 14px; width: 400px">
+      <div style="font-size: 12px; font-weight: 600; color: #8B93A1; letter-spacing: 0.06em; text-transform: uppercase">Шаг 2 · Второй фактор</div>
+      <div class="card" style="box-sizing: border-box; padding: 32px; display: flex; flex-direction: column; gap: 20px">
+        <div style="display: flex; flex-direction: column; gap: 6px">
+          <h2 style="font-size: 24px; font-weight: 700">Код из приложения</h2>
+          <div style="color: #A2A9B6">Введи 6 цифр из Google Authenticator или 1Password.</div>
+        </div>
+        <div style="display: flex; gap: 8px; justify-content: space-between">
+          <input class="cell filled" type="text" inputmode="numeric" maxlength="1" value="4" aria-label="Цифра 1">
+          <input class="cell filled" type="text" inputmode="numeric" maxlength="1" value="8" aria-label="Цифра 2">
+          <input class="cell filled" type="text" inputmode="numeric" maxlength="1" value="2" aria-label="Цифра 3">
+          <input class="cell" type="text" inputmode="numeric" maxlength="1" value="" aria-label="Цифра 4">
+          <input class="cell" type="text" inputmode="numeric" maxlength="1" value="" aria-label="Цифра 5">
+          <input class="cell" type="text" inputmode="numeric" maxlength="1" value="" aria-label="Цифра 6">
+        </div>
+        <button class="btn primary" type="button" style="width: 100%">Войти</button>
+        <div style="display: flex; justify-content: space-between; font-size: 13px">
+          <a href="#passkey" style="text-decoration: none">Войти по passkey</a>
+          <a href="#backup" style="text-decoration: none; color: #8B93A1">Резервный код</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display: flex; justify-content: space-between; font-size: 12px; color: #6F7785">
+    <span>Home MCP Hub · self-hosted</span>
+    <span class="mono">v0.3.1</span>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":800}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

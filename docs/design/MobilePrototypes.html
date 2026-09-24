@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Прототипы — телефон</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+body{margin:0;background:#0E1014;color:#E9EBF0;font-family:'IBM Plex Sans',system-ui,sans-serif;font-size:14px;-webkit-font-smoothing:antialiased}
+a{color:#7FA7FF}a:hover{color:#A9C3FF}
+h1,h2,h3{font-family:'Manrope',sans-serif;margin:0}
+.mono{font-family:'JetBrains Mono',monospace}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:999px;font-size:12px;font-weight:500;white-space:nowrap}
+.warn{background:rgba(242,181,68,.14);color:#F2B544}
+.err{background:rgba(242,109,109,.14);color:#F26D6D}
+.muted{background:#242933;color:#A2A9B6}
+.card{background:#171A20;border:1px solid #2A2F39;border-radius:12px}
+.tab{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:10px;color:#8B93A1;text-decoration:none;font-weight:500;padding-top:8px}
+.tab.active{color:#7FA7FF}
+.item{display:flex;align-items:center;gap:12px;padding:12px 14px;border-bottom:1px solid #1F242D;text-decoration:none;color:inherit;min-height:44px}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; display: flex; flex-direction: column; overflow: hidden; background: #0E1014">
+  <header style="height: 56px; flex-shrink: 0; display: flex; align-items: center; gap: 10px; padding: 0 8px 0 16px; border-bottom: 1px solid #2A2F39">
+    <div style="width: 28px; height: 28px; border-radius: 8px; background: #7FA7FF; display: flex; align-items: center; justify-content: center; color: #0E1014; flex-shrink: 0">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="3"></circle><path d="M12 3v6M12 15v6M3 12h6M15 12h6"></path></svg>
+    </div>
+    <h1 style="font-size: 17px; font-weight: 700; flex-grow: 1">Прототипы</h1>
+    <button type="button" aria-label="Загрузить HTML" style="width: 44px; height: 44px; border: 0; background: transparent; color: #A2A9B6; cursor: pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"></path></svg></button>
+  </header>
+
+  <main style="flex-grow: 1; min-height: 0; overflow: hidden; padding: 16px; display: flex; flex-direction: column; gap: 14px; box-sizing: border-box">
+    <div style="display: flex; gap: 8px">
+      <span class="pill" style="background: #1E222A; color: #E9EBF0">Все · 5</span>
+      <span class="pill muted">С пином · 2</span>
+      <span class="pill muted">Истекают · 2</span>
+    </div>
+    <div class="card" style="box-sizing: border-box; overflow: hidden">
+      <a href="MobilePrototypeCard.dc.html" class="item" style="background: #1A1F2B">
+        <div style="display: flex; flex-direction: column; flex-grow: 1; gap: 3px; min-width: 0">
+          <span style="font-weight: 600">Дашборд аналитики v3</span>
+          <span class="mono" style="font-size: 11px; color: #8B93A1">/p/k3x9pq2m · 12 просмотров · 2 ч назад</span>
+        </div>
+        <span class="pill warn">пин</span>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6F7785" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"></path></svg>
+      </a>
+      <a href="MobilePrototypeCard.dc.html" class="item">
+        <div style="display: flex; flex-direction: column; flex-grow: 1; gap: 3px; min-width: 0">
+          <span style="font-weight: 600">Лендинг для Маши</span>
+          <span class="mono" style="font-size: 11px; color: #8B93A1">/p/a8d2mm41 · 41 · до 12 окт</span>
+        </div>
+        <span class="pill muted">открыт</span>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6F7785" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"></path></svg>
+      </a>
+      <a href="MobilePrototypeCard.dc.html" class="item">
+        <div style="display: flex; flex-direction: column; flex-grow: 1; gap: 3px; min-width: 0">
+          <span style="font-weight: 600">Калькулятор ипотеки</span>
+          <span class="mono" style="font-size: 11px; color: #8B93A1">/p/zt5r0c8n · 3 · до 1 окт</span>
+        </div>
+        <span class="pill warn">пин</span>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6F7785" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"></path></svg>
+      </a>
+      <a href="MobilePrototypeCard.dc.html" class="item">
+        <div style="display: flex; flex-direction: column; flex-grow: 1; gap: 3px; min-width: 0">
+          <span style="font-weight: 600">Onboarding flow</span>
+          <span class="mono" style="font-size: 11px; color: #8B93A1">/p/hq11wex7 · 0 · бессрочно</span>
+        </div>
+        <span class="pill muted">открыт</span>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6F7785" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"></path></svg>
+      </a>
+      <a href="MobilePrototypeCard.dc.html" class="item" style="border-bottom: 0">
+        <div style="display: flex; flex-direction: column; flex-grow: 1; gap: 3px; min-width: 0">
+          <span style="font-weight: 600; color: #8B93A1">Тест графиков</span>
+          <span class="mono" style="font-size: 11px; color: #6F7785">/p/m2ab9ss0 · 7 · истёк 18 сен</span>
+        </div>
+        <span class="pill err">истёк</span>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6F7785" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"></path></svg>
+      </a>
+    </div>
+    <div style="font-size: 12px; color: #8B93A1; text-align: center">5 прототипов · 3,2 МБ · истёкшие удаляются через 7 дней</div>
+  </main>
+
+  <nav style="height: 80px; flex-shrink: 0; border-top: 1px solid #2A2F39; background: #121419; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); padding: 0 4px 18px; box-sizing: border-box">
+    <a href="MobileDashboard.dc.html" class="tab"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect></svg><span>Дашборд</span></a>
+    <a href="MobileConnectors.dc.html" class="tab"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2v6M15 2v6M6 8h12v4a6 6 0 0 1-12 0V8zM12 18v4"></path></svg><span>Коннекторы</span></a>
+    <a href="MobilePrototypes.dc.html" class="tab active"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M3 9h18M9 21V9"></path></svg><span>Прототипы</span></a>
+    <a href="MobileAccess.dc.html" class="tab"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15" r="4"></circle><path d="M10.9 12.1 21 2M17 6l3 3M14 9l2 2"></path></svg><span>Доступ</span></a>
+    <a href="#more" class="tab"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="5" cy="12" r="2"></circle><circle cx="12" cy="12" r="2"></circle><circle cx="19" cy="12" r="2"></circle></svg><span>Ещё</span></a>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Согласие на доступ Claude</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+body{margin:0;background:#0E1014;color:#E9EBF0;font-family:'IBM Plex Sans',system-ui,sans-serif;font-size:14px;-webkit-font-smoothing:antialiased}
+a{color:#7FA7FF}a:hover{color:#A9C3FF}
+h1,h2,h3{font-family:'Manrope',sans-serif;margin:0}
+.mono{font-family:'JetBrains Mono',monospace}
+.card{background:#171A20;border:1px solid #2A2F39;border-radius:14px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:40px;padding:0 16px;border-radius:9px;font-weight:600;font-size:14px;border:1px solid #2A2F39;background:#1E222A;color:#E9EBF0;font-family:inherit;cursor:pointer}
+.btn.primary{background:#7FA7FF;color:#0E1014;border-color:#7FA7FF}
+</style>
+</helmet>
+<div style="width: 1280px; height: 800px; box-sizing: border-box; padding: 40px 48px; display: flex; flex-direction: column; background: #0E1014">
+  <div style="display: flex; align-items: center; gap: 10px">
+    <div style="width: 32px; height: 32px; border-radius: 9px; background: #7FA7FF; display: flex; align-items: center; justify-content: center; color: #0E1014">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="3"></circle><path d="M12 3v6M12 15v6M3 12h6M15 12h6"></path></svg>
+    </div>
+    <div style="font-family: 'Manrope', sans-serif; font-weight: 700; font-size: 16px">Home Hub</div>
+    <div class="mono" style="font-size: 12px; color: #8B93A1">hub.example.com/gfgsfv2rfd/consent</div>
+  </div>
+
+  <div style="flex-grow: 1; display: flex; align-items: center; justify-content: center">
+    <div class="card" style="width: 520px; box-sizing: border-box; padding: 36px; display: flex; flex-direction: column; gap: 24px">
+      <div style="display: flex; align-items: center; gap: 16px">
+        <div style="width: 52px; height: 52px; border-radius: 14px; background: #1E222A; border: 1px solid #2A2F39; display: flex; align-items: center; justify-content: center; color: #E9EBF0">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.2-8.6"></path><path d="M21 3v6h-6"></path></svg>
+        </div>
+        <svg width="28" height="24" viewBox="0 0 28 24" fill="none" stroke="#6F7785" stroke-width="2" stroke-linecap="round"><path d="M4 12h20M18 6l6 6-6 6"></path></svg>
+        <div style="width: 52px; height: 52px; border-radius: 14px; background: #7FA7FF; display: flex; align-items: center; justify-content: center; color: #0E1014">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="3"></circle><path d="M12 3v6M12 15v6M3 12h6M15 12h6"></path></svg>
+        </div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 8px">
+        <h1 style="font-size: 24px; font-weight: 700; line-height: 30px">Claude запрашивает доступ к Home Hub</h1>
+        <div style="color: #A2A9B6; line-height: 21px">Приложение сможет вызывать инструменты хаба от твоего имени, пока ты не отзовёшь доступ в админке.</div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 10px; padding: 16px; border-radius: 10px; background: #0E1014; border: 1px solid #2A2F39">
+        <div style="display: flex; align-items: center; gap: 10px">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4CC38A" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>
+          <span>Поиск торрентов через Jackett</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 10px">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4CC38A" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>
+          <span>Управление закачками в qBittorrent и TorrServe</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 10px">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4CC38A" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>
+          <span>Публикация и удаление прототипов</span>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; font-size: 12px">
+        <div style="display: flex; flex-direction: column; gap: 3px">
+          <span style="color: #8B93A1">Клиент</span>
+          <span>Claude · claude.ai</span>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 3px">
+          <span style="color: #8B93A1">client_id</span>
+          <span class="mono">cl_8f3d…a21</span>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 3px; grid-column: span 2">
+          <span style="color: #8B93A1">Redirect URI</span>
+          <span class="mono">https://claude.ai/api/mcp/auth_callback</span>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 12px">
+        <button class="btn" type="button" style="flex-grow: 1">Отказать</button>
+        <button class="btn primary" type="button" style="flex-grow: 1">Разрешить</button>
+      </div>
+
+      <div style="font-size: 12px; color: #8B93A1; text-align: center">Ты вошёл как evan@example.com · <a href="#logout">Это не я</a></div>
+    </div>
+  </div>
+
+  <div style="display: flex; justify-content: space-between; font-size: 12px; color: #6F7785">
+    <span>Токен живёт 1 час, обновляется автоматически 30 дней</span>
+    <span class="mono">OAuth 2.1 · PKCE</span>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":800}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

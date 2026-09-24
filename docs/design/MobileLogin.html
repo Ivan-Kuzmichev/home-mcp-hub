@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Вход — телефон</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+body{margin:0;background:#0E1014;color:#E9EBF0;font-family:'IBM Plex Sans',system-ui,sans-serif;font-size:15px;-webkit-font-smoothing:antialiased}
+a{color:#7FA7FF}a:hover{color:#A9C3FF}
+h1,h2{font-family:'Manrope',sans-serif;margin:0}
+.mono{font-family:'JetBrains Mono',monospace}
+.btn{display:inline-flex;align-items:center;justify-content:center;height:52px;border-radius:14px;font-weight:600;font-size:16px;border:1px solid #2A2F39;background:#1E222A;color:#E9EBF0;font-family:inherit;cursor:pointer;width:100%}
+.btn.primary{background:#7FA7FF;color:#0E1014;border-color:#7FA7FF}
+.input{height:52px;padding:0 14px;border-radius:14px;border:1px solid #2A2F39;background:#171A20;color:#E9EBF0;font-family:inherit;font-size:16px;width:100%;box-sizing:border-box}
+label{font-size:12px;font-weight:500;color:#A2A9B6}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; padding: 64px 24px 32px; display: flex; flex-direction: column; gap: 28px; background: #0E1014">
+  <div style="display: flex; align-items: center; gap: 10px">
+    <div style="width: 28px; height: 28px; border-radius: 8px; background: #7FA7FF; display: flex; align-items: center; justify-content: center; color: #0E1014">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="3"></circle><path d="M12 3v6M12 15v6M3 12h6M15 12h6"></path></svg>
+    </div>
+    <span style="font-family: 'Manrope', sans-serif; font-weight: 700; font-size: 15px">Home Hub</span>
+    <span class="mono" style="font-size: 11px; color: #8B93A1">/gfgsfv2rfd/login</span>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 8px">
+    <h1 style="font-size: 26px; font-weight: 700; line-height: 32px">Вход в админку</h1>
+    <p style="margin: 0; color: #A2A9B6; line-height: 23px">После пароля — код из приложения или passkey.</p>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 16px">
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <label for="m-email">Email</label>
+      <input id="m-email" class="input" type="email" value="evan@example.com">
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <label for="m-password">Пароль</label>
+      <input id="m-password" class="input" type="password" value="••••••••••••">
+    </div>
+  </div>
+
+  <button class="btn primary" type="button">Продолжить</button>
+  <button class="btn" type="button"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px"><path d="M7 11V7a5 5 0 0 1 10 0v4"></path><rect x="3" y="11" width="18" height="11" rx="2"></rect></svg>Войти по passkey</button>
+
+  <div style="flex-grow: 1"></div>
+  <div style="font-size: 12px; color: #6F7785; text-align: center; line-height: 18px">5 неудачных попыток за 15 минут — блокировка IP на час</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

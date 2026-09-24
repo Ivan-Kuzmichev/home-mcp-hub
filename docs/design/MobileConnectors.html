@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Коннекторы — телефон</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+body{margin:0;background:#0E1014;color:#E9EBF0;font-family:'IBM Plex Sans',system-ui,sans-serif;font-size:14px;-webkit-font-smoothing:antialiased}
+a{color:#7FA7FF}a:hover{color:#A9C3FF}
+h1,h2,h3{font-family:'Manrope',sans-serif;margin:0}
+.mono{font-family:'JetBrains Mono',monospace}
+.card{background:#171A20;border:1px solid #2A2F39;border-radius:12px}
+.tab{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:10px;color:#8B93A1;text-decoration:none;font-weight:500;padding-top:8px}
+.tab.active{color:#7FA7FF}
+.dot{width:8px;height:8px;border-radius:4px;flex-shrink:0}
+.switch{appearance:none;-webkit-appearance:none;width:44px;height:26px;border-radius:13px;background:#3A414D;position:relative;margin:0;cursor:pointer;flex-shrink:0}
+.switch::after{content:'';position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:10px;background:#E9EBF0}
+.switch:checked{background:#4CC38A}
+.switch:checked::after{left:21px;background:#0E1014}
+.row{display:flex;align-items:center;gap:12px;padding:12px 14px;border-bottom:1px solid #1F242D;text-decoration:none;color:inherit;min-height:44px}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; display: flex; flex-direction: column; overflow: hidden; background: #0E1014">
+  <header style="height: 56px; flex-shrink: 0; display: flex; align-items: center; gap: 10px; padding: 0 16px; border-bottom: 1px solid #2A2F39">
+    <div style="width: 28px; height: 28px; border-radius: 8px; background: #7FA7FF; display: flex; align-items: center; justify-content: center; color: #0E1014; flex-shrink: 0">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="3"></circle><path d="M12 3v6M12 15v6M3 12h6M15 12h6"></path></svg>
+    </div>
+    <h1 style="font-size: 17px; font-weight: 700; flex-grow: 1">Коннекторы</h1>
+  </header>
+
+  <main style="flex-grow: 1; min-height: 0; overflow: hidden; padding: 16px; display: flex; flex-direction: column; gap: 14px; box-sizing: border-box">
+    <div style="font-size: 13px; color: #8B93A1">Тапни по сервису, чтобы изменить адрес, ключи и инструменты.</div>
+    <div class="card" style="box-sizing: border-box; overflow: hidden">
+      <a href="MobileConnectorEdit.dc.html" class="row">
+        <span class="dot" style="background: #4CC38A"></span>
+        <div style="display: flex; flex-direction: column; flex-grow: 1; gap: 2px">
+          <span style="font-weight: 600">Jackett</span>
+          <span style="font-size: 12px; color: #8B93A1">2 инструмента · 14 индексаторов</span>
+        </div>
+        <input type="checkbox" class="switch" checked aria-label="Jackett включён">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6F7785" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"></path></svg>
+      </a>
+      <a href="MobileConnectorEdit.dc.html" class="row">
+        <span class="dot" style="background: #4CC38A"></span>
+        <div style="display: flex; flex-direction: column; flex-grow: 1; gap: 2px">
+          <span style="font-weight: 600">qBittorrent</span>
+          <span style="font-size: 12px; color: #8B93A1">6 инструментов · v5.2.3</span>
+        </div>
+        <input type="checkbox" class="switch" checked aria-label="qBittorrent включён">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6F7785" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"></path></svg>
+      </a>
+      <a href="MobileConnectorEdit.dc.html" class="row">
+        <span class="dot" style="background: #F2B544"></span>
+        <div style="display: flex; flex-direction: column; flex-grow: 1; gap: 2px">
+          <span style="font-weight: 600">TorrServe</span>
+          <span style="font-size: 12px; color: #F2B544">не отвечает 18 мин</span>
+        </div>
+        <input type="checkbox" class="switch" checked aria-label="TorrServe включён">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6F7785" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"></path></svg>
+      </a>
+      <a href="MobileConnectorEdit.dc.html" class="row" style="border-bottom: 0">
+        <span class="dot" style="background: #4CC38A"></span>
+        <div style="display: flex; flex-direction: column; flex-grow: 1; gap: 2px">
+          <span style="font-weight: 600">Прототипы</span>
+          <span style="font-size: 12px; color: #8B93A1">встроенный · 4 инструмента</span>
+        </div>
+        <input type="checkbox" class="switch" checked aria-label="Прототипы включены">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6F7785" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"></path></svg>
+      </a>
+    </div>
+
+    <div class="card" style="box-sizing: border-box; padding: 14px; display: flex; flex-direction: column; gap: 8px; border-style: dashed">
+      <span style="font-weight: 600; font-size: 13px">Дальше в планах</span>
+      <span style="font-size: 12px; color: #8B93A1; line-height: 18px">Prowlarr, Radarr/Sonarr, Jellyfin, Home Assistant. Новые коннекторы появляются с обновлением образа хаба.</span>
+    </div>
+
+    <div style="flex-grow: 1"></div>
+    <button type="button" style="height: 44px; border-radius: 10px; border: 1px solid #2A2F39; background: #1E222A; color: #E9EBF0; font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer">Проверить все соединения</button>
+  </main>
+
+  <nav style="height: 80px; flex-shrink: 0; border-top: 1px solid #2A2F39; background: #121419; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); padding: 0 4px 18px; box-sizing: border-box">
+    <a href="MobileDashboard.dc.html" class="tab"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect></svg><span>Дашборд</span></a>
+    <a href="MobileConnectors.dc.html" class="tab active"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2v6M15 2v6M6 8h12v4a6 6 0 0 1-12 0V8zM12 18v4"></path></svg><span>Коннекторы</span></a>
+    <a href="MobilePrototypes.dc.html" class="tab"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M3 9h18M9 21V9"></path></svg><span>Прототипы</span></a>
+    <a href="MobileAccess.dc.html" class="tab"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15" r="4"></circle><path d="M10.9 12.1 21 2M17 6l3 3M14 9l2 2"></path></svg><span>Доступ</span></a>
+    <a href="#more" class="tab"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="5" cy="12" r="2"></circle><circle cx="12" cy="12" r="2"></circle><circle cx="19" cy="12" r="2"></circle></svg><span>Ещё</span></a>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

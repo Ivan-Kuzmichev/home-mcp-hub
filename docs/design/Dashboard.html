@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Дашборд</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;background:#0E1014;color:#E9EBF0;font-family:'IBM Plex Sans',system-ui,sans-serif;font-size:14px;-webkit-font-smoothing:antialiased}
+a{color:#7FA7FF}a:hover{color:#A9C3FF}
+h1,h2,h3{font-family:'Manrope',sans-serif;margin:0}
+.mono{font-family:'JetBrains Mono',monospace}
+.nav a{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;color:#A2A9B6;text-decoration:none;font-weight:500;font-size:14px}
+.nav a.active{background:#1E222A;color:#E9EBF0}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:999px;font-size:12px;font-weight:500;white-space:nowrap}
+.ok{background:rgba(76,195,138,.14);color:#4CC38A}
+.warn{background:rgba(242,181,68,.14);color:#F2B544}
+.err{background:rgba(242,109,109,.14);color:#F26D6D}
+.muted{background:#242933;color:#A2A9B6}
+.card{background:#171A20;border:1px solid #2A2F39;border-radius:12px}
+.btn{display:inline-flex;align-items:center;gap:8px;height:34px;padding:0 12px;border-radius:8px;font-weight:600;font-size:13px;border:1px solid #2A2F39;background:#1E222A;color:#E9EBF0;font-family:inherit;cursor:pointer}
+.btn.primary{background:#7FA7FF;color:#0E1014;border-color:#7FA7FF}
+.dot{width:8px;height:8px;border-radius:4px;flex-shrink:0}
+</style>
+</helmet>
+<div style="width: 1280px; height: 900px; display: flex; overflow: hidden; background: #0E1014">
+  <aside style="width: 232px; flex-shrink: 0; box-sizing: border-box; padding: 20px 14px; background: #121419; border-right: 1px solid #2A2F39; display: flex; flex-direction: column; gap: 24px">
+    <div style="display: flex; align-items: center; gap: 10px; padding: 0 6px">
+      <div style="width: 32px; height: 32px; border-radius: 9px; background: #7FA7FF; display: flex; align-items: center; justify-content: center; color: #0E1014; flex-shrink: 0">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="3"></circle><path d="M12 3v6M12 15v6M3 12h6M15 12h6"></path></svg>
+      </div>
+      <div style="display: flex; flex-direction: column">
+        <div style="font-family: 'Manrope', sans-serif; font-weight: 700; font-size: 15px; line-height: 18px">Home Hub</div>
+        <div class="mono" style="font-size: 11px; color: #8B93A1">hub.example.com/gfgsfv2rfd</div>
+      </div>
+    </div>
+    <nav class="nav" style="display: flex; flex-direction: column; gap: 2px">
+      <a href="Dashboard.dc.html" class="active"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect></svg>Дашборд</a>
+      <a href="Connectors.dc.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2v6M15 2v6M6 8h12v4a6 6 0 0 1-12 0V8zM12 18v4"></path></svg>Коннекторы</a>
+      <a href="Prototypes.dc.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M3 9h18M9 21V9"></path></svg>Прототипы</a>
+      <a href="Access.dc.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15" r="4"></circle><path d="M10.9 12.1 21 2M17 6l3 3M14 9l2 2"></path></svg>Доступ Claude</a>
+      <a href="Activity.dc.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"></path></svg>Журнал</a>
+      <a href="Settings.dc.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"></path></svg>Настройки</a>
+    </nav>
+    <div style="flex-grow: 1"></div>
+    <div style="display: flex; align-items: center; gap: 10px; padding: 12px 8px 0; border-top: 1px solid #2A2F39">
+      <div style="width: 30px; height: 30px; border-radius: 15px; background: #1E222A; border: 1px solid #2A2F39; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 13px">E</div>
+      <div style="display: flex; flex-direction: column; flex-grow: 1">
+        <span style="font-weight: 500; font-size: 13px">Evan</span>
+        <span style="font-size: 11px; color: #8B93A1">админ · 2FA включена</span>
+      </div>
+      <a href="Login.dc.html" aria-label="Выйти" style="color: #8B93A1"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"></path></svg></a>
+    </div>
+  </aside>
+
+  <main style="flex-grow: 1; min-width: 0; box-sizing: border-box; padding: 28px 32px; display: flex; flex-direction: column; gap: 22px; overflow: hidden">
+    <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 24px">
+      <div style="display: flex; flex-direction: column; gap: 4px">
+        <h1 style="font-size: 24px; font-weight: 700">Дашборд</h1>
+        <div style="color: #8B93A1; font-size: 13px">Чт, 24 сентября · аптайм 12 дн · <span class="mono">v0.3.1</span></div>
+      </div>
+      <div style="display: flex; align-items: center; gap: 10px">
+        <span class="pill ok"><span class="dot" style="background: #4CC38A"></span>Claude подключён · вызов 4 мин назад</span>
+        <button class="btn" type="button">Проверить все</button>
+      </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px">
+      <div class="card" style="box-sizing: border-box; padding: 16px; display: flex; flex-direction: column; gap: 10px">
+        <div style="display: flex; align-items: center; justify-content: space-between">
+          <span style="font-weight: 600">Jackett</span>
+          <span class="pill ok">OK</span>
+        </div>
+        <div style="font-family: 'Manrope', sans-serif; font-size: 22px; font-weight: 700">14 <span style="font-size: 13px; font-weight: 500; color: #A2A9B6; font-family: 'IBM Plex Sans', sans-serif">индексаторов</span></div>
+        <div style="font-size: 12px; color: #8B93A1">v0.24.2389 · проверено 2 мин назад</div>
+      </div>
+      <div class="card" style="box-sizing: border-box; padding: 16px; display: flex; flex-direction: column; gap: 10px">
+        <div style="display: flex; align-items: center; justify-content: space-between">
+          <span style="font-weight: 600">qBittorrent</span>
+          <span class="pill ok">OK</span>
+        </div>
+        <div style="font-family: 'Manrope', sans-serif; font-size: 22px; font-weight: 700">↓ 8,4 <span style="font-size: 13px; font-weight: 500; color: #A2A9B6; font-family: 'IBM Plex Sans', sans-serif">МБ/с</span> <span style="font-size: 16px; color: #A2A9B6">↑ 1,1</span></div>
+        <div style="font-size: 12px; color: #8B93A1">v5.2.3 · 3 активных · 412 ГБ свободно</div>
+      </div>
+      <div class="card" style="box-sizing: border-box; padding: 16px; display: flex; flex-direction: column; gap: 10px; border-color: #4A3A1E">
+        <div style="display: flex; align-items: center; justify-content: space-between">
+          <span style="font-weight: 600">TorrServe</span>
+          <span class="pill warn">Не отвечает</span>
+        </div>
+        <div style="font-family: 'Manrope', sans-serif; font-size: 22px; font-weight: 700">6 <span style="font-size: 13px; font-weight: 500; color: #A2A9B6; font-family: 'IBM Plex Sans', sans-serif">в базе</span></div>
+        <div style="font-size: 12px; color: #F2B544">timeout 30 с · последний ответ 18 мин назад</div>
+      </div>
+      <div class="card" style="box-sizing: border-box; padding: 16px; display: flex; flex-direction: column; gap: 10px">
+        <div style="display: flex; align-items: center; justify-content: space-between">
+          <span style="font-weight: 600">Прототипы</span>
+          <span class="pill ok">OK</span>
+        </div>
+        <div style="font-family: 'Manrope', sans-serif; font-size: 22px; font-weight: 700">5 <span style="font-size: 13px; font-weight: 500; color: #A2A9B6; font-family: 'IBM Plex Sans', sans-serif">опубликовано</span></div>
+        <div style="font-size: 12px; color: #8B93A1">2 с пином · 56 просмотров за неделю</div>
+      </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 14px; flex-grow: 1; min-height: 0">
+      
+
+      <div class="card" style="box-sizing: border-box; padding: 18px; display: flex; flex-direction: column; gap: 14px; width: 985px">
+        <div style="display: flex; align-items: center; justify-content: space-between">
+          <h2 style="font-size: 15px; font-weight: 700">Последние вызовы Claude</h2>
+          <a href="Activity.dc.html" style="font-size: 12px; text-decoration: none">Журнал</a>
+        </div>
+        <div style="display: flex; flex-direction: column">
+          <div style="display: flex; align-items: center; gap: 12px; padding: 9px 0; border-bottom: 1px solid #1F242D">
+            <span class="mono" style="font-size: 12px; color: #8B93A1; width: 44px; flex-shrink: 0">09:14</span>
+            <span class="mono" style="font-size: 13px; width: 140px; flex-shrink: 0">torrents_status</span>
+            <span style="color: #A2A9B6; flex-grow: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">filter: downloading</span>
+            <span class="pill ok">OK · 0,3 с</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 12px; padding: 9px 0; border-bottom: 1px solid #1F242D">
+            <span class="mono" style="font-size: 12px; color: #8B93A1; width: 44px; flex-shrink: 0">08:52</span>
+            <span class="mono" style="font-size: 13px; width: 140px; flex-shrink: 0">torrent_add</span>
+            <span style="color: #A2A9B6; flex-grow: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">result_id: r_7fk2 → Severance.S02…</span>
+            <span class="pill ok">OK · 1,2 с</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 12px; padding: 9px 0; border-bottom: 1px solid #1F242D">
+            <span class="mono" style="font-size: 12px; color: #8B93A1; width: 44px; flex-shrink: 0">08:51</span>
+            <span class="mono" style="font-size: 13px; width: 140px; flex-shrink: 0">search_torrents</span>
+            <span style="color: #A2A9B6; flex-grow: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">«Severance season 2 1080p», tv, seeders ≥ 10</span>
+            <span class="pill ok">OK · 8,4 с</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 12px; padding: 9px 0; border-bottom: 1px solid #1F242D">
+            <span class="mono" style="font-size: 12px; color: #8B93A1; width: 44px; flex-shrink: 0">вчера</span>
+            <span class="mono" style="font-size: 13px; width: 140px; flex-shrink: 0">torrserve_add</span>
+            <span style="color: #A2A9B6; flex-grow: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">result_id: r_2mq9 → Dune.Part.Two…</span>
+            <span class="pill err">Timeout</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 12px; padding: 9px 0">
+            <span class="mono" style="font-size: 12px; color: #8B93A1; width: 44px; flex-shrink: 0">вчера</span>
+            <span class="mono" style="font-size: 13px; width: 140px; flex-shrink: 0">prototype_publish</span>
+            <span style="color: #A2A9B6; flex-grow: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">«Дашборд аналитики v3», пин задан</span>
+            <span class="pill ok">OK · 0,4 с</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

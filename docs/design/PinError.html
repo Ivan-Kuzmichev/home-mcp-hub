@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Пинкод — ошибка</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+body{margin:0;background:#0E1014;color:#E9EBF0;font-family:'IBM Plex Sans',system-ui,sans-serif;font-size:16px;-webkit-font-smoothing:antialiased}
+a{color:#7FA7FF}a:hover{color:#A9C3FF}
+h1,h2{font-family:'Manrope',sans-serif;margin:0}
+.mono{font-family:'JetBrains Mono',monospace}
+.cell{width:64px;height:76px;border-radius:14px;border:1px solid #F26D6D;background:#171A20;color:#E9EBF0;font-family:'JetBrains Mono',monospace;font-size:32px;text-align:center;padding:0}
+.key{height:60px;border-radius:14px;border:1px solid #2A2F39;background:#171A20;color:#E9EBF0;font-family:'Manrope',sans-serif;font-size:24px;font-weight:600;cursor:pointer}
+.btn{display:inline-flex;align-items:center;justify-content:center;height:52px;border-radius:14px;font-weight:600;font-size:16px;border:1px solid #7FA7FF;background:#7FA7FF;color:#0E1014;font-family:inherit;cursor:pointer;width:100%}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; padding: 64px 24px 32px; display: flex; flex-direction: column; gap: 28px; background: #0E1014">
+  <div style="display: flex; align-items: center; gap: 10px">
+    <div style="width: 28px; height: 28px; border-radius: 8px; background: #7FA7FF; display: flex; align-items: center; justify-content: center; color: #0E1014">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="3"></circle><path d="M12 3v6M12 15v6M3 12h6M15 12h6"></path></svg>
+    </div>
+    <span style="font-family: 'Manrope', sans-serif; font-weight: 700; font-size: 15px">Home Hub</span>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 8px">
+    <span style="font-size: 12px; font-weight: 600; color: #8B93A1; letter-spacing: 0.06em; text-transform: uppercase">Прототип</span>
+    <h1 style="font-size: 26px; font-weight: 700; line-height: 32px">Дашборд аналитики v3</h1>
+    <p style="margin: 0; color: #A2A9B6; line-height: 23px">Страница закрыта пинкодом. Его знает тот, кто прислал ссылку.</p>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 12px">
+    <div style="display: flex; justify-content: space-between">
+      <input class="cell" type="text" inputmode="numeric" maxlength="1" value="" aria-label="Цифра 1">
+      <input class="cell" type="text" inputmode="numeric" maxlength="1" value="" aria-label="Цифра 2">
+      <input class="cell" type="text" inputmode="numeric" maxlength="1" value="" aria-label="Цифра 3">
+      <input class="cell" type="text" inputmode="numeric" maxlength="1" value="" aria-label="Цифра 4">
+    </div>
+    <div style="display: flex; align-items: center; gap: 8px; color: #F26D6D; font-size: 14px">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 8v4M12 16h.01"></path></svg>
+      <span>Неверный пин · осталось 3 попытки</span>
+    </div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px">
+    <button class="key" type="button">1</button><button class="key" type="button">2</button><button class="key" type="button">3</button>
+    <button class="key" type="button">4</button><button class="key" type="button">5</button><button class="key" type="button">6</button>
+    <button class="key" type="button">7</button><button class="key" type="button">8</button><button class="key" type="button">9</button>
+    <span></span><button class="key" type="button">0</button><button class="key" type="button" aria-label="Стереть" style="font-size: 20px">⌫</button>
+  </div>
+
+  <div style="flex-grow: 1"></div>
+  <button class="btn" type="button">Открыть</button>
+  <div style="font-size: 12px; color: #6F7785; text-align: center; line-height: 18px">После 5 ошибок — пауза 10 минут</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

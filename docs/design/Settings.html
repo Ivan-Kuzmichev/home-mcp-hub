@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Настройки</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0;background:#0E1014;color:#E9EBF0;font-family:'IBM Plex Sans',system-ui,sans-serif;font-size:14px;-webkit-font-smoothing:antialiased}
+a{color:#7FA7FF}a:hover{color:#A9C3FF}
+h1,h2,h3{font-family:'Manrope',sans-serif;margin:0}
+.mono{font-family:'JetBrains Mono',monospace}
+.nav a{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;color:#A2A9B6;text-decoration:none;font-weight:500;font-size:14px}
+.nav a.active{background:#1E222A;color:#E9EBF0}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:999px;font-size:12px;font-weight:500;white-space:nowrap}
+.ok{background:rgba(76,195,138,.14);color:#4CC38A}
+.warn{background:rgba(242,181,68,.14);color:#F2B544}
+.muted{background:#242933;color:#A2A9B6}
+.card{background:#171A20;border:1px solid #2A2F39;border-radius:12px}
+.btn{display:inline-flex;align-items:center;gap:8px;height:34px;padding:0 12px;border-radius:8px;font-weight:600;font-size:13px;border:1px solid #2A2F39;background:#1E222A;color:#E9EBF0;font-family:inherit;cursor:pointer;white-space:nowrap}
+.btn.primary{background:#7FA7FF;color:#0E1014;border-color:#7FA7FF}
+.btn.danger{background:transparent;color:#F26D6D;border-color:#4A2B2B}
+.input{height:36px;padding:0 12px;border-radius:8px;border:1px solid #2A2F39;background:#0E1014;color:#E9EBF0;font-family:inherit;font-size:14px;width:100%;box-sizing:border-box}
+label{font-size:12px;font-weight:500;color:#A2A9B6}
+.row{display:flex;align-items:center;gap:14px;padding:12px 0;border-bottom:1px solid #1F242D}
+.row:last-child{border-bottom:0}
+.dot{width:8px;height:8px;border-radius:4px;flex-shrink:0}
+</style>
+</helmet>
+<div style="width: 1280px; height: 900px; display: flex; overflow: hidden; background: #0E1014">
+  <aside style="width: 232px; flex-shrink: 0; box-sizing: border-box; padding: 20px 14px; background: #121419; border-right: 1px solid #2A2F39; display: flex; flex-direction: column; gap: 24px">
+    <div style="display: flex; align-items: center; gap: 10px; padding: 0 6px">
+      <div style="width: 32px; height: 32px; border-radius: 9px; background: #7FA7FF; display: flex; align-items: center; justify-content: center; color: #0E1014; flex-shrink: 0">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="3"></circle><path d="M12 3v6M12 15v6M3 12h6M15 12h6"></path></svg>
+      </div>
+      <div style="display: flex; flex-direction: column">
+        <div style="font-family: 'Manrope', sans-serif; font-weight: 700; font-size: 15px; line-height: 18px">Home Hub</div>
+        <div class="mono" style="font-size: 11px; color: #8B93A1">hub.example.com/gfgsfv2rfd</div>
+      </div>
+    </div>
+    <nav class="nav" style="display: flex; flex-direction: column; gap: 2px">
+      <a href="Dashboard.dc.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect></svg>Дашборд</a>
+      <a href="Connectors.dc.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2v6M15 2v6M6 8h12v4a6 6 0 0 1-12 0V8zM12 18v4"></path></svg>Коннекторы</a>
+      <a href="Prototypes.dc.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M3 9h18M9 21V9"></path></svg>Прототипы</a>
+      <a href="Access.dc.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15" r="4"></circle><path d="M10.9 12.1 21 2M17 6l3 3M14 9l2 2"></path></svg><span>Доступ</span></a>
+      <a href="Activity.dc.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"></path></svg>Журнал</a>
+      <a href="Settings.dc.html" class="active"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"></path></svg>Настройки</a>
+    </nav>
+    <div style="flex-grow: 1"></div>
+    <div style="display: flex; align-items: center; gap: 10px; padding: 12px 8px 0; border-top: 1px solid #2A2F39">
+      <div style="width: 30px; height: 30px; border-radius: 15px; background: #1E222A; border: 1px solid #2A2F39; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 13px">E</div>
+      <div style="display: flex; flex-direction: column; flex-grow: 1">
+        <span style="font-weight: 500; font-size: 13px">Evan</span>
+        <span style="font-size: 11px; color: #8B93A1">админ · 2FA включена</span>
+      </div>
+      <a href="Login.dc.html" aria-label="Выйти" style="color: #8B93A1"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"></path></svg></a>
+    </div>
+  </aside>
+
+  <main style="flex-grow: 1; min-width: 0; box-sizing: border-box; padding: 28px 32px; display: flex; flex-direction: column; gap: 18px; overflow: hidden">
+    <div style="display: flex; flex-direction: column; gap: 4px">
+      <h1 style="font-size: 24px; font-weight: 700">Настройки</h1>
+      <div style="color: #8B93A1; font-size: 13px">Аккаунт, ключи и обслуживание хаба.</div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; flex-grow: 1; min-height: 0">
+      <div style="display: flex; flex-direction: column; gap: 16px">
+        <div class="card" style="box-sizing: border-box; padding: 18px 20px; display: flex; flex-direction: column; gap: 12px">
+          <h2 style="font-size: 15px; font-weight: 700">Общие</h2>
+          <div style="display: flex; flex-direction: column; gap: 6px">
+            <label for="base-url">Публичный адрес хаба</label>
+            <input id="base-url" class="input mono" type="url" value="https://hub.example.com">
+            <span style="font-size: 12px; color: #8B93A1">Домен без префикса. Должен совпадать с ресурсом в Pangolin. Секретный префикс пути — на экране «Доступ Claude».</span>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px">
+            <div style="display: flex; flex-direction: column; gap: 6px">
+              <label for="tz">Часовой пояс</label>
+              <input id="tz" class="input" type="text" value="Europe/Moscow">
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 6px">
+              <label for="log-days">Хранить журнал, дней</label>
+              <input id="log-days" class="input mono" type="number" value="30">
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="box-sizing: border-box; padding: 18px 20px; display: flex; flex-direction: column; gap: 4px">
+          <h2 style="font-size: 15px; font-weight: 700; margin-bottom: 8px">Аккаунт</h2>
+          <div class="row">
+            <div style="display: flex; flex-direction: column; flex-grow: 1"><span style="font-weight: 500">Email</span><span style="font-size: 12px; color: #8B93A1">evan@example.com</span></div>
+            <button class="btn" type="button">Изменить</button>
+          </div>
+          <div class="row">
+            <div style="display: flex; flex-direction: column; flex-grow: 1"><span style="font-weight: 500">Пароль</span><span style="font-size: 12px; color: #8B93A1">изменён 12 сен</span></div>
+            <button class="btn" type="button">Сменить</button>
+          </div>
+          <div class="row">
+            <div style="display: flex; flex-direction: column; flex-grow: 1"><span style="font-weight: 500">Второй фактор</span><span style="font-size: 12px; color: #8B93A1">TOTP включён · резервных кодов осталось 8</span></div>
+            <span class="pill ok">включён</span>
+            <button class="btn" type="button">Коды</button>
+          </div>
+          <div class="row">
+            <div style="display: flex; flex-direction: column; flex-grow: 1"><span style="font-weight: 500">Passkey</span><span style="font-size: 12px; color: #8B93A1">Face ID на iPhone и Touch ID на MacBook</span></div>
+            <button class="btn" type="button">Добавить</button>
+          </div>
+          <div class="row">
+            <div style="display: flex; flex-direction: column; flex-grow: 1"><span style="font-weight: 500">Сессии админки</span><span style="font-size: 12px; color: #8B93A1">2 активные · iPhone, MacBook</span></div>
+            <button class="btn danger" type="button">Завершить все</button>
+          </div>
+        </div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 16px">
+        <div class="card" style="box-sizing: border-box; padding: 18px 20px; display: flex; flex-direction: column; gap: 4px">
+          <h2 style="font-size: 15px; font-weight: 700; margin-bottom: 8px">Ключи</h2>
+          <div class="row">
+            <span class="dot" style="background: #4CC38A"></span>
+            <div style="display: flex; flex-direction: column; flex-grow: 1"><span style="font-weight: 500">Мастер-ключ шифрования</span><span style="font-size: 12px; color: #8B93A1">из <span class="mono">HUB_MASTER_KEY</span> · отпечаток <span class="mono">a3f9 7c21</span> · 3 секрета зашифровано</span></div>
+          </div>
+          <div class="row">
+            <span class="dot" style="background: #4CC38A"></span>
+            <div style="display: flex; flex-direction: column; flex-grow: 1"><span style="font-weight: 500">Секрет сессий</span><span style="font-size: 12px; color: #8B93A1">из <span class="mono">BETTER_AUTH_SECRET</span> · задан</span></div>
+          </div>
+          <div class="row">
+            <span class="dot" style="background: #4CC38A"></span>
+            <div style="display: flex; flex-direction: column; flex-grow: 1"><span style="font-weight: 500">Ключи подписи токенов (JWKS)</span><span style="font-size: 12px; color: #8B93A1">1 активный · создан 12 сен</span></div>
+            <button class="btn" type="button">Ротировать</button>
+          </div>
+          <div style="font-size: 12px; color: #8B93A1; padding-top: 10px">Ключи живут в <span class="mono">.env</span> на NAS и здесь не показываются. Потеря мастер-ключа — переввод паролей коннекторов, остальное цело.</div>
+        </div>
+
+        <div class="card" style="box-sizing: border-box; padding: 14px 20px; display: flex; align-items: center; gap: 16px">
+          <div style="display: flex; flex-direction: column; flex-grow: 1">
+            <span style="font-weight: 500">Home MCP Hub <span class="mono" style="color: #A2A9B6">v0.3.1</span></span>
+            <span style="font-size: 12px; color: #8B93A1">Next.js 15 · better-auth 1.7.6 · MCP SDK 2.1 · Node 22</span>
+          </div>
+          <button class="btn" type="button">Проверить обновления</button>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

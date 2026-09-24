@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Доступ Claude</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+body{margin:0;background:#0E1014;color:#E9EBF0;font-family:'IBM Plex Sans',system-ui,sans-serif;font-size:14px;-webkit-font-smoothing:antialiased}
+a{color:#7FA7FF}a:hover{color:#A9C3FF}
+h1,h2,h3{font-family:'Manrope',sans-serif;margin:0}
+.mono{font-family:'JetBrains Mono',monospace}
+.nav a{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;color:#A2A9B6;text-decoration:none;font-weight:500;font-size:14px}
+.nav a.active{background:#1E222A;color:#E9EBF0}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:999px;font-size:12px;font-weight:500;white-space:nowrap}
+.ok{background:rgba(76,195,138,.14);color:#4CC38A}
+.warn{background:rgba(242,181,68,.14);color:#F2B544}
+.err{background:rgba(242,109,109,.14);color:#F26D6D}
+.muted{background:#242933;color:#A2A9B6}
+.card{background:#171A20;border:1px solid #2A2F39;border-radius:12px}
+.btn{display:inline-flex;align-items:center;gap:8px;height:34px;padding:0 12px;border-radius:8px;font-weight:600;font-size:13px;border:1px solid #2A2F39;background:#1E222A;color:#E9EBF0;font-family:inherit;cursor:pointer;white-space:nowrap}
+.btn.primary{background:#7FA7FF;color:#0E1014;border-color:#7FA7FF}
+.btn.danger{background:transparent;color:#F26D6D;border-color:#4A2B2B}
+.btn.sm{height:28px;padding:0 10px;font-size:12px}
+.input{height:36px;padding:0 12px;border-radius:8px;border:1px solid #2A2F39;background:#0E1014;color:#E9EBF0;font-family:inherit;font-size:14px;width:100%;box-sizing:border-box}
+label{font-size:12px;font-weight:500;color:#A2A9B6}
+.switch{appearance:none;-webkit-appearance:none;width:36px;height:20px;border-radius:10px;background:#3A414D;position:relative;margin:0;cursor:pointer;flex-shrink:0}
+.switch::after{content:'';position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:8px;background:#E9EBF0}
+.switch:checked{background:#4CC38A}
+.switch:checked::after{left:18px;background:#0E1014}
+table{border-collapse:collapse;width:100%}
+th{text-align:left;font-size:12px;font-weight:500;color:#8B93A1;padding:8px 12px;border-bottom:1px solid #2A2F39;white-space:nowrap}
+td{padding:10px 12px;border-bottom:1px solid #1F242D;vertical-align:middle}
+.dot{width:8px;height:8px;border-radius:4px;flex-shrink:0}
+.step{width:22px;height:22px;border-radius:11px;background:#1E222A;border:1px solid #2A2F39;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;flex-shrink:0}
+</style>
+</helmet>
+<div style="width: 1280px; height: 900px; display: flex; overflow: hidden; background: #0E1014">
+  <aside style="width: 232px; flex-shrink: 0; box-sizing: border-box; padding: 20px 14px; background: #121419; border-right: 1px solid #2A2F39; display: flex; flex-direction: column; gap: 24px">
+    <div style="display: flex; align-items: center; gap: 10px; padding: 0 6px">
+      <div style="width: 32px; height: 32px; border-radius: 9px; background: #7FA7FF; display: flex; align-items: center; justify-content: center; color: #0E1014; flex-shrink: 0">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="3"></circle><path d="M12 3v6M12 15v6M3 12h6M15 12h6"></path></svg>
+      </div>
+      <div style="display: flex; flex-direction: column">
+        <div style="font-family: 'Manrope', sans-serif; font-weight: 700; font-size: 15px; line-height: 18px">Home Hub</div>
+        <div class="mono" style="font-size: 11px; color: #8B93A1">hub.example.com/gfgsfv2rfd</div>
+      </div>
+    </div>
+    <nav class="nav" style="display: flex; flex-direction: column; gap: 2px">
+      <a href="Dashboard.dc.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect></svg>Дашборд</a>
+      <a href="Connectors.dc.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2v6M15 2v6M6 8h12v4a6 6 0 0 1-12 0V8zM12 18v4"></path></svg>Коннекторы</a>
+      <a href="Prototypes.dc.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M3 9h18M9 21V9"></path></svg>Прототипы</a>
+      <a href="Access.dc.html" class="active"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15" r="4"></circle><path d="M10.9 12.1 21 2M17 6l3 3M14 9l2 2"></path></svg>Доступ Claude</a>
+      <a href="Activity.dc.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"></path></svg>Журнал</a>
+      <a href="Settings.dc.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"></path></svg>Настройки</a>
+    </nav>
+    <div style="flex-grow: 1"></div>
+    <div style="display: flex; align-items: center; gap: 10px; padding: 12px 8px 0; border-top: 1px solid #2A2F39">
+      <div style="width: 30px; height: 30px; border-radius: 15px; background: #1E222A; border: 1px solid #2A2F39; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 13px">E</div>
+      <div style="display: flex; flex-direction: column; flex-grow: 1">
+        <span style="font-weight: 500; font-size: 13px">Evan</span>
+        <span style="font-size: 11px; color: #8B93A1">админ · 2FA включена</span>
+      </div>
+      <a href="Login.dc.html" aria-label="Выйти" style="color: #8B93A1"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"></path></svg></a>
+    </div>
+  </aside>
+
+  <main style="flex-grow: 1; min-width: 0; box-sizing: border-box; padding: 28px 32px; display: flex; flex-direction: column; gap: 18px; overflow: hidden">
+    <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 24px">
+      <div style="display: flex; flex-direction: column; gap: 4px">
+        <h1 style="font-size: 24px; font-weight: 700">Доступ Claude</h1>
+        <div style="color: #8B93A1; font-size: 13px">Адрес MCP-эндпоинта, OAuth-клиенты и выданные токены.</div>
+      </div>
+      <span class="pill ok"><span class="dot" style="background: #4CC38A"></span>Подключён · последний вызов 4 мин назад</span>
+    </div>
+
+    <div style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px">
+      <div class="card" style="box-sizing: border-box; padding: 18px 20px; display: flex; flex-direction: column; gap: 14px">
+        <div style="display: flex; align-items: center; justify-content: space-between">
+          <h2 style="font-size: 15px; font-weight: 700">Секретный префикс</h2>
+          <span class="pill muted">на всё, кроме /p/*</span>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 6px">
+          <label for="mcp-secret">Префикс пути</label>
+          <div style="display: flex; gap: 8px">
+            <span class="mono" style="display: inline-flex; align-items: center; height: 36px; padding: 0 10px; border-radius: 8px; background: #0E1014; border: 1px solid #2A2F39; color: #8B93A1; font-size: 12px; white-space: nowrap">hub.example.com/</span>
+            <input id="mcp-secret" class="input mono" type="text" value="gfgsfv2rfd">
+            <button class="btn" type="button" style="flex-shrink: 0"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.2-8.6"></path><path d="M21 3v6h-6"></path></svg>Сгенерировать</button>
+            <button class="btn primary" type="button" style="flex-shrink: 0">Применить</button>
+          </div>
+          <span style="font-size: 12px; color: #F2B544">После смены: Claude подключить заново (токены отзываются), админка откроется по новой ссылке, старая — 404. Прототипы не меняются.</span>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 6px">
+          <label for="mcp-url">MCP server URL — вставить в Claude как есть</label>
+          <div style="display: flex; gap: 8px">
+            <input id="mcp-url" class="input mono" type="text" value="https://hub.example.com/gfgsfv2rfd/api/mcp" readonly style="font-size: 12px">
+            <button class="btn" type="button" aria-label="Скопировать" style="flex-shrink: 0"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+          </div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: #8B93A1; line-height: 18px">
+          <div style="display: flex; justify-content: space-between; gap: 12px"><span>Админка</span><span class="mono" style="color: #A2A9B6">hub.example.com/gfgsfv2rfd/admin</span></div>
+          <div style="display: flex; justify-content: space-between; gap: 12px"><span>OAuth и вход</span><span class="mono" style="color: #A2A9B6">hub.example.com/gfgsfv2rfd/login</span></div>
+          <div style="display: flex; justify-content: space-between; gap: 12px"><span>Прототипы — без префикса</span><span class="mono" style="color: #A2A9B6">hub.example.com/p/…</span></div>
+          <div style="padding-top: 4px">Всё остальное отвечает пустым 404. Префикс прячет хаб от сканеров, но не заменяет OAuth и 2FA.</div>
+        </div>
+      </div>
+
+      <div class="card" style="box-sizing: border-box; padding: 18px 20px; display: flex; flex-direction: column; gap: 12px">
+        <h2 style="font-size: 15px; font-weight: 700">Как подключить</h2>
+        <div style="display: flex; flex-direction: column; gap: 9px; font-size: 13px">
+          <div style="display: flex; align-items: flex-start; gap: 10px"><span class="step">1</span><span>Включить регистрацию клиентов ниже</span></div>
+          <div style="display: flex; align-items: flex-start; gap: 10px"><span class="step">2</span><span>Claude → Settings → Connectors → Add custom connector, вставить адрес слева, OAuth-поля оставить пустыми</span></div>
+          <div style="display: flex; align-items: flex-start; gap: 10px"><span class="step">3</span><span>Войти на открывшейся странице хаба и нажать «Разрешить»</span></div>
+          <div style="display: flex; align-items: flex-start; gap: 10px"><span class="step">4</span><span>Попросить в чате <span class="mono">hub_status</span> — должен вернуться список коннекторов</span></div>
+          <div style="display: flex; align-items: flex-start; gap: 10px"><span class="step">5</span><span>Выключить регистрацию клиентов</span></div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 10px; background: #0E1014; border: 1px solid #2A2F39; margin-top: 2px">
+          <input type="checkbox" class="switch" aria-label="Разрешить регистрацию новых клиентов">
+          <div style="display: flex; flex-direction: column">
+            <span style="font-weight: 500">Регистрация новых клиентов (DCR)</span>
+            <span style="font-size: 12px; color: #8B93A1">Выключена · включай только на время подключения</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="box-sizing: border-box; overflow: hidden">
+      <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border-bottom: 1px solid #2A2F39">
+        <h2 style="font-size: 14px; font-weight: 700">OAuth-клиенты</h2>
+        <span style="font-size: 12px; color: #8B93A1">Разрешённый redirect: <span class="mono">https://claude.ai/api/mcp/auth_callback</span></span>
+      </div>
+      <table>
+        <thead><tr><th>Клиент</th><th>client_id</th><th>Создан</th><th>Согласие</th><th>Токены</th><th></th></tr></thead>
+        <tbody>
+          <tr>
+            <td style="font-weight: 500">Claude · claude.ai</td>
+            <td class="mono" style="font-size: 12px; color: #A2A9B6">cl_8f3d92…a21</td>
+            <td style="color: #A2A9B6">12 сен, 21:40</td>
+            <td><span class="pill ok">выдано</span></td>
+            <td class="mono">1 активный</td>
+            <td style="text-align: right"><button class="btn danger sm" type="button">Отозвать</button></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card" style="box-sizing: border-box; overflow: hidden">
+      <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border-bottom: 1px solid #2A2F39">
+        <h2 style="font-size: 14px; font-weight: 700">Активные токены</h2>
+        <span style="font-size: 12px; color: #8B93A1">access — 1 час, refresh — 30 дней</span>
+      </div>
+      <table>
+        <thead><tr><th>Токен</th><th>Выдан</th><th>Истекает</th><th>Последний вызов</th><th>IP</th><th></th></tr></thead>
+        <tbody>
+          <tr>
+            <td class="mono" style="font-size: 12px">at_…4k9q</td>
+            <td style="color: #A2A9B6">сегодня 09:14</td>
+            <td style="color: #A2A9B6">10:14 · обновится сам</td>
+            <td style="color: #A2A9B6">4 мин назад · <span class="mono">torrents_status</span></td>
+            <td class="mono" style="font-size: 12px; color: #A2A9B6">160.79.104.53</td>
+            <td style="text-align: right"><button class="btn danger sm" type="button">Отозвать</button></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card" style="box-sizing: border-box; padding: 14px 18px; display: flex; align-items: center; gap: 16px">
+      <div style="display: flex; flex-direction: column; gap: 2px; width: 260px; flex-shrink: 0">
+        <span style="font-weight: 600; font-size: 13px">Ограничение по IP для MCP</span>
+        <span style="font-size: 12px; color: #8B93A1">Пусто — пускать всех. Claude ходит из этого диапазона.</span>
+      </div>
+      <div style="display: flex; gap: 8px; flex-grow: 1; align-items: center">
+        <span class="pill muted mono">160.79.104.0/21 ×</span>
+        <input class="input mono" type="text" placeholder="Добавить CIDR" style="width: 200px; font-size: 12px">
+      </div>
+      <button class="btn" type="button">Сохранить</button>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

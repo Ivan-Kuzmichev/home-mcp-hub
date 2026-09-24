@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Прототипы</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+body{margin:0;background:#0E1014;color:#E9EBF0;font-family:'IBM Plex Sans',system-ui,sans-serif;font-size:14px;-webkit-font-smoothing:antialiased}
+a{color:#7FA7FF}a:hover{color:#A9C3FF}
+h1,h2,h3{font-family:'Manrope',sans-serif;margin:0}
+.mono{font-family:'JetBrains Mono',monospace}
+.nav a{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;color:#A2A9B6;text-decoration:none;font-weight:500;font-size:14px}
+.nav a.active{background:#1E222A;color:#E9EBF0}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:999px;font-size:12px;font-weight:500;white-space:nowrap}
+.ok{background:rgba(76,195,138,.14);color:#4CC38A}
+.warn{background:rgba(242,181,68,.14);color:#F2B544}
+.err{background:rgba(242,109,109,.14);color:#F26D6D}
+.muted{background:#242933;color:#A2A9B6}
+.card{background:#171A20;border:1px solid #2A2F39;border-radius:12px}
+.btn{display:inline-flex;align-items:center;gap:8px;height:34px;padding:0 12px;border-radius:8px;font-weight:600;font-size:13px;border:1px solid #2A2F39;background:#1E222A;color:#E9EBF0;font-family:inherit;cursor:pointer}
+.btn.primary{background:#7FA7FF;color:#0E1014;border-color:#7FA7FF}
+.btn.danger{background:transparent;color:#F26D6D;border-color:#4A2B2B}
+.btn.sm{height:28px;padding:0 10px;font-size:12px}
+.input{height:36px;padding:0 12px;border-radius:8px;border:1px solid #2A2F39;background:#0E1014;color:#E9EBF0;font-family:inherit;font-size:14px;width:100%;box-sizing:border-box}
+label{font-size:12px;font-weight:500;color:#A2A9B6}
+.switch{appearance:none;-webkit-appearance:none;width:36px;height:20px;border-radius:10px;background:#3A414D;position:relative;margin:0;cursor:pointer;flex-shrink:0}
+.switch::after{content:'';position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:8px;background:#E9EBF0}
+.switch:checked{background:#4CC38A}
+.switch:checked::after{left:18px;background:#0E1014}
+table{border-collapse:collapse;width:100%}
+th{text-align:left;font-size:12px;font-weight:500;color:#8B93A1;padding:10px 12px;border-bottom:1px solid #2A2F39;white-space:nowrap}
+td{padding:12px;border-bottom:1px solid #1F242D;vertical-align:middle}
+tr.sel td{background:#1A1F2B}
+</style>
+</helmet>
+<div style="width: 1280px; height: 900px; display: flex; overflow: hidden; background: #0E1014">
+  <aside style="width: 232px; flex-shrink: 0; box-sizing: border-box; padding: 20px 14px; background: #121419; border-right: 1px solid #2A2F39; display: flex; flex-direction: column; gap: 24px">
+    <div style="display: flex; align-items: center; gap: 10px; padding: 0 6px">
+      <div style="width: 32px; height: 32px; border-radius: 9px; background: #7FA7FF; display: flex; align-items: center; justify-content: center; color: #0E1014; flex-shrink: 0">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="3"></circle><path d="M12 3v6M12 15v6M3 12h6M15 12h6"></path></svg>
+      </div>
+      <div style="display: flex; flex-direction: column">
+        <div style="font-family: 'Manrope', sans-serif; font-weight: 700; font-size: 15px; line-height: 18px">Home Hub</div>
+        <div class="mono" style="font-size: 11px; color: #8B93A1">hub.example.com/gfgsfv2rfd</div>
+      </div>
+    </div>
+    <nav class="nav" style="display: flex; flex-direction: column; gap: 2px">
+      <a href="Dashboard.dc.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect></svg>Дашборд</a>
+      <a href="Connectors.dc.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2v6M15 2v6M6 8h12v4a6 6 0 0 1-12 0V8zM12 18v4"></path></svg>Коннекторы</a>
+      <a href="Prototypes.dc.html" class="active"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M3 9h18M9 21V9"></path></svg>Прототипы</a>
+      <a href="Access.dc.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15" r="4"></circle><path d="M10.9 12.1 21 2M17 6l3 3M14 9l2 2"></path></svg>Доступ Claude</a>
+      <a href="Activity.dc.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"></path></svg>Журнал</a>
+      <a href="Settings.dc.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"></path></svg>Настройки</a>
+    </nav>
+    <div style="flex-grow: 1"></div>
+    <div style="display: flex; align-items: center; gap: 10px; padding: 12px 8px 0; border-top: 1px solid #2A2F39">
+      <div style="width: 30px; height: 30px; border-radius: 15px; background: #1E222A; border: 1px solid #2A2F39; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 13px">E</div>
+      <div style="display: flex; flex-direction: column; flex-grow: 1">
+        <span style="font-weight: 500; font-size: 13px">Evan</span>
+        <span style="font-size: 11px; color: #8B93A1">админ · 2FA включена</span>
+      </div>
+      <a href="Login.dc.html" aria-label="Выйти" style="color: #8B93A1"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"></path></svg></a>
+    </div>
+  </aside>
+
+  <main style="flex-grow: 1; min-width: 0; box-sizing: border-box; padding: 28px 32px; display: flex; flex-direction: column; gap: 22px; overflow: hidden">
+    <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 24px">
+      <div style="display: flex; flex-direction: column; gap: 4px">
+        <h1 style="font-size: 24px; font-weight: 700">Прототипы</h1>
+        <div style="color: #8B93A1; font-size: 13px">HTML-страницы, которые Claude опубликовал через MCP. Ссылки открываются без входа, при желании — по пинкоду.</div>
+      </div>
+      <button class="btn" type="button"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"></path></svg>Загрузить HTML вручную</button>
+    </div>
+
+    <div style="display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 18px; flex-grow: 1; min-height: 0">
+      <div class="card" style="box-sizing: border-box; overflow: hidden; display: flex; flex-direction: column">
+        <table>
+          <thead>
+            <tr><th>Название</th><th>Ссылка</th><th>Пин</th><th style="text-align: right">Просмотры</th><th>Срок</th><th>Обновлён</th></tr>
+          </thead>
+          <tbody>
+            <tr class="sel">
+              <td style="font-weight: 500">Дашборд аналитики v3</td>
+              <td class="mono" style="font-size: 12px; color: #A2A9B6">/p/k3x9pq2m</td>
+              <td><span class="pill warn">пин</span></td>
+              <td style="text-align: right" class="mono">12</td>
+              <td style="color: #A2A9B6">бессрочно</td>
+              <td style="color: #A2A9B6">2 ч назад</td>
+            </tr>
+            <tr>
+              <td style="font-weight: 500">Лендинг для Маши</td>
+              <td class="mono" style="font-size: 12px; color: #A2A9B6">/p/a8d2mm41</td>
+              <td><span class="pill muted">открыт</span></td>
+              <td style="text-align: right" class="mono">41</td>
+              <td style="color: #A2A9B6">до 12 окт</td>
+              <td style="color: #A2A9B6">вчера</td>
+            </tr>
+            <tr>
+              <td style="font-weight: 500">Калькулятор ипотеки</td>
+              <td class="mono" style="font-size: 12px; color: #A2A9B6">/p/zt5r0c8n</td>
+              <td><span class="pill warn">пин</span></td>
+              <td style="text-align: right" class="mono">3</td>
+              <td style="color: #A2A9B6">до 1 окт</td>
+              <td style="color: #A2A9B6">3 дн назад</td>
+            </tr>
+            <tr>
+              <td style="font-weight: 500">Onboarding flow</td>
+              <td class="mono" style="font-size: 12px; color: #A2A9B6">/p/hq11wex7</td>
+              <td><span class="pill muted">открыт</span></td>
+              <td style="text-align: right" class="mono">0</td>
+              <td style="color: #A2A9B6">бессрочно</td>
+              <td style="color: #A2A9B6">5 дн назад</td>
+            </tr>
+            <tr>
+              <td style="font-weight: 500; color: #8B93A1">Тест графиков</td>
+              <td class="mono" style="font-size: 12px; color: #6F7785">/p/m2ab9ss0</td>
+              <td><span class="pill err">истёк</span></td>
+              <td class="mono" style="text-align: right; color: #8B93A1">7</td>
+              <td style="color: #F26D6D">18 сен</td>
+              <td style="color: #8B93A1">2 нед назад</td>
+            </tr>
+          </tbody>
+        </table>
+        <div style="flex-grow: 1"></div>
+        <div style="padding: 12px 14px; font-size: 12px; color: #8B93A1; border-top: 1px solid #2A2F39; display: flex; justify-content: space-between">
+          <span>5 прототипов · 3,2 МБ на диске</span>
+          <span>Истёкшие удаляются через 7 дней</span>
+        </div>
+      </div>
+
+      <div class="card" style="box-sizing: border-box; padding: 18px; display: flex; flex-direction: column; gap: 16px; overflow: hidden">
+        <div style="height: 150px; border-radius: 8px; background: #0E1014; border: 1px solid #2A2F39; display: flex; flex-direction: column; overflow: hidden">
+          <div style="height: 22px; background: #1E222A; display: flex; align-items: center; gap: 5px; padding: 0 8px">
+            <span style="width: 7px; height: 7px; border-radius: 4px; background: #3A414D"></span><span style="width: 7px; height: 7px; border-radius: 4px; background: #3A414D"></span><span style="width: 7px; height: 7px; border-radius: 4px; background: #3A414D"></span>
+          </div>
+          <div style="padding: 12px; display: flex; flex-direction: column; gap: 8px">
+            <div style="height: 10px; width: 45%; border-radius: 3px; background: #2A2F39"></div>
+            <div style="display: flex; gap: 6px"><div style="height: 40px; flex-grow: 1; border-radius: 4px; background: #1E222A"></div><div style="height: 40px; flex-grow: 1; border-radius: 4px; background: #1E222A"></div><div style="height: 40px; flex-grow: 1; border-radius: 4px; background: #1E222A"></div></div>
+            <div style="height: 6px; width: 70%; border-radius: 3px; background: #2A2F39"></div>
+            <div style="height: 6px; width: 55%; border-radius: 3px; background: #2A2F39"></div>
+          </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 4px">
+          <h2 style="font-size: 16px; font-weight: 700">Дашборд аналитики v3</h2>
+          <span style="font-size: 12px; color: #8B93A1">Опубликован Claude · 22 сен · 1,4 МБ</span>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 6px">
+          <label for="pt-link">Публичная ссылка</label>
+          <div style="display: flex; gap: 8px">
+            <input id="pt-link" class="input mono" type="text" value="https://hub.example.com/p/k3x9pq2m" readonly style="font-size: 12px">
+            <button class="btn" type="button" aria-label="Скопировать" style="flex-shrink: 0"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>
+            <button class="btn" type="button" aria-label="Показать QR" style="flex-shrink: 0"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect><path d="M14 14h3v3h-3zM20 14v.01M14 20h.01M20 20h.01M17 17v3"></path></svg></button>
+          </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 10px; padding: 12px 14px; border-radius: 10px; background: #0E1014; border: 1px solid #2A2F39">
+          <div style="display: flex; align-items: center; gap: 10px">
+            <input type="checkbox" class="switch" checked aria-label="Пинкод включён">
+            <span style="font-weight: 500">Пинкод</span>
+            <span class="mono" style="color: #A2A9B6">••••</span>
+            <span style="flex-grow: 1"></span>
+            <button class="btn sm" type="button">Сменить</button>
+          </div>
+          <span style="font-size: 12px; color: #8B93A1">После ввода cookie на 24 ч · 5 попыток за 10 мин · смена пина сбрасывает все cookie</span>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 6px">
+          <label for="pt-exp">Срок жизни</label>
+          <select id="pt-exp" class="input" style="appearance: none">
+            <option>Бессрочно</option>
+          </select>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 6px">
+          <label>Версии</label>
+          <div style="display: flex; flex-direction: column; gap: 4px; font-size: 13px">
+            <div style="display: flex; align-items: center; gap: 8px"><span class="mono">v3</span><span style="color: #A2A9B6">2 ч назад</span><span class="pill ok">текущая</span></div>
+            <div style="display: flex; align-items: center; gap: 8px"><span class="mono">v2</span><span style="color: #A2A9B6">вчера</span><span style="flex-grow: 1"></span><a href="#v2" style="font-size: 12px; text-decoration: none">откатить</a></div>
+            <div style="display: flex; align-items: center; gap: 8px"><span class="mono">v1</span><span style="color: #A2A9B6">22 сен</span><span style="flex-grow: 1"></span><a href="#v1" style="font-size: 12px; text-decoration: none">откатить</a></div>
+          </div>
+        </div>
+
+        <div style="flex-grow: 1"></div>
+        <div style="display: flex; justify-content: space-between; gap: 10px; padding-top: 14px; border-top: 1px solid #2A2F39">
+          <button class="btn danger" type="button">Удалить</button>
+          <button class="btn primary" type="button">Сохранить</button>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

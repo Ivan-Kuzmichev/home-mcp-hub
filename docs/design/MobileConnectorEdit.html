@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Коннектор qBittorrent — телефон</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+body{margin:0;background:#0E1014;color:#E9EBF0;font-family:'IBM Plex Sans',system-ui,sans-serif;font-size:14px;-webkit-font-smoothing:antialiased}
+a{color:#7FA7FF}a:hover{color:#A9C3FF}
+h1,h2,h3{font-family:'Manrope',sans-serif;margin:0}
+.mono{font-family:'JetBrains Mono',monospace}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:999px;font-size:12px;font-weight:500;white-space:nowrap}
+.ok{background:rgba(76,195,138,.14);color:#4CC38A}
+.card{background:#171A20;border:1px solid #2A2F39;border-radius:12px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:44px;padding:0 16px;border-radius:10px;font-weight:600;font-size:14px;border:1px solid #2A2F39;background:#1E222A;color:#E9EBF0;font-family:inherit;cursor:pointer}
+.btn.primary{background:#7FA7FF;color:#0E1014;border-color:#7FA7FF}
+.input{height:44px;padding:0 12px;border-radius:10px;border:1px solid #2A2F39;background:#0E1014;color:#E9EBF0;font-family:inherit;font-size:15px;width:100%;box-sizing:border-box}
+label{font-size:12px;font-weight:500;color:#A2A9B6}
+.seg{display:flex;background:#0E1014;border:1px solid #2A2F39;border-radius:10px;padding:3px;gap:2px}
+.seg button{flex-grow:1;height:36px;border:0;border-radius:8px;background:transparent;color:#A2A9B6;font-family:inherit;font-size:13px;font-weight:500;cursor:pointer}
+.seg button.on{background:#1E222A;color:#E9EBF0}
+.switch{appearance:none;-webkit-appearance:none;width:44px;height:26px;border-radius:13px;background:#3A414D;position:relative;margin:0;cursor:pointer;flex-shrink:0}
+.switch::after{content:'';position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:10px;background:#E9EBF0}
+.switch:checked{background:#4CC38A}
+.switch:checked::after{left:21px;background:#0E1014}
+.dot{width:8px;height:8px;border-radius:4px;flex-shrink:0}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; display: flex; flex-direction: column; overflow: hidden; background: #0E1014">
+  <header style="height: 56px; flex-shrink: 0; display: flex; align-items: center; gap: 8px; padding: 0 8px 0 4px; border-bottom: 1px solid #2A2F39">
+    <a href="MobileConnectors.dc.html" aria-label="Назад" style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; color: #A2A9B6"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"></path></svg></a>
+    <div style="display: flex; flex-direction: column; flex-grow: 1">
+      <h1 style="font-size: 17px; font-weight: 700">qBittorrent</h1>
+      <span style="font-size: 11px; color: #8B93A1">Закачки на NAS</span>
+    </div>
+    <input type="checkbox" class="switch" checked aria-label="qBittorrent включён" style="margin-right: 8px">
+  </header>
+
+  <main style="flex-grow: 1; min-height: 0; overflow: hidden; padding: 16px; display: flex; flex-direction: column; gap: 14px; box-sizing: border-box">
+    <span class="pill ok" style="align-self: flex-start"><span class="dot" style="background: #4CC38A"></span>Соединение есть · v5.2.3 · 3 мин назад</span>
+
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <label for="m-qb-url">Адрес в локальной сети</label>
+      <input id="m-qb-url" class="input mono" type="url" value="http://qbittorrent:8080" style="font-size: 13px">
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <label>Способ входа</label>
+      <div class="seg">
+        <button type="button" class="on">Без входа</button>
+        <button type="button">API-ключ</button>
+        <button type="button">Логин</button>
+      </div>
+    </div>
+
+    <div style="display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border-radius: 10px; background: #171A20; border: 1px solid #2A2F39">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7FA7FF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 2px"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4M12 8h.01"></path></svg>
+      <span style="font-size: 12px; color: #A2A9B6; line-height: 18px">В qBittorrent разреши подсеть хаба без аутентификации: Web UI → «Пропускать аутентификацию для клиентов в подсетях» → <span class="mono" style="color: #E9EBF0">172.18.0.0/16</span></span>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px">
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <label for="m-qb-cat">Категория</label>
+        <input id="m-qb-cat" class="input" type="text" value="claude">
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <label for="m-qb-path">Папка</label>
+        <input id="m-qb-path" class="input mono" type="text" value="/downloads/claude" style="font-size: 13px">
+      </div>
+    </div>
+
+    <div class="card" style="box-sizing: border-box; padding: 12px 14px; display: flex; align-items: center; gap: 12px; min-height: 44px">
+      <span style="flex-grow: 1; font-size: 13px">Добавлять остановленными</span>
+      <input type="checkbox" class="switch" aria-label="Добавлять остановленными">
+    </div>
+
+    <a href="#tools" class="card" style="box-sizing: border-box; padding: 12px 14px; display: flex; align-items: center; gap: 12px; text-decoration: none; color: inherit; min-height: 44px">
+      <span style="flex-grow: 1; font-size: 13px">Инструменты для Claude</span>
+      <span style="font-size: 12px; color: #8B93A1">6 из 6</span>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6F7785" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"></path></svg>
+    </a>
+
+    <button class="btn" type="button">Проверить соединение</button>
+  </main>
+
+  <div style="flex-shrink: 0; padding: 12px 16px 30px; border-top: 1px solid #2A2F39; background: #121419; display: flex; gap: 10px">
+    <a href="MobileConnectors.dc.html" class="btn" style="flex-grow: 1; text-decoration: none">Отмена</a>
+    <button class="btn primary" type="button" style="flex-grow: 1">Сохранить</button>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
