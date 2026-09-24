@@ -3,22 +3,34 @@
 import { useMemo } from 'react'
 import { createAuthClient } from 'better-auth/react'
 import { twoFactorClient } from 'better-auth/client/plugins'
+import { oauthProviderClient } from '@better-auth/oauth-provider/client'
 import { usePrefix } from '@/components/prefix-provider'
 
-function create(prefix: string) {
+function create(prefix: string, oauth: boolean) {
   // The client is only called from event handlers; during SSR the origin is never used.
   const origin = typeof window === 'undefined' ? 'http://localhost' : window.location.origin
   return createAuthClient({
     baseURL: `${origin}/${prefix}/api/auth`,
-    plugins: [twoFactorClient()],
+    // oauthProviderClient attaches the signed OAuth query from the page URL to every POST,
+    // so it is only enabled on the login and consent pages of the OAuth flow.
+    plugins: oauth ? [twoFactorClient(), oauthProviderClient()] : [twoFactorClient()],
   })
 }
 
 export type HubAuthClient = ReturnType<typeof create>
 
-export function useAuthClient(): HubAuthClient {
+export function useAuthClient({ oauth = false }: { oauth?: boolean } = {}): HubAuthClient {
   const prefix = usePrefix()
-  return useMemo(() => create(prefix), [prefix])
+  return useMemo(() => create(prefix, oauth), [prefix, oauth])
+}
+
+/** During an OAuth flow better-auth answers with { redirect: true, url } once the session is ready. */
+export function oauthRedirectUrl(data: unknown): string | null {
+  if (data && typeof data === 'object' && 'redirect' in data && 'url' in data) {
+    const { redirect, url } = data as { redirect: unknown; url: unknown }
+    if (redirect === true && typeof url === 'string') return url
+  }
+  return null
 }
 
 type AuthError = { status?: number; code?: string; message?: string } | null | undefined

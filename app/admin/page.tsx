@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { PageHeader } from '@/components/admin/page-header'
 import { Card } from '@/components/ui/card'
 import { Pill, StatusDot } from '@/components/ui/pill'
+import { isClaudeConnected } from '@/lib/access'
 import { href } from '@/lib/prefix'
 import { HUB_VERSION } from '@/lib/version'
 
@@ -21,6 +22,7 @@ function formatToday(): string {
 }
 
 export default function DashboardPage() {
+  const connected = isClaudeConnected()
   return (
     <>
       <PageHeader
@@ -31,12 +33,12 @@ export default function DashboardPage() {
           </>
         }
         actions={
-          <Pill tone="muted" dot>
-            Claude не подключён
+          <Pill tone={connected ? 'ok' : 'muted'} dot>
+            {connected ? 'Claude подключён' : 'Claude не подключён'}
           </Pill>
         }
         mobileAside={
-          <Pill tone="muted" dot>
+          <Pill tone={connected ? 'ok' : 'muted'} dot>
             Claude
           </Pill>
         }
@@ -84,8 +86,8 @@ export default function DashboardPage() {
           2FA
         </span>
         <span className="flex items-center gap-1.5">
-          <StatusDot tone="muted" />
-          Claude не подключён
+          <StatusDot tone={connected ? 'ok' : 'muted'} />
+          {connected ? 'Claude подключён' : 'Claude не подключён'}
         </span>
       </div>
     </>

@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { authErrorMessage, useAuthClient } from '@/lib/auth-client'
+import { authErrorMessage, oauthRedirectUrl, useAuthClient } from '@/lib/auth-client'
 
 type Step = 'password' | 'totp' | 'backup' | 'setup'
 
@@ -19,8 +19,8 @@ const STEP_LABEL: Record<Step, string> = {
   setup: 'Шаг 2 · Настройка 2FA',
 }
 
-export function LoginForm({ initialStep }: { initialStep: 'password' | 'setup' }) {
-  const auth = useAuthClient()
+export function LoginForm({ initialStep, oauth }: { initialStep: 'password' | 'setup'; oauth: boolean }) {
+  const auth = useAuthClient({ oauth })
   const href = useHref()
   const [step, setStep] = useState<Step>(initialStep)
   const [email, setEmail] = useState('')
@@ -35,9 +35,10 @@ export function LoginForm({ initialStep }: { initialStep: 'password' | 'setup' }
     setStep(next)
   }
 
-  function enterAdmin() {
-    // Full navigation so the server layout sees the fresh session cookie.
-    window.location.assign(href('/admin'))
+  /** After the second factor: continue the OAuth flow for Claude, or open the admin panel. */
+  function finish(data: unknown) {
+    // Full navigation so the server sees the fresh session cookie.
+    window.location.assign(oauthRedirectUrl(data) ?? href('/admin'))
   }
 
   async function submitPassword(e: React.FormEvent) {
@@ -56,23 +57,23 @@ export function LoginForm({ initialStep }: { initialStep: 'password' | 'setup' }
     if (value.length !== 6) return
     setBusy(true)
     setError(null)
-    const { error } = await auth.twoFactor.verifyTotp({ code: value })
+    const { data, error } = await auth.twoFactor.verifyTotp({ code: value })
     setBusy(false)
     if (error) {
       setCode('')
       return setError(authErrorMessage(error, 'Неверный код.'))
     }
-    enterAdmin()
+    finish(data)
   }
 
   async function submitBackup(e: React.FormEvent) {
     e.preventDefault()
     setBusy(true)
     setError(null)
-    const { error } = await auth.twoFactor.verifyBackupCode({ code: code.trim() })
+    const { data, error } = await auth.twoFactor.verifyBackupCode({ code: code.trim() })
     setBusy(false)
     if (error) return setError(authErrorMessage(error, 'Неверный резервный код.'))
-    enterAdmin()
+    finish(data)
   }
 
   return (
@@ -135,14 +136,14 @@ export function LoginForm({ initialStep }: { initialStep: 'password' | 'setup' }
           </form>
         )}
 
-        {step === 'setup' && <TwoFactorSetup knownPassword={password} onDone={enterAdmin} />}
+        {step === 'setup' && <TwoFactorSetup knownPassword={password} oauth={oauth} onDone={finish} />}
       </Card>
     </div>
   )
 }
 
-function TwoFactorSetup({ knownPassword, onDone }: { knownPassword: string; onDone: () => void }) {
-  const auth = useAuthClient()
+function TwoFactorSetup({ knownPassword, oauth, onDone }: { knownPassword: string; oauth: boolean; onDone: (data: unknown) => void }) {
+  const auth = useAuthClient({ oauth })
   const [password, setPassword] = useState(knownPassword)
   const [totpURI, setTotpURI] = useState<string | null>(null)
   const [backupCodes, setBackupCodes] = useState<string[]>([])
@@ -175,13 +176,13 @@ function TwoFactorSetup({ knownPassword, onDone }: { knownPassword: string; onDo
     if (value.length !== 6) return
     setBusy(true)
     setError(null)
-    const { error } = await auth.twoFactor.verifyTotp({ code: value })
+    const { data, error } = await auth.twoFactor.verifyTotp({ code: value })
     setBusy(false)
     if (error) {
       setCode('')
       return setError(authErrorMessage(error, 'Неверный код.'))
     }
-    onDone()
+    onDone(data)
   }
 
   if (!totpURI) {

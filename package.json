@@ -15,15 +15,20 @@
     "test": "vitest run",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "auth:schema": "auth generate --config scripts/auth-schema.ts --output lib/db/auth-schema.ts --yes"
+    "auth:schema": "auth generate --config scripts/auth-schema.ts --adapter drizzle --dialect sqlite --output lib/db/auth-schema.ts --yes"
   },
   "dependencies": {
+    "@better-auth/mcp": "1.7.6",
+    "@better-auth/oauth-provider": "1.7.6",
+    "@modelcontextprotocol/server": "^2.1.0",
     "better-auth": "1.7.6",
     "better-sqlite3": "^13.0.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.45.3",
+    "jose": "^6.2.12",
     "lucide-react": "^1.48.0",
+    "mcp-handler": "^2.2.0",
     "next": "15.5.26",
     "pino": "^10.3.1",
     "qrcode": "^1.5.4",

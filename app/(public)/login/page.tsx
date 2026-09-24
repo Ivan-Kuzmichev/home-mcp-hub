@@ -10,9 +10,11 @@ import { HUB_VERSION } from '@/lib/version'
 
 export const dynamic = 'force-dynamic'
 
-export default async function LoginPage() {
+export default async function LoginPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  // Claude's authorization request sends the user here with a signed query (sig=…).
+  const oauth = typeof (await searchParams).sig === 'string'
   const session = await getAuth().api.getSession({ headers: await headers() })
-  if (session?.user.twoFactorEnabled) redirect(href('/admin'))
+  if (session?.user.twoFactorEnabled && !oauth) redirect(href('/admin'))
 
   const prefix = getPrefix()
   const host = new URL(env().BASE_URL).host
@@ -28,7 +30,7 @@ export default async function LoginPage() {
           </div>
         </header>
         <main className="flex flex-1 items-center justify-center">
-          <LoginForm initialStep={session ? 'setup' : 'password'} />
+          <LoginForm initialStep={session && !session.user.twoFactorEnabled ? 'setup' : 'password'} oauth={oauth} />
         </main>
         <footer className="flex justify-between text-xs text-faint">
           <span>Home MCP Hub · self-hosted</span>
