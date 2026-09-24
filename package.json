@@ -15,7 +15,8 @@
     "test": "vitest run",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "auth:schema": "auth generate --config scripts/auth-schema.ts --adapter drizzle --dialect sqlite --output lib/db/auth-schema.ts --yes"
+    "auth:schema": "auth generate --config scripts/auth-schema.ts --adapter drizzle --dialect sqlite --output lib/db/auth-schema.ts --yes",
+    "release": "node scripts/release.mjs"
   },
   "dependencies": {
     "@better-auth/mcp": "1.7.6",

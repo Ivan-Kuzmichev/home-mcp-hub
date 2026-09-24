@@ -13,7 +13,7 @@ import { formatAgo, formatWhen } from '@/lib/format'
 import { JOURNAL_RETENTION_DAYS } from '@/lib/journal'
 import { fingerprint, jwksStatus, secretsStatus } from '@/lib/keys'
 import { requireAdmin } from '@/lib/session'
-import { HUB_VERSION } from '@/lib/version'
+import { HUB_VERSION, hubBuild } from '@/lib/version'
 import pkg from '@/package.json'
 
 export const dynamic = 'force-dynamic'
@@ -90,6 +90,7 @@ export default async function SettingsPage() {
         <Card className="flex flex-col gap-1 p-4 md:p-5">
           <span className="font-medium">
             Home MCP Hub <span className="font-mono">v{HUB_VERSION}</span>
+            {hubBuild() && <span className="font-mono text-subtle"> · {hubBuild()}</span>}
           </span>
           <span className="text-xs text-subtle">
             Next.js {version('next')} · better-auth {version('better-auth')} · MCP SDK {version('@modelcontextprotocol/server')} · Node {process.versions.node}

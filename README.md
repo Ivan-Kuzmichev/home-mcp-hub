@@ -20,19 +20,23 @@ pnpm lint && pnpm typecheck && pnpm test
 ```yaml
 services:
   hub:
-    image: ghcr.io/ivan-kuzmichev/home-mcp-hub:latest
+    image: ghcr.io/ivan-kuzmichev/home-mcp-hub:latest   # или закрепить версию: :0.1
     container_name: hub
     restart: unless-stopped
     network_mode: host
     env_file: .env
     environment:
       DATABASE_PATH: /data/hub.db
-      PORT: '3000'          # порт на NAS, поменять, если занят
+      PORT: 3245            # порт на NAS
       TRUST_PROXY: '1'
       TZ: Europe/Moscow
+      # PUID: 1026          # необязательно: файлы в ./data будут принадлежать этому пользователю NAS (id -u)
+      # PGID: 100
     volumes:
-      - ./hub-data:/data
+      - ./data:/data
 ```
+
+Права на `./data` образ выставляет сам при старте, `chown` на NAS не нужен.
 
 В сети хоста хаб слушает `<ip-nas>:3000` напрямую, а сервисы в коннекторах указываются через localhost:
 `http://127.0.0.1:8080` (qBittorrent), `http://127.0.0.1:9117` (Jackett), `http://127.0.0.1:8090` (TorrServe).
@@ -91,8 +95,12 @@ ADMIN_PASSWORD=
    Claude → Settings → Connectors → Add custom connector → URL, OAuth-поля пустые → вход, код, «Разрешить».
    Регистрация клиентов выключится сама. В чате попросить `hub_status`.
 
-## Обновление
+## Версии и обновление
 
+- `main` → образ `:latest` и `:sha-<коммит>`.
+- Релиз: `pnpm release` (или `minor` / `major`) поднимает версию в `package.json`, ставит тег `vX.Y.Z` и пушит —
+  CI публикует `:X.Y.Z` и `:X.Y`. Версия и коммит образа видны в админке → «Настройки».
+- На NAS можно жить на `:latest` (обновляет Watchtower) или закрепить `:X.Y` и получать только патчи этой версии.
 - **Образ**: Watchtower из `docker-compose.yml` раз в сутки (05:00) тянет новый `latest` и перезапускает только контейнер хаба.
   Вручную: `docker compose pull && docker compose up -d`. Миграции БД применяются при старте.
 - **Зависимости**: Dependabot (`.github/dependabot.yml`) раз в неделю открывает PR; better-auth и MCP SDK сгруппированы — их стоит
