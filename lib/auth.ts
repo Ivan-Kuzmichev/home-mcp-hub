@@ -10,7 +10,6 @@ import { getPrefix, withPrefix } from './prefix'
 export const AUTH_BASE_PATH = '/api/auth'
 export const MCP_PATH = '/api/mcp'
 export const MCP_SCOPE = 'hub'
-export const CLAUDE_REDIRECT_URI = 'https://claude.ai/api/mcp/auth_callback'
 export const ACCESS_TOKEN_TTL = 60 * 60
 export const REFRESH_TOKEN_TTL = 60 * 60 * 24 * 30
 

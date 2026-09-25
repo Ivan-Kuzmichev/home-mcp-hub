@@ -7,6 +7,7 @@ import { logger } from '@/lib/logger'
 import { getPrefix, PREFIX_PATTERN, savePrefix, withPrefix } from '@/lib/prefix'
 import { requireAdmin } from '@/lib/session'
 import { isValidCidr } from '@/lib/net'
+import { CLIENT_PRESETS, setAllowedClients, type ClientKind } from '@/lib/oauth-clients'
 import { setAllowedCidrs, setDcrAllowed } from '@/lib/settings'
 
 export async function setDcrAction(formData: FormData): Promise<void> {
@@ -54,4 +55,11 @@ export async function saveCidrsAction(_prev: CidrState, formData: FormData): Pro
   setAllowedCidrs(list)
   revalidatePath('/admin/access')
   return { ok: list.length ? 'Сохранено' : 'Список пуст — пускаем всех' }
+}
+
+export async function setAllowedClientsAction(kinds: string[]): Promise<void> {
+  await requireAdmin()
+  const known = CLIENT_PRESETS.map((p) => p.id)
+  setAllowedClients(known.filter((k): k is ClientKind => kinds.includes(k)))
+  revalidatePath('/admin/access')
 }

@@ -1,6 +1,7 @@
 import { PageHeader } from '@/components/admin/page-header'
 import { DcrToggle } from '@/components/access/dcr-toggle'
 import { CidrForm } from '@/components/access/cidr-form'
+import { ClientsForm } from '@/components/access/clients-form'
 import { PrefixForm } from '@/components/access/prefix-form'
 import { Card } from '@/components/ui/card'
 import { ConfirmButton } from '@/components/ui/confirm-button'
@@ -9,7 +10,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Pill } from '@/components/ui/pill'
 import { isClaudeConnected, listActiveTokens, listClients } from '@/lib/access'
-import { CLAUDE_REDIRECT_URI, hubUrls, isMcpAvailable } from '@/lib/auth'
+import { hubUrls, isMcpAvailable } from '@/lib/auth'
+import { CLIENT_PRESETS, getAllowedClients } from '@/lib/oauth-clients'
 import { env } from '@/lib/env'
 import { formatAgo, formatWhen, shortId } from '@/lib/format'
 import { lastCallByClient, lastToolCall } from '@/lib/journal'
@@ -21,7 +23,7 @@ export const dynamic = 'force-dynamic'
 
 const STEPS = [
   'Включить регистрацию клиентов ниже',
-  'Claude → Settings → Connectors → Add custom connector, вставить адрес MCP, OAuth-поля оставить пустыми',
+  'Claude: Settings → Connectors → Add custom connector. ChatGPT: Settings → Apps & Connectors → Advanced → Developer mode, затем Create. Вставить адрес MCP, OAuth-поля оставить пустыми',
   'Войти на открывшейся странице хаба и нажать «Разрешить»',
   'Попросить в чате hub_status — должен вернуться статус хаба',
   'Регистрация клиентов выключится сама после «Разрешить» — проверь переключатель',
@@ -43,7 +45,7 @@ export default function AccessPage() {
 
   return (
     <>
-      <PageHeader title="Доступ Claude" subtitle="Адрес MCP-эндпоинта, OAuth-клиенты и выданные токены." actions={status} mobileAside={status} />
+      <PageHeader title="Доступ Claude" subtitle="Адрес MCP-эндпоинта для Claude и ChatGPT, OAuth-клиенты и выданные токены." actions={status} mobileAside={status} />
 
       {!isMcpAvailable() && (
         <Card className="border-warn/40 p-4 text-[13px] text-warn">
@@ -93,12 +95,20 @@ export default function AccessPage() {
         </Card>
       </div>
 
+      <Card className="flex flex-col gap-1 p-4 md:p-5">
+        <div className="flex flex-col gap-0.5 pb-1">
+          <h2 className="text-[15px]">Разрешённые клиенты</h2>
+          <span className="text-xs text-subtle">
+            Кто может зарегистрироваться, пока регистрация включена. Проверяется по redirect URI; отказы видны в журнале.
+          </span>
+        </div>
+        <ClientsForm presets={CLIENT_PRESETS.map(({ id, name, hint, examples }) => ({ id, name, hint, examples }))} allowed={getAllowedClients()} />
+      </Card>
+
       <Card className="flex flex-col gap-3 p-4 md:p-5">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h2 className="text-[15px]">OAuth-клиенты</h2>
-          <span className="text-xs text-subtle">
-            Разрешённый redirect: <span className="font-mono">{CLAUDE_REDIRECT_URI}</span>
-          </span>
+          <span className="text-xs text-subtle">Каждое подключение регистрирует своего клиента</span>
         </div>
         {clients.length === 0 ? (
           <Empty text="Клиентов нет. Claude зарегистрируется сам при подключении, пока включена регистрация." />

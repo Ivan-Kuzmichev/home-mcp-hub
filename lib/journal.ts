@@ -77,12 +77,13 @@ export function logToolCall(e: {
   logger.info({ tool: e.tool, ok: e.ok, ms: e.durationMs }, 'tool call')
 }
 
-export type AuthEvent = 'auth.password' | 'auth.second_factor' | 'auth.consent'
+export type AuthEvent = 'auth.password' | 'auth.second_factor' | 'auth.consent' | 'auth.register'
 
 export const AUTH_EVENT_LABELS: Record<AuthEvent, string> = {
   'auth.password': 'вход: пароль',
   'auth.second_factor': 'вход в админку',
-  'auth.consent': 'доступ для Claude',
+  'auth.consent': 'доступ для клиента',
+  'auth.register': 'регистрация клиента',
 }
 
 export function logAuthEvent(e: { event: AuthEvent; ok: boolean; detail: string; error?: string; ip?: string | null }): void {

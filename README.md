@@ -91,9 +91,12 @@ ADMIN_PASSWORD=
    scripts/check-oauth.sh https://hub.<домен> <secret>
    ```
 
-7. **Claude.** Админка → «Доступ Claude»: скопировать MCP URL, включить регистрацию клиентов.
-   Claude → Settings → Connectors → Add custom connector → URL, OAuth-поля пустые → вход, код, «Разрешить».
-   Регистрация клиентов выключится сама. В чате попросить `hub_status`.
+7. **Claude / ChatGPT.** Админка → «Доступ Claude»: скопировать MCP URL, включить регистрацию клиентов.
+   - Claude → Settings → Connectors → Add custom connector → URL, OAuth-поля пустые.
+   - ChatGPT → Settings → Apps & Connectors → Advanced → Developer mode → Create → URL, аутентификация OAuth.
+
+   Дальше вход, код, «Разрешить» — регистрация клиентов выключится сама. В новом чате попросить `hub_status`.
+   Какие клиенты вообще могут регистрироваться — карточка «Разрешённые клиенты» на том же экране.
 
 ## Версии и обновление
 
@@ -124,7 +127,7 @@ docker compose exec hub node -e "require('better-sqlite3')('/data/hub.db').backu
 | Админ | Регистрация закрыта, обязательная 2FA (TOTP + резервные коды), 5 попыток входа за 15 мин с IP, блокировка после 5 неверных кодов |
 | Cookie | По https — `__Host-hub.*`: Secure, HttpOnly, SameSite=Lax, Path=/; сессия 7 дней с продлением |
 | Секретный префикс | Сравнение за постоянное время, пустой 404 на всё без префикса кроме `/p/*`, корневые `/.well-known/*` — 404, префикс не пишется в журнал, `Referrer-Policy: no-referrer` |
-| OAuth | Только PKCE S256 (`plain` отклоняется), redirect только `claude.ai/api/mcp/auth_callback`, `aud` = `/{secret}/api/mcp`, регистрация клиентов выключается после согласия, согласие — только после 2FA |
+| OAuth | Только PKCE S256 (`plain` отклоняется), redirect только из белого списка клиентов (Claude, ChatGPT; Claude Code — по переключателю), `aud` = `/{secret}/api/mcp`, регистрация клиентов выключается после согласия, согласие — только после 2FA |
 | MCP | Только POST, 60 запросов в минуту на клиента, таймаут сервисов 30 с, опциональный белый список CIDR, отзыв клиента действует сразу |
 | Разрушающие tools | `torrent_delete` с файлами и `prototype_delete` требуют `confirm: true`, помечены `destructiveHint` |
 | Секреты | AES-256-GCM с `HUB_MASTER_KEY`, в админке и ответах не показываются; ключи — в `.env` (600) |

@@ -1,4 +1,5 @@
-import { CLAUDE_REDIRECT_URI } from './auth'
+import { logAuthEvent } from './journal'
+import { allowedRedirect, getAllowedClients } from './oauth-clients'
 import { isDcrAllowed } from './settings'
 
 type GuardInput = {
@@ -7,6 +8,7 @@ type GuardInput = {
   path: string
   body: ArrayBuffer | undefined
   contentType: string | null
+  ip?: string
 }
 
 type Session = { user: { twoFactorEnabled?: boolean | null } } | null
@@ -47,8 +49,14 @@ export async function guardAuthRequest(input: GuardInput, getSession: () => Prom
     }
     const body = parseBody(input.body, input.contentType)
     const uris = body?.redirect_uris
-    if (!Array.isArray(uris) || uris.length === 0 || !uris.every((u) => u === CLAUDE_REDIRECT_URI)) {
-      return oauthError(400, 'invalid_redirect_uri', `Only ${CLAUDE_REDIRECT_URI} is allowed`)
+    const kinds = getAllowedClients()
+    const ok = Array.isArray(uris) && uris.length > 0 && uris.every((u) => typeof u === 'string' && allowedRedirect(u, kinds))
+    if (!ok) {
+      // Journal the refused URIs: that is how a new client shows what it needs.
+      const shown = Array.isArray(uris) ? uris.map((u) => String(u).slice(0, 120)).join(', ') : '—'
+      const name = typeof body?.client_name === 'string' ? body.client_name.slice(0, 60) : 'без имени'
+      logAuthEvent({ event: 'auth.register', ok: false, detail: `${name} · redirect: ${shown}`, error: 'redirect не в списке разрешённых клиентов', ip: input.ip })
+      return oauthError(400, 'invalid_redirect_uri', 'Redirect URI is not allowed. Enable this client on the hub access screen.')
     }
     return null
   }

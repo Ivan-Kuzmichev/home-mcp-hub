@@ -41,6 +41,13 @@ export async function recordAuthEvent({ method, path, body, response, ip }: Inpu
     return
   }
 
+  if (path === '/oauth2/register' && response.ok) {
+    const name = typeof req.client_name === 'string' ? req.client_name.slice(0, 60) : 'без имени'
+    const uris = Array.isArray(req.redirect_uris) ? req.redirect_uris.map((u) => String(u).slice(0, 120)).join(', ') : ''
+    logAuthEvent({ event: 'auth.register', ok: true, detail: `${name} · redirect: ${uris} · ${ip}`, ip })
+    return
+  }
+
   if (path === '/oauth2/consent') {
     const accepted = req.accept === true
     // Claude is connected: close client registration so nobody else can register meanwhile.

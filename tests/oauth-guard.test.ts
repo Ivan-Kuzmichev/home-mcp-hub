@@ -1,14 +1,11 @@
-import fs from 'node:fs'
-import os from 'node:os'
-import path from 'node:path'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, describe, expect, it } from 'vitest'
+import { setupTempDb } from './helpers'
 
-const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'hub-guard-'))
-process.env.DATABASE_PATH = path.join(tmp, 'hub.db')
-
+const cleanup = await setupTempDb()
 const { guardAuthRequest, withDefaultResource } = await import('@/lib/oauth-guard')
 const { setDcrAllowed } = await import('@/lib/settings')
-const { getDb } = await import('@/lib/db')
+const { setAllowedClients, allowedRedirect } = await import('@/lib/oauth-clients')
+const { queryJournal } = await import('@/lib/journal')
 
 const CLAUDE = 'https://claude.ai/api/mcp/auth_callback'
 const RESOURCE = 'https://hub.example.com/secret0000000/api/mcp'
@@ -25,11 +22,7 @@ function register(redirect_uris: unknown) {
   )
 }
 
-beforeAll(() => {
-  getDb().run('CREATE TABLE IF NOT EXISTS setting (key text PRIMARY KEY NOT NULL, value text NOT NULL)')
-})
-
-afterAll(() => fs.rmSync(tmp, { recursive: true, force: true }))
+afterAll(cleanup)
 
 describe('client registration', () => {
   it('is refused while allow_dcr is off', async () => {
@@ -39,13 +32,39 @@ describe('client registration', () => {
     expect(await res?.json()).toMatchObject({ error: 'access_denied' })
   })
 
-  it('accepts only the Claude redirect URI when allow_dcr is on', async () => {
+  it('accepts Claude and ChatGPT by default and refuses anything else', async () => {
     setDcrAllowed(true)
     expect(await register([CLAUDE])).toBeNull()
+    expect(await register([CLAUDE, 'https://claude.com/api/mcp/auth_callback'])).toBeNull()
+    expect(await register(['https://chatgpt.com/connector_platform_oauth_redirect'])).toBeNull()
+    expect(await register(['https://chatgpt.com/connector/oauth/abc_123-XY'])).toBeNull()
     expect((await register(['https://evil.example.com/cb']))?.status).toBe(400)
     expect((await register([CLAUDE, 'https://evil.example.com/cb']))?.status).toBe(400)
+    expect((await register(['https://chatgpt.com/connector_platform_oauth_redirect?x=1']))?.status).toBe(400)
+    expect((await register(['https://chatgpt.com.evil.io/connector_platform_oauth_redirect']))?.status).toBe(400)
     expect((await register([]))?.status).toBe(400)
     expect((await register('https://claude.ai/api/mcp/auth_callback'))?.status).toBe(400)
+  })
+
+  it('allows loopback redirects (Claude Code) only when switched on', async () => {
+    setDcrAllowed(true)
+    const local = ['http://localhost:53682/callback']
+    expect((await register(local))?.status).toBe(400)
+    setAllowedClients(['claude', 'chatgpt', 'loopback'])
+    expect(await register(local)).toBeNull()
+    expect(await register(['http://127.0.0.1:9000/cb'])).toBeNull()
+    setAllowedClients(['claude'])
+    expect((await register(['https://chatgpt.com/connector_platform_oauth_redirect']))?.status).toBe(400)
+    expect(allowedRedirect('https://user:pw@claude.ai/api/mcp/auth_callback', ['claude'])).toBeNull()
+    setAllowedClients(['claude', 'chatgpt'])
+  })
+
+  it('journals refused registrations with the redirect URIs', async () => {
+    setDcrAllowed(true)
+    await register(['https://evil.example.com/cb'])
+    const row = queryJournal({ connector: 'auth' }).find((r) => r.tool === 'auth.register')
+    expect(row?.ok).toBe(false)
+    expect(row?.argsRedacted).toContain('https://evil.example.com/cb')
   })
 })
 

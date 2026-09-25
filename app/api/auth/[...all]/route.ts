@@ -12,7 +12,7 @@ async function handle(request: Request): Promise<Response> {
   const hasBody = request.method !== 'GET' && request.method !== 'HEAD'
   let body = hasBody ? await request.arrayBuffer() : undefined
 
-  const blocked = await guardAuthRequest({ method: request.method, path, body, contentType }, () =>
+  const blocked = await guardAuthRequest({ method: request.method, path, body, contentType, ip: clientIp(request.headers) }, () =>
     auth.api.getSession({ headers: request.headers }),
   )
   if (blocked) return blocked
