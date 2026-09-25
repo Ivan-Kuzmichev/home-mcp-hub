@@ -8,6 +8,7 @@ import { isExpired, type Prototype } from '@/lib/prototypes/store'
 import { cn } from '@/lib/utils'
 
 function PinPill({ p }: { p: Prototype }) {
+  if (p.version === 0) return <Pill tone="muted">загружается</Pill>
   if (isExpired(p)) return <Pill tone="err">истёк</Pill>
   return p.pinHash ? <Pill tone="warn">пин</Pill> : <Pill tone="muted">открыт</Pill>
 }

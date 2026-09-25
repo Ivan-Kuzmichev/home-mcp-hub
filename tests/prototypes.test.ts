@@ -158,3 +158,46 @@ describe('prototype tools', () => {
     expect(hints.prototype_list?.readOnlyHint).toBe(true)
   })
 })
+
+describe('chunked uploads', () => {
+  const part1 = '<!doctype html><title>Сайт</title><h1>Часть 1</h1>'
+  const part2 = '<p>Часть 2</p>'
+  const part3 = '<p>Часть 3</p>'
+
+  it('publishes a new prototype in parts; the link waits until the last part', async () => {
+    const first = await runTool(prototypes, 'prototype_publish', cfg, { title: 'Большой сайт', html: part1, more: true })
+    const slug = /Slug: (\w+)/.exec(first)![1]!
+    expect(first).toContain('Черновик «Большой сайт» создан')
+
+    const waiting = await route.GET(new Request(`https://hub.example.com/p/${slug}`), ctx(slug))
+    expect(waiting.status).toBe(404)
+    expect(await waiting.text()).toContain('ещё загружается')
+    expect(await runTool(prototypes, 'prototype_list', cfg)).toContain(`slug ${slug} · загружается по частям`)
+
+    expect(await runTool(prototypes, 'prototype_append', cfg, { prototype: slug, html: part2, more: true })).toContain('Принято')
+    const done = await runTool(prototypes, 'prototype_append', cfg, { prototype: slug, html: part3 })
+    expect(done).toMatch(/^Опубликовано: «Большой сайт»\nhttps:\/\/hub\.example\.com\/p\//)
+
+    const res = await route.GET(new Request(`https://hub.example.com/p/${slug}`), ctx(slug))
+    expect(await res.text()).toBe(part1 + part2 + part3)
+    expect(store.getBySlug(slug)?.version).toBe(1)
+  })
+
+  it('updates in parts while the current version stays online', async () => {
+    const p = await store.publish({ html: '<h1>v1</h1>', title: 'Живой' })
+    await runTool(prototypes, 'prototype_update', cfg, { prototype: p.slug, html: '<h1>v2', more: true })
+    const during = await route.GET(new Request(`https://hub.example.com/p/${p.slug}`), ctx(p.slug))
+    expect(await during.text()).toBe('<h1>v1</h1>')
+    expect(await runTool(prototypes, 'prototype_append', cfg, { prototype: p.slug, html: '</h1>' })).toContain('Обновлено до v2')
+    expect(store.readHtml(store.getBySlug(p.slug)!)).toBe('<h1>v2</h1>')
+  })
+
+  it('explains an append without a draft and drops abandoned drafts after a day', async () => {
+    const p = await store.publish({ html: HTML, title: 'Без черновика' })
+    await expect(runTool(prototypes, 'prototype_append', cfg, { prototype: p.slug, html: 'x' })).rejects.toThrow('Черновика нет')
+
+    const draft = await store.publish({ html: part1, title: 'Брошенный', draft: true })
+    expect(store.purgeExpired(new Date(Date.now() + 2 * 86_400_000))).toBeGreaterThan(0)
+    expect(store.getById(draft.id)).toBeUndefined()
+  })
+})

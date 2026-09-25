@@ -16,6 +16,8 @@ export const KEEP_VERSIONS = 3
 /** Expired prototypes answer 410 for a week, then the files are removed. */
 export const EXPIRED_GRACE_MS = 7 * 24 * 60 * 60 * 1000
 export const PIN_PATTERN = /^\d{4,8}$/
+/** A chunked upload that was never finished is dropped after a day. */
+export const DRAFT_TTL_MS = 24 * 60 * 60 * 1000
 
 export type Expiry = 'never' | '7d' | '30d'
 export const EXPIRY_DAYS: Record<Expiry, number | null> = { never: null, '7d': 7, '30d': 30 }
@@ -30,6 +32,10 @@ export function prototypesDir(): string {
 
 function fileFor(id: string, version: number): string {
   return path.join(prototypesDir(), id, `v${version}.html`)
+}
+
+function draftFile(id: string): string {
+  return path.join(prototypesDir(), id, 'draft.html')
 }
 
 function newSlug(): string {
@@ -110,7 +116,11 @@ export function listPrototypes(): Prototype[] {
   return getDb().select().from(prototype).orderBy(desc(prototype.updatedAt)).all()
 }
 
-export async function publish(input: { html: string; title: string; pin?: string; expiry?: Expiry; maxBytes?: number }): Promise<Prototype> {
+/**
+ * `draft: true` starts a chunked upload: the HTML goes to draft.html, the prototype has
+ * version 0 and is not served until commitDraft() — see prototype_append.
+ */
+export async function publish(input: { html: string; title: string; pin?: string; expiry?: Expiry; maxBytes?: number; draft?: boolean }): Promise<Prototype> {
   const size = checkHtml(input.html, input.maxBytes ?? MAX_HTML_BYTES)
   const title = input.title.trim().slice(0, 200)
   if (!title) throw new PrototypeError('Нужно название')
@@ -119,8 +129,10 @@ export async function publish(input: { html: string; title: string; pin?: string
   const id = randomUUID()
   let slug = newSlug()
   while (getBySlug(slug)) slug = newSlug()
-  writeVersion(id, 1, input.html)
-  const row = { id, slug, title, pinHash, pinVersion: 0, expiresAt: expiryDate(input.expiry ?? 'never', now), sizeBytes: size, version: 1, views: 0, lastViewedAt: null, createdAt: now, updatedAt: now }
+  if (input.draft) writeDraft(id, input.html)
+  else writeVersion(id, 1, input.html)
+  const version = input.draft ? 0 : 1
+  const row = { id, slug, title, pinHash, pinVersion: 0, expiresAt: expiryDate(input.expiry ?? 'never', now), sizeBytes: input.draft ? 0 : size, version, views: 0, lastViewedAt: null, createdAt: now, updatedAt: now }
   getDb().insert(prototype).values(row).run()
   return row
 }
@@ -151,6 +163,54 @@ export async function update(
   return { ...p, ...set }
 }
 
+// ---------------------------------------------------------------------------
+// Chunked uploads: Claude cannot put a big HTML into one tool call, so it sends parts.
+
+function writeDraft(id: string, html: string): void {
+  const file = draftFile(id)
+  fs.mkdirSync(path.dirname(file), { recursive: true })
+  fs.writeFileSync(file, html, 'utf8')
+}
+
+export function draftSize(p: Pick<Prototype, 'id'>): number | null {
+  try {
+    return fs.statSync(draftFile(p.id)).size
+  } catch {
+    return null
+  }
+}
+
+/** Start (or restart) a draft of the next version; the published one stays online meanwhile. */
+export function startDraft(p: Pick<Prototype, 'id'>, html: string): number {
+  checkHtml(html, MAX_TOOL_HTML_BYTES)
+  writeDraft(p.id, html)
+  getDb().update(prototype).set({ updatedAt: new Date() }).where(eq(prototype.id, p.id)).run()
+  return Buffer.byteLength(html)
+}
+
+export function appendDraft(p: Pick<Prototype, 'id'>, chunk: string): number {
+  const current = draftSize(p)
+  if (current === null) throw new PrototypeError('Черновика нет: начни с prototype_publish или prototype_update с more: true')
+  const size = checkHtml(chunk, MAX_TOOL_HTML_BYTES)
+  if (current + size > MAX_HTML_BYTES) throw new PrototypeError(`Вместе с этим куском HTML больше ${MAX_HTML_BYTES / 1024 / 1024} МБ`)
+  fs.appendFileSync(draftFile(p.id), chunk, 'utf8')
+  getDb().update(prototype).set({ updatedAt: new Date() }).where(eq(prototype.id, p.id)).run()
+  return current + size
+}
+
+/** The assembled draft becomes the next published version. */
+export async function commitDraft(p: Prototype): Promise<Prototype> {
+  let html: string
+  try {
+    html = fs.readFileSync(draftFile(p.id), 'utf8')
+  } catch {
+    throw new PrototypeError('Черновика нет: начни с prototype_publish или prototype_update с more: true')
+  }
+  const next = await update(p, { html })
+  fs.rmSync(draftFile(p.id), { force: true })
+  return next
+}
+
 /** Rollback = the old file becomes a new version, so history stays linear. */
 export async function rollback(p: Prototype, version: number): Promise<Prototype> {
   const html = readHtml(p, version)
@@ -179,8 +239,14 @@ export function purgeExpired(now = new Date()): number {
     .from(prototype)
     .where(and(isNotNull(prototype.expiresAt), lt(prototype.expiresAt, cutoff)))
     .all()
-  for (const p of old) remove(p)
-  return old.length
+  // Chunked uploads abandoned half-way: never published, untouched for a day.
+  const abandoned = getDb()
+    .select({ id: prototype.id })
+    .from(prototype)
+    .where(and(eq(prototype.version, 0), lt(prototype.updatedAt, new Date(now.getTime() - DRAFT_TTL_MS))))
+    .all()
+  for (const p of [...old, ...abandoned]) remove(p)
+  return old.length + abandoned.length
 }
 
 export function totalSize(): number {

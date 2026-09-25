@@ -5,6 +5,7 @@ import { activeConfig, connectorStates } from '../connectors/active'
 import { scrub } from '../connectors/http'
 import { resolveResult, type JackettLinkAccess } from '../connectors/resolve'
 import { checkConnector } from '../connectors/health'
+import { CHUNK_HINT } from '../connectors/prototypes'
 import { ToolError, type ErasedTool } from '../connectors/types'
 import { logToolCall } from '../journal'
 import { logger } from '../logger'
@@ -16,6 +17,7 @@ export const MCP_INSTRUCTIONS = [
   'Чтобы скачать фильм или сериал: сначала search_torrents, потом torrent_add или torrserve_add с result_id из результатов поиска. Магнеты и ссылки не перепечатывай.',
   'При прочих равных выбирай релизы с русской озвучкой и сидами больше 10; если подходящих несколько и они заметно отличаются, спроси пользователя.',
   'Перед удалением торрента вместе с файлами и перед удалением прототипа переспроси пользователя.',
+  `Прототипы: ${CHUNK_HINT} Один большой вызов с целым HTML может оборваться.`,
   'Если что-то не работает, вызови hub_status: он покажет, какие сервисы подключены и отвечают.',
   'Отвечай коротко: пользователь читает ответы на телефоне.',
 ].join('\n')

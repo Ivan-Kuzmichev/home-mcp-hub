@@ -30,6 +30,8 @@ export async function GET(_req: Request, { params }: Ctx): Promise<Response> {
   const p = getBySlug(slug)
   if (!p) return notFound()
   if (isExpired(p)) return gone()
+  // Chunked upload still in progress.
+  if (p.version === 0) return simplePage(404, 'Страница ещё загружается', 'Прототип публикуется по частям. Обнови страницу через минуту.')
 
   if (p.pinHash) {
     const cookie = (await cookies()).get(accessCookieName(slug))?.value
