@@ -72,6 +72,7 @@ export async function POST(request: Request): Promise<Response> {
   const ip = clientIp(request.headers)
   const cidrs = getAllowedCidrs()
   if (cidrs.length && !cidrs.some((c) => ipInCidr(ip, c))) {
+    logger.warn({ ip, allowed: cidrs, userAgent: request.headers.get('user-agent')?.slice(0, 80) }, 'mcp 403: IP is not in the allowed CIDR list')
     return Response.json({ jsonrpc: '2.0', error: { code: -32000, message: 'Forbidden' }, id: null }, { status: 403 })
   }
 
@@ -82,6 +83,13 @@ export async function POST(request: Request): Promise<Response> {
     { issuer: urls.issuer, resource: urls.resource, jwksUrl: urls.jwksLoopback, requiredScopes: [MCP_SCOPE] },
   )
   const response = await protectedHandler(request)
+  if (response.status === 401 || response.status === 403) {
+    // Say why a client is refused: token missing, invalid, or without the hub scope.
+    const challenge = response.headers.get('WWW-Authenticate') ?? ''
+    const reason = /error="([^"]+)"/.exec(challenge)?.[1] ?? (request.headers.has('authorization') ? 'invalid_token' : 'no_token')
+    const level = response.status === 403 || reason !== 'no_token' ? 'warn' : 'debug'
+    logger[level]({ status: response.status, reason, ip, userAgent: request.headers.get('user-agent')?.slice(0, 80) }, `mcp ${response.status}: ${reason}`)
+  }
 
   // The library points resource_metadata at the RFC 9728 path-insert address under the
   // root /.well-known, which the hub does not serve; use the prefixed address instead.
