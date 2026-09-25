@@ -1,6 +1,6 @@
 {
   "name": "home-mcp-hub",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "private": true,
   "packageManager": "pnpm@10.34.5",
   "engines": {
