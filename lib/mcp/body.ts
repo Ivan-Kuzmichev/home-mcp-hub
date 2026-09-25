@@ -31,43 +31,53 @@ function decode(encoding: string, data: Buffer): Buffer {
   }
 }
 
+export type DecodedBody = { request: Request; raw: number; decoded: Buffer; encodings: string[] }
+
 /**
- * Next.js does not decompress request bodies. MCP clients (Claude among them) gzip large
- * requests, which the SDK then fails to parse as JSON. Decode here and hand the SDK plain JSON.
+ * Reads the body once, undoes Content-Encoding (Next.js does not decompress request bodies,
+ * MCP clients gzip large requests) and returns a fresh Request with plain JSON for the SDK.
  */
-export async function decodeRequestBody(req: Request): Promise<Request> {
+export async function decodeRequestBody(req: Request): Promise<DecodedBody> {
   const encodings = (req.headers.get('content-encoding') ?? '')
     .split(',')
     .map((e) => e.trim().toLowerCase())
     .filter((e) => e && e !== 'identity')
-  if (encodings.length === 0 || req.method !== 'POST') return req
-
-  let body: Buffer = Buffer.from(await req.arrayBuffer())
-  const compressed = body.length
+  const rawBuf: Buffer = Buffer.from(await req.arrayBuffer())
+  let body: Buffer = rawBuf
   // Encodings are listed in the order they were applied: undo from the last one.
-  for (const enc of encodings.reverse()) body = decode(enc, body)
+  for (const enc of [...encodings].reverse()) body = decode(enc, body)
 
   const headers = new Headers(req.headers)
   headers.delete('content-encoding')
   headers.delete('content-length')
-  logger.debug({ encodings, compressed, decoded: body.length }, 'mcp request body decoded')
-  return new Request(req.url, { method: req.method, headers, body: new Uint8Array(body), signal: req.signal })
+  const request = new Request(req.url, { method: req.method, headers, body: req.method === 'GET' || req.method === 'HEAD' ? undefined : new Uint8Array(body), signal: req.signal })
+  return { request, raw: rawBuf.length, decoded: body, encodings }
 }
 
-/** When the SDK still cannot parse the body, log what arrived — sizes and encodings, never content. */
-export async function logUnparsableBody(req: Request): Promise<void> {
+/** Why the SDK could not parse a body — sizes, encodings and the JSON error, never the content. */
+export function describeUnparsableBody(original: Request, body: DecodedBody): Record<string, unknown> | null {
+  const text = body.decoded.toString('utf8')
   try {
-    const text = await req.clone().text()
     JSON.parse(text)
-  } catch {
-    logger.warn(
-      {
-        contentType: req.headers.get('content-type'),
-        contentLength: req.headers.get('content-length'),
-        transferEncoding: req.headers.get('transfer-encoding'),
-        received: (await req.clone().arrayBuffer().catch(() => new ArrayBuffer(0))).byteLength,
-      },
-      'mcp request body is not valid JSON',
-    )
+    return null
+  } catch (error) {
+    return {
+      jsonError: error instanceof Error ? error.message.slice(0, 160) : String(error),
+      contentType: original.headers.get('content-type'),
+      contentLength: original.headers.get('content-length'),
+      contentEncoding: body.encodings.join(',') || null,
+      transferEncoding: original.headers.get('transfer-encoding'),
+      rawBytes: body.raw,
+      decodedBytes: body.decoded.length,
+      // First bytes as hex: tells gzip/zstd/binary from JSON without logging content.
+      head: body.decoded.subarray(0, 8).toString('hex'),
+      endsWithBrace: text.trimEnd().endsWith('}'),
+      userAgent: original.headers.get('user-agent')?.slice(0, 80) ?? null,
+    }
   }
+}
+
+export function logUnparsableBody(original: Request, body: DecodedBody): void {
+  const info = describeUnparsableBody(original, body)
+  if (info) logger.warn(info, 'mcp request body is not valid JSON')
 }

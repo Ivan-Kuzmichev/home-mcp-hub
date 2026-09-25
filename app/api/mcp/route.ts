@@ -52,7 +52,7 @@ async function serve(req: Request, claims: JWTPayload, ip: string, resourceMetad
     logger.warn({ retryAfter: limit.retryAfterSec }, 'mcp rate limit hit')
     return tooMany(limit.retryAfterSec)
   }
-  let decoded: Request
+  let decoded: Awaited<ReturnType<typeof decodeRequestBody>>
   try {
     decoded = await decodeRequestBody(req)
   } catch (error) {
@@ -60,8 +60,8 @@ async function serve(req: Request, claims: JWTPayload, ip: string, resourceMetad
     logger.warn({ err: error instanceof Error ? error.message : String(error) }, 'mcp request body decode failed')
     return Response.json({ jsonrpc: '2.0', error: { code: -32700, message: `Parse error: ${message}` }, id: null }, { status: 400 })
   }
-  const response = await mcpContext.run({ clientId, ip }, () => getMcpHandler()(decoded))
-  if (response.status === 400) void logUnparsableBody(decoded)
+  const response = await mcpContext.run({ clientId, ip }, () => getMcpHandler()(decoded.request))
+  if (response.status === 400) logUnparsableBody(req, decoded)
   return response
 }
 

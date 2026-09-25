@@ -104,6 +104,18 @@ describe('default resource', () => {
     expect(kept.url.searchParams.get('resource')).toBe('https://other.example.com/mcp')
   })
 
+  it('adds the hub scope when a client asks for other scopes only', () => {
+    const asked = new URL(url)
+    asked.searchParams.set('scope', 'openid offline_access')
+    const r = withDefaultResource({ method: 'GET', path: '/oauth2/authorize', url: asked, body: undefined, contentType: null }, RESOURCE)
+    expect(r.url.searchParams.get('scope')).toBe('openid offline_access hub')
+    const already = new URL(url)
+    already.searchParams.set('scope', 'hub offline_access')
+    expect(withDefaultResource({ method: 'GET', path: '/oauth2/authorize', url: already, body: undefined, contentType: null }, RESOURCE).url.searchParams.get('scope')).toBe('hub offline_access')
+    // No scope at all: better-auth uses the client's registered scopes, which include hub.
+    expect(withDefaultResource({ method: 'GET', path: '/oauth2/authorize', url, body: undefined, contentType: null }, RESOURCE).url.searchParams.has('scope')).toBe(false)
+  })
+
   it('adds resource to form-encoded token requests', () => {
     const form = 'application/x-www-form-urlencoded'
     const { body } = withDefaultResource(

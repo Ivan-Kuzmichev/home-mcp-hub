@@ -1,3 +1,4 @@
+import { MCP_SCOPE } from './auth'
 import { logAuthEvent } from './journal'
 import { allowedRedirect, getAllowedClients } from './oauth-clients'
 import { isDcrAllowed } from './settings'
@@ -71,6 +72,7 @@ export async function guardAuthRequest(input: GuardInput, getSession: () => Prom
 }
 
 /**
+ * Adds the hub's defaults to authorization requests: the `hub` scope and the resource.
  * The hub has exactly one protected resource. Without an RFC 8707 `resource` parameter
  * better-auth issues an opaque token with no audience, which /api/mcp rejects. MCP
  * clients should send it, but default it so a client that does not still ends up
@@ -82,9 +84,13 @@ export function withDefaultResource(
 ): { url: URL; body: ArrayBuffer | undefined } {
   const { method, path, url, body, contentType } = input
 
-  if (path === '/oauth2/authorize' && method === 'GET' && !url.searchParams.has('resource')) {
+  if (path === '/oauth2/authorize' && method === 'GET') {
     const next = new URL(url)
-    next.searchParams.set('resource', resource)
+    if (!next.searchParams.has('resource')) next.searchParams.set('resource', resource)
+    // The hub has one scope for everything. Clients that take scopes from the AS metadata
+    // (ChatGPT asks for «openid offline_access») would get a token without it and a 403.
+    const scope = next.searchParams.get('scope')
+    if (scope !== null && !scope.split(/\s+/).includes(MCP_SCOPE)) next.searchParams.set('scope', `${scope} ${MCP_SCOPE}`.trim())
     return { url: next, body }
   }
 
