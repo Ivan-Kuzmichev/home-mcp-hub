@@ -4,7 +4,7 @@ import { decodeRequestBody, MAX_DECODED_BODY } from '@/lib/mcp/body'
 
 const json = JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { html: 'Съешь же ещё этих булок '.repeat(3000) } })
 const post = (body: Uint8Array, encoding?: string) =>
-  new Request('http://hub/api/mcp', { method: 'POST', headers: { 'content-type': 'application/json', ...(encoding ? { 'content-encoding': encoding } : {}) }, body })
+  new Request('http://hub/api/mcp', { method: 'POST', headers: { 'content-type': 'application/json', ...(encoding ? { 'content-encoding': encoding } : {}) }, body: new Uint8Array(body) })
 
 describe('MCP request body decoding', () => {
   it.each([
