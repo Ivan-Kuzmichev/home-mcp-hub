@@ -4,6 +4,7 @@ import type { JWTPayload } from 'jose'
 import { getAuth, hubUrls, isMcpAvailable, MCP_SCOPE } from '@/lib/auth'
 import { getDb } from '@/lib/db'
 import { oauthClient } from '@/lib/db/schema'
+import { BodyError, decodeRequestBody, logUnparsableBody } from '@/lib/mcp/body'
 import { mcpContext } from '@/lib/mcp/context'
 import { getMcpHandler } from '@/lib/mcp/server'
 import { clientIp, ipInCidr } from '@/lib/net'
@@ -51,7 +52,17 @@ async function serve(req: Request, claims: JWTPayload, ip: string, resourceMetad
     logger.warn({ retryAfter: limit.retryAfterSec }, 'mcp rate limit hit')
     return tooMany(limit.retryAfterSec)
   }
-  return mcpContext.run({ clientId, ip }, () => getMcpHandler()(req))
+  let decoded: Request
+  try {
+    decoded = await decodeRequestBody(req)
+  } catch (error) {
+    const message = error instanceof BodyError ? error.message : 'Cannot decode request body'
+    logger.warn({ err: error instanceof Error ? error.message : String(error) }, 'mcp request body decode failed')
+    return Response.json({ jsonrpc: '2.0', error: { code: -32700, message: `Parse error: ${message}` }, id: null }, { status: 400 })
+  }
+  const response = await mcpContext.run({ clientId, ip }, () => getMcpHandler()(decoded))
+  if (response.status === 400) void logUnparsableBody(decoded)
+  return response
 }
 
 export async function POST(request: Request): Promise<Response> {
