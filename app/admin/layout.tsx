@@ -3,6 +3,7 @@ import { MobileTabs, SidebarNav } from '@/components/admin/nav'
 import { SignOutButton } from '@/components/admin/sign-out-button'
 import { LogoMark } from '@/components/logo'
 import { PrefixProvider } from '@/components/prefix-provider'
+import { connectorStates } from '@/lib/connectors/active'
 import { env } from '@/lib/env'
 import { prefixedIcons } from '@/lib/icons'
 import { getPrefix } from '@/lib/prefix'
@@ -19,6 +20,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const prefix = getPrefix()
   const host = new URL(env().BASE_URL).host
   const name = session.user.name || session.user.email
+  // Sections of switched-off connectors disappear from the navigation.
+  const prototypesOn = connectorStates().find((c) => c.connector.id === 'prototypes')?.status === 'active'
+  const hidden = prototypesOn ? [] : ['/admin/prototypes']
 
   return (
     <PrefixProvider prefix={prefix}>
@@ -33,7 +37,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               </div>
             </div>
           </div>
-          <SidebarNav />
+          <SidebarNav hidden={hidden} />
           <div className="flex-1" />
           <div className="flex items-center gap-2.5 border-t border-border px-2 pt-3">
             <div className="flex size-[30px] items-center justify-center rounded-full border border-border bg-secondary text-[13px] font-semibold uppercase">
@@ -47,7 +51,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           </div>
         </aside>
         <main className="flex min-w-0 flex-1 flex-col gap-3.5 p-4 pb-28 md:gap-[22px] md:px-8 md:py-7">{children}</main>
-        <MobileTabs />
+        <MobileTabs hidden={hidden} />
       </div>
     </PrefixProvider>
   )

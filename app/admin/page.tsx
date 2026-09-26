@@ -47,8 +47,10 @@ export default function DashboardPage() {
       />
 
       <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4 md:gap-3.5">
-        {connectorSummaries().map((c) => {
-          const label = c.configured && !c.enabled ? 'Выключен' : TONE_LABEL[c.tone]
+        {connectorSummaries()
+          .filter((c) => !(c.configured && !c.enabled))
+          .map((c) => {
+          const label = TONE_LABEL[c.tone]
           const detail = c.lastCheckAt ? `проверено ${formatAgo(c.lastCheckAt)}` : c.configured ? 'ещё не проверялся' : 'Настроить'
           return (
             <Link key={c.id} href={href(`/admin/connectors/${c.id}`)} className="text-inherit no-underline hover:text-inherit">

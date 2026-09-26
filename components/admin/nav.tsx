@@ -20,12 +20,13 @@ function isActive(current: string, path: string): boolean {
   return current === path || current.startsWith(`${path}/`)
 }
 
-export function SidebarNav() {
+/** `hidden`: section paths switched off (e.g. prototypes when that connector is disabled). */
+export function SidebarNav({ hidden = [] }: { hidden?: string[] }) {
   const current = useAppPath()
   const href = useHref()
   return (
     <nav className="flex flex-col gap-0.5">
-      {NAV_ITEMS.map(({ path, label, icon: Icon }) => (
+      {NAV_ITEMS.filter((i) => !hidden.includes(i.path)).map(({ path, label, icon: Icon }) => (
         <Link
           key={path}
           href={href(path)}
@@ -42,12 +43,16 @@ export function SidebarNav() {
   )
 }
 
-export function MobileTabs() {
+export function MobileTabs({ hidden = [] }: { hidden?: string[] }) {
   const current = useAppPath()
   const href = useHref()
+  const tabs = MOBILE_TABS.filter((t) => !hidden.includes(t.path))
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-5 border-t border-border bg-panel px-1 pb-[max(18px,env(safe-area-inset-bottom))] md:hidden">
-      {MOBILE_TABS.map(({ path, label, short, icon: Icon }) => (
+    <nav
+      className="fixed inset-x-0 bottom-0 z-20 grid border-t border-border bg-panel px-1 pb-[max(18px,env(safe-area-inset-bottom))] md:hidden"
+      style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}
+    >
+      {tabs.map(({ path, label, short, icon: Icon }) => (
         <Link
           key={path}
           href={href(path)}
