@@ -1,7 +1,9 @@
 import { and, desc, eq, gt } from 'drizzle-orm'
+import { PrefixForm } from '@/components/access/prefix-form'
 import { PageHeader } from '@/components/admin/page-header'
 import { BackupCodesRow, PasswordRow, SessionsRow, SettingsRow } from '@/components/settings/account'
 import { Card } from '@/components/ui/card'
+import { Pill } from '@/components/ui/pill'
 import { StatusDot } from '@/components/ui/pill'
 import { plural } from '@/lib/connectors/format'
 import { getDb } from '@/lib/db'
@@ -10,6 +12,7 @@ import { env } from '@/lib/env'
 import { formatAgo, formatWhen } from '@/lib/format'
 import { JOURNAL_RETENTION_DAYS } from '@/lib/journal'
 import { fingerprint, jwksStatus, secretsStatus } from '@/lib/keys'
+import { getPrefix } from '@/lib/prefix'
 import { requireAdmin } from '@/lib/session'
 import { HUB_VERSION, hubBuild } from '@/lib/version'
 import pkg from '@/package.json'
@@ -41,12 +44,28 @@ export default async function SettingsPage() {
     .from(account)
     .where(and(eq(account.userId, session.user.id), eq(account.providerId, 'credential')))
     .get()
+  const prefix = getPrefix()
+  const host = new URL(e.BASE_URL).host
   const secrets = secretsStatus()
   const keys = jwksStatus()
 
   return (
     <>
-      <PageHeader title="Настройки" subtitle="Аккаунт, ключи и обслуживание хаба." />
+      <PageHeader title="Настройки" subtitle="Аккаунт, секретный префикс, ключи и обслуживание хаба." />
+
+      <Card className="flex flex-col gap-4 p-4 md:p-5">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-[15px]">Секретный префикс</h2>
+          <Pill tone="muted">на всё, кроме /p/* и /f/*</Pill>
+        </div>
+        <PrefixForm current={prefix} host={host} />
+        <dl className="flex flex-col gap-1.5 rounded-md border border-border bg-background p-3 text-[13px]">
+          <UrlRow label="Админка" value={`${host}/${prefix}/admin`} />
+          <UrlRow label="MCP-эндпоинт" value={`${host}/${prefix}/api/mcp`} />
+          <UrlRow label="Прототипы и ссылки на файлы — без префикса" value={`${host}/p/…, ${host}/f/…`} />
+          <div className="pt-1 text-xs text-subtle">Всё остальное отвечает пустым 404. Префикс прячет хаб от сканеров, но не заменяет OAuth и 2FA.</div>
+        </dl>
+      </Card>
 
       <div className="grid gap-3.5 lg:grid-cols-2">
         <Card className="flex flex-col p-4 md:p-5">
@@ -76,7 +95,7 @@ export default async function SettingsPage() {
           <KeyRow
             ok={keys.keys > 0}
             title="Ключи подписи токенов (JWKS)"
-            detail={keys.keys ? `${keys.keys} ${plural(keys.keys, ['ключ', 'ключа', 'ключей'])} · создан ${formatWhen(keys.oldest)}` : 'появятся при первой выдаче токена Claude'}
+            detail={keys.keys ? `${keys.keys} ${plural(keys.keys, ['ключ', 'ключа', 'ключей'])} · создан ${formatWhen(keys.oldest)}` : 'появятся при первой выдаче токена MCP-клиенту'}
           />
           <p className="pt-3 text-xs text-subtle">
             Ключи живут в <span className="font-mono">.env</span> на NAS и здесь не показываются. Потеря мастер-ключа — переввод паролей коннекторов, остальное цело.
@@ -103,6 +122,15 @@ export default async function SettingsPage() {
         </Card>
       </div>
     </>
+  )
+}
+
+function UrlRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex flex-wrap justify-between gap-x-4">
+      <dt className="text-subtle">{label}</dt>
+      <dd className="truncate font-mono text-xs leading-5 text-muted-foreground">{value}</dd>
+    </div>
   )
 }
 

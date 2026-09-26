@@ -16,7 +16,7 @@ function PinPill({ p }: { p: Prototype }) {
 /** Table on wide screens (unless `compact`), stacked rows on the phone and next to a card. */
 export function PrototypeList({ items, selected, compact }: { items: Prototype[]; selected?: string; compact?: boolean }) {
   if (items.length === 0) {
-    return <Card className="p-8 text-center text-[13px] text-subtle">Прототипов пока нет. Попроси Claude опубликовать страницу или загрузи HTML вручную.</Card>
+    return <Card className="p-8 text-center text-[13px] text-subtle">Прототипов пока нет. Попроси ассистента опубликовать страницу или загрузи HTML вручную.</Card>
   }
   return (
     <Card className="overflow-hidden">

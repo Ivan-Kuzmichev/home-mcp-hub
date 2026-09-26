@@ -125,7 +125,7 @@ export function ConnectorForm(props: Props) {
       </div>
 
       <div className="flex flex-col gap-2">
-        <span className="font-medium">Инструменты для Claude</span>
+        <span className="font-medium">Инструменты для ассистента</span>
         <div className="grid gap-x-4 gap-y-2 sm:grid-cols-2">
           {tools.map((t) => (
             <label key={t.name} className="flex cursor-pointer items-center gap-2.5">

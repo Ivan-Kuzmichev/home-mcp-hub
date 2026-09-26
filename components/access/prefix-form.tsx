@@ -61,7 +61,7 @@ export function PrefixForm({ current, host }: { current: string; host: string })
         </span>
       )}
       <span className={confirming ? 'text-xs text-warn' : 'text-xs text-subtle'}>
-        После смены: Claude подключить заново (токены отзываются), админка откроется по новой ссылке, старая — 404. Прототипы не
+        После смены: MCP-клиенты (Claude, ChatGPT) подключить заново — токены отзываются, админка откроется по новой ссылке, старая — 404. Прототипы не
         меняются.
       </span>
     </form>

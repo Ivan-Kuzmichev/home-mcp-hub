@@ -12,7 +12,7 @@ export default function PrototypesPage() {
     <>
       <PageHeader
         title="Прототипы"
-        subtitle="HTML-страницы, которые Claude опубликовал через MCP. Ссылки открываются без входа, при желании — по пинкоду."
+        subtitle="HTML-страницы, которые ассистент опубликовал через MCP. Ссылки открываются без входа, при желании — по пинкоду."
         actions={<UploadButton />}
       />
       <div className="md:hidden">

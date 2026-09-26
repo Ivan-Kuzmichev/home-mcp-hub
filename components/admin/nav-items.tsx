@@ -6,15 +6,16 @@ export const NAV_ITEMS: NavItem[] = [
   { path: '/admin', label: 'Дашборд', icon: LayoutGrid },
   { path: '/admin/connectors', label: 'Коннекторы', icon: Blocks },
   { path: '/admin/prototypes', label: 'Прототипы', icon: PanelsTopLeft },
-  { path: '/admin/access', label: 'Доступ Claude', short: 'Доступ', icon: KeyRound },
   { path: '/admin/scripts', label: 'Скрипты', icon: SquareTerminal },
+  { path: '/admin/access', label: 'MCP доступ', short: 'MCP', icon: KeyRound },
   { path: '/admin/activity', label: 'Журнал', icon: List },
   { path: '/admin/settings', label: 'Настройки', icon: SlidersHorizontal },
 ]
 
-// Bottom tabs on the phone: the last two sections live under «Ещё».
+// Bottom tabs on the phone; scripts, journal and settings live under «Ещё».
+const TAB_PATHS = ['/admin', '/admin/connectors', '/admin/prototypes', '/admin/access']
 export const MOBILE_TABS: NavItem[] = [
-  ...NAV_ITEMS.slice(0, 4),
+  ...NAV_ITEMS.filter((i) => TAB_PATHS.includes(i.path)),
   { path: '/admin/more', label: 'Ещё', icon: MoreHorizontal },
 ]
 

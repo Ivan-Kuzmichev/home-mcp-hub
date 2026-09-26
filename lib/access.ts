@@ -66,7 +66,7 @@ export function listActiveTokens(): TokenRow[] {
     .map(({ token, ...row }) => ({ ...row, tokenTail: token.slice(-4) }))
 }
 
-export function isClaudeConnected(): boolean {
+export function isMcpConnected(): boolean {
   const row = getDb().select({ n: count() }).from(oauthRefreshToken).where(activeRefreshTokens(new Date())).get()
   return (row?.n ?? 0) > 0
 }

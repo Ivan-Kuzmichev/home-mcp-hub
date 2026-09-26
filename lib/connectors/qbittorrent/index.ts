@@ -31,7 +31,7 @@ const configSchema = z
     savePath: field(z.string().trim().optional(), { label: 'Папка сохранения', placeholder: '/downloads/claude', mono: true, section: 'defaults' }),
     addStopped: field(z.boolean().default(false), {
       label: 'Добавлять торренты остановленными',
-      help: 'Claude сам вызовет torrent_start',
+      help: 'Ассистент сам вызовет torrent_start',
       widget: 'switch',
       section: 'defaults',
     }),

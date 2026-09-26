@@ -69,7 +69,7 @@ export default async function ConsentPage({ searchParams }: { searchParams: Sear
             {!client ? (
               <div className="flex flex-col gap-1.5">
                 <h1 className="text-2xl">Запрос устарел</h1>
-                <div className="text-muted-foreground">Клиент не найден. Начни подключение в Claude заново.</div>
+                <div className="text-muted-foreground">Клиент не найден. Начни подключение в приложении заново.</div>
               </div>
             ) : (
               <>

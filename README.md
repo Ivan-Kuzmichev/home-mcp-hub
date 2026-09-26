@@ -119,7 +119,7 @@ ADMIN_PASSWORD=
    scripts/check-oauth.sh https://hub.<домен> <secret>
    ```
 
-7. **Claude / ChatGPT.** Админка → «Доступ Claude»: скопировать MCP URL, включить регистрацию клиентов.
+7. **Claude / ChatGPT.** Админка → «MCP доступ»: скопировать MCP URL, включить регистрацию клиентов.
    - Claude → Settings → Connectors → Add custom connector → URL, OAuth-поля пустые.
    - ChatGPT → Settings → Apps & Connectors → Advanced → Developer mode → Create → URL, аутентификация OAuth.
 

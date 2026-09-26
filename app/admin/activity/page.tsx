@@ -65,7 +65,7 @@ export default async function ActivityPage({ searchParams }: { searchParams: Pro
       </div>
 
       {rows.length === 0 ? (
-        <Card className="p-8 text-center text-[13px] text-subtle">Записей нет. Здесь появятся вызовы Claude и входы в админку.</Card>
+        <Card className="p-8 text-center text-[13px] text-subtle">Записей нет. Здесь появятся вызовы ассистента и входы в админку.</Card>
       ) : (
         <Card className="overflow-hidden">
           <div className="hidden overflow-x-auto lg:block">

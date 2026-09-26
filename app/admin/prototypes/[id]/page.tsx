@@ -19,7 +19,7 @@ export default async function PrototypePage({ params }: { params: Promise<{ id: 
   return (
     <>
       <div className="hidden md:block">
-        <PageHeader title="Прототипы" subtitle="HTML-страницы, которые Claude опубликовал через MCP." actions={<UploadButton />} />
+        <PageHeader title="Прототипы" subtitle="HTML-страницы, которые ассистент опубликовал через MCP." actions={<UploadButton />} />
       </div>
       <header className="sticky top-0 z-10 -mx-4 -mt-4 flex h-14 items-center gap-2 border-b border-border bg-background px-2 md:hidden">
         <Link href={href('/admin/prototypes')} aria-label="Назад" className="flex size-10 items-center justify-center text-muted-foreground">

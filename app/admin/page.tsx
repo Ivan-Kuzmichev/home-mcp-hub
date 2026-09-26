@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { PageHeader } from '@/components/admin/page-header'
 import { Card } from '@/components/ui/card'
 import { Pill, StatusDot } from '@/components/ui/pill'
-import { isClaudeConnected } from '@/lib/access'
+import { isMcpConnected } from '@/lib/access'
 import { listScripts, statusOf } from '@/lib/scripts/store'
 import { connectorSummaries } from '@/lib/connectors/summary'
 import { formatAgo, formatWhen } from '@/lib/format'
@@ -21,7 +21,7 @@ function formatToday(): string {
 }
 
 export default function DashboardPage() {
-  const connected = isClaudeConnected()
+  const connected = isMcpConnected()
   // Only connectors in use get a card; unconfigured ones are a single hint line below.
   const summaries = connectorSummaries()
   const unconfigured = summaries.filter((c) => !c.configured)
@@ -29,7 +29,7 @@ export default function DashboardPage() {
   const calls = recentToolCalls(5)
   const failed = failedSignIns(new Date(Date.now() - 86_400_000))
   const awaiting = listScripts().filter((s) => statusOf(s) === 'pending').length
-  const claudeText = connected ? `Claude подключён${last ? ` · вызов ${formatAgo(last.createdAt)}` : ''}` : 'Claude не подключён'
+  const claudeText = connected ? `MCP подключён${last ? ` · вызов ${formatAgo(last.createdAt)}` : ''}` : 'MCP не подключён'
   return (
     <>
       <PageHeader
@@ -46,7 +46,7 @@ export default function DashboardPage() {
         }
         mobileAside={
           <Pill tone={connected ? 'ok' : 'muted'} dot>
-            Claude{connected && last ? ` · ${formatAgo(last.createdAt).replace(' назад', '')}` : ''}
+            MCP{connected && last ? ` · ${formatAgo(last.createdAt).replace(' назад', '')}` : ''}
           </Pill>
         }
       />
@@ -90,16 +90,16 @@ export default function DashboardPage() {
 
       <Card className="flex flex-col gap-3.5 p-3.5 md:p-[18px]">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm md:text-[15px]">Последние вызовы Claude</h2>
+          <h2 className="text-sm md:text-[15px]">Последние вызовы MCP</h2>
           <Link href={href('/admin/activity')} className="text-xs no-underline">
             Журнал
           </Link>
         </div>
         {calls.length === 0 ? (
           <div className="py-6 text-center text-[13px] text-subtle">
-            Claude ещё ничего не вызывал. Подключение настраивается на экране{' '}
+            Ассистент ещё ничего не вызывал. Подключение настраивается на экране{' '}
             <Link href={href('/admin/access')} className="no-underline">
-              «Доступ Claude»
+              «MCP доступ»
             </Link>
             .
           </div>
@@ -126,7 +126,7 @@ export default function DashboardPage() {
         </span>
         <span className="flex items-center gap-1.5">
           <StatusDot tone={connected ? 'ok' : 'muted'} />
-          {connected ? 'Claude подключён' : 'Claude не подключён'}
+          {connected ? 'MCP подключён' : 'MCP не подключён'}
         </span>
       </div>
 

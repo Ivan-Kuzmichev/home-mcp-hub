@@ -42,7 +42,7 @@ export async function changePrefixAction(_prev: PrefixState, formData: FormData)
   // Tokens are bound to the old /{secret}/api/mcp; Claude has to reconnect with the new URL.
   revokeAllClients()
   logger.info('Path prefix changed, OAuth clients revoked')
-  redirect(withPrefix(next, '/admin/access'))
+  redirect(withPrefix(next, '/admin/settings'))
 }
 
 export type CidrState = { error?: string; ok?: string }

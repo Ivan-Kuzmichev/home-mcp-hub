@@ -35,7 +35,7 @@ const configSchema = z
     downloadDir: field(z.string().trim().optional(), { label: 'Папка сохранения', placeholder: '/downloads/claude', mono: true, section: 'defaults' }),
     addPaused: field(z.boolean().default(false), {
       label: 'Добавлять торренты остановленными',
-      help: 'Claude сам вызовет transmission_start',
+      help: 'Ассистент сам вызовет transmission_start',
       widget: 'switch',
       section: 'defaults',
     }),

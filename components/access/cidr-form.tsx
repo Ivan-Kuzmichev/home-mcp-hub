@@ -43,7 +43,7 @@ export function CidrForm({ initial, trustProxy }: { initial: string[]; trustProx
         />
         {!list.includes(CLAUDE_RANGE) && (
           <button type="button" className="cursor-pointer text-xs text-primary hover:text-primary-hover" onClick={() => setList([...list, CLAUDE_RANGE])}>
-            + диапазон Claude
+            + диапазон Claude (Anthropic)
           </button>
         )}
       </div>

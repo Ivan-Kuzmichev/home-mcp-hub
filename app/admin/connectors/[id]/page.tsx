@@ -23,7 +23,7 @@ export default async function ConnectorPage({ params }: { params: Promise<{ id: 
   return (
     <>
       <div className="hidden md:block">
-        <PageHeader title="Коннекторы" subtitle="Сервисы, к которым Claude получает доступ через хаб. Секреты хранятся зашифрованными." />
+        <PageHeader title="Коннекторы" subtitle="Сервисы, к которым ИИ-ассистент получает доступ через хаб. Секреты хранятся зашифрованными." />
       </div>
       {/* Phone: the form is its own screen with a back button. */}
       <header className="sticky top-0 z-10 -mx-4 -mt-4 flex h-14 items-center gap-2 border-b border-border bg-background px-2 md:hidden">

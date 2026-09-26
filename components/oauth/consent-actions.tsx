@@ -18,7 +18,7 @@ export function ConsentActions() {
     const url = oauthRedirectUrl(data)
     if (error || !url) {
       setBusy(false)
-      return setError(authErrorMessage(error, 'Запрос устарел. Начни подключение в Claude заново.'))
+      return setError(authErrorMessage(error, 'Запрос устарел. Начни подключение в приложении заново.'))
     }
     window.location.assign(url)
   }

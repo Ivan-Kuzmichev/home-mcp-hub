@@ -2,14 +2,14 @@ import { PageHeader } from '@/components/admin/page-header'
 import { DcrToggle } from '@/components/access/dcr-toggle'
 import { CidrForm } from '@/components/access/cidr-form'
 import { ClientsForm } from '@/components/access/clients-form'
-import { PrefixForm } from '@/components/access/prefix-form'
+import { ConnectTabs } from '@/components/access/connect-tabs'
 import { Card } from '@/components/ui/card'
 import { ConfirmButton } from '@/components/ui/confirm-button'
 import { CopyButton } from '@/components/ui/copy-button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Pill } from '@/components/ui/pill'
-import { isClaudeConnected, listActiveTokens, listClients } from '@/lib/access'
+import { isMcpConnected, listActiveTokens, listClients } from '@/lib/access'
 import { hubUrls, isMcpAvailable } from '@/lib/auth'
 import { CLIENT_PRESETS, getAllowedClients } from '@/lib/oauth-clients'
 import { env } from '@/lib/env'
@@ -21,21 +21,12 @@ import { revokeClientAction, revokeTokenAction } from './actions'
 
 export const dynamic = 'force-dynamic'
 
-const STEPS = [
-  'Включить регистрацию клиентов ниже',
-  'Claude: Settings → Connectors → Add custom connector. ChatGPT: Settings → Apps & Connectors → Advanced → Developer mode, затем Create. Вставить адрес MCP, OAuth-поля оставить пустыми',
-  'Войти на открывшейся странице хаба и нажать «Разрешить»',
-  'Попросить в чате hub_status — должен вернуться статус хаба',
-  'Регистрация клиентов выключится сама после «Разрешить» — проверь переключатель',
-]
-
 export default function AccessPage() {
   const prefix = getPrefix()
-  const host = new URL(env().BASE_URL).host
   const urls = hubUrls(prefix)
   const clients = listClients()
   const tokens = listActiveTokens()
-  const connected = isClaudeConnected()
+  const connected = isMcpConnected()
   const last = lastToolCall()
   const status = (
     <Pill tone={connected ? 'ok' : 'muted'} dot>
@@ -45,55 +36,28 @@ export default function AccessPage() {
 
   return (
     <>
-      <PageHeader title="Доступ Claude" subtitle="Адрес MCP-эндпоинта для Claude и ChatGPT, OAuth-клиенты и выданные токены." actions={status} mobileAside={status} />
+      <PageHeader title="MCP доступ" subtitle="Подключение ИИ-ассистентов по MCP: адрес, разрешённые клиенты, OAuth-клиенты и токены." actions={status} mobileAside={status} />
 
       {!isMcpAvailable() && (
         <Card className="border-warn/40 p-4 text-[13px] text-warn">
-          BASE_URL без HTTPS: MCP-эндпоинт выключен. Claude подключается только к https-адресу — задай публичный URL из Pangolin.
+          BASE_URL без HTTPS: MCP-эндпоинт выключен. Claude и ChatGPT подключаются только к https-адресу — задай публичный URL из Pangolin.
         </Card>
       )}
 
-      <div className="grid gap-3.5 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
-        <Card className="flex flex-col gap-4 p-4 md:p-5">
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="text-[15px]">Секретный префикс</h2>
-            <Pill tone="muted">на всё, кроме /p/*</Pill>
+      <Card className="flex flex-col gap-4 p-4 md:p-5">
+        <h2 className="text-[15px]">Как подключить</h2>
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="mcp-url">MCP server URL — вставить в клиент как есть</Label>
+          <div className="flex gap-2">
+            <Input id="mcp-url" className="font-mono" value={urls.resource} readOnly />
+            <CopyButton value={urls.resource} />
           </div>
-          <PrefixForm current={prefix} host={host} />
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="mcp-url">MCP server URL — вставить в Claude как есть</Label>
-            <div className="flex gap-2">
-              <Input id="mcp-url" className="font-mono" value={urls.resource} readOnly />
-              <CopyButton value={urls.resource} />
-            </div>
-          </div>
-          <dl className="flex flex-col gap-1.5 rounded-md border border-border bg-background p-3 text-[13px]">
-            <UrlRow label="Админка" value={`${host}/${prefix}/admin`} />
-            <UrlRow label="OAuth и вход" value={`${host}/${prefix}/login`} />
-            <UrlRow label="Прототипы — без префикса" value={`${host}/p/…`} />
-            <div className="pt-1 text-xs text-subtle">
-              Всё остальное отвечает пустым 404. Префикс прячет хаб от сканеров, но не заменяет OAuth и 2FA.
-            </div>
-          </dl>
-        </Card>
-
-        <Card className="flex flex-col gap-4 p-4 md:p-5">
-          <h2 className="text-[15px]">Как подключить</h2>
-          <ol className="flex flex-col gap-2.5">
-            {STEPS.map((s, i) => (
-              <li key={s} className="flex gap-2.5 text-[13px] text-muted-foreground">
-                <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-secondary text-[11px] font-semibold text-foreground">
-                  {i + 1}
-                </span>
-                <span>{s}</span>
-              </li>
-            ))}
-          </ol>
-          <div className="border-t border-divider pt-4">
-            <DcrToggle allowed={isDcrAllowed()} />
-          </div>
-        </Card>
-      </div>
+        </div>
+        <ConnectTabs />
+        <div className="border-t border-divider pt-4">
+          <DcrToggle allowed={isDcrAllowed()} />
+        </div>
+      </Card>
 
       <Card className="flex flex-col gap-1 p-4 md:p-5">
         <div className="flex flex-col gap-0.5 pb-1">
@@ -111,7 +75,7 @@ export default function AccessPage() {
           <span className="text-xs text-subtle">Каждое подключение регистрирует своего клиента</span>
         </div>
         {clients.length === 0 ? (
-          <Empty text="Клиентов нет. Claude зарегистрируется сам при подключении, пока включена регистрация." />
+          <Empty text="Клиентов нет. Клиент (Claude, ChatGPT) зарегистрируется сам при подключении, пока включена регистрация." />
         ) : (
           <div className="flex flex-col">
             {clients.map((c) => (
@@ -157,7 +121,7 @@ export default function AccessPage() {
               </div>
             ))}
             <div className="pt-2 text-xs text-subtle">
-              Отзыв токена останавливает обновление; текущий access-токен доживёт до часа. Чтобы отключить Claude сразу — отзови клиента.
+              Отзыв токена останавливает обновление; текущий access-токен доживёт до часа. Чтобы отключить клиента сразу — отзови его в списке выше.
             </div>
           </div>
         )}
@@ -166,7 +130,7 @@ export default function AccessPage() {
       <Card className="flex flex-col gap-3 p-4 md:p-5">
         <div className="flex flex-col gap-0.5">
           <h2 className="text-[15px]">Ограничение по IP для MCP</h2>
-          <span className="text-xs text-subtle">Пусто — пускать всех. Claude ходит из диапазона 160.79.104.0/21. Это защита в глубину, OAuth остаётся.</span>
+          <span className="text-xs text-subtle">Пусто — пускать всех. Claude (Anthropic) ходит из 160.79.104.0/21, у ChatGPT адреса OpenAI. Это защита в глубину, OAuth остаётся.</span>
         </div>
         <CidrForm initial={getAllowedCidrs()} trustProxy={env().TRUST_PROXY} />
       </Card>
@@ -182,15 +146,6 @@ function LastCall({ clientId }: { clientId: string }) {
       {formatAgo(call.createdAt)} · <span className="font-mono">{call.tool}</span>
       {call.ip && <span className="font-mono"> · {call.ip}</span>}
     </span>
-  )
-}
-
-function UrlRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex flex-wrap justify-between gap-x-4">
-      <dt className="text-subtle">{label}</dt>
-      <dd className="truncate font-mono text-xs leading-5 text-muted-foreground">{value}</dd>
-    </div>
   )
 }
 
