@@ -1,3 +1,4 @@
+import type { Metadata } from 'next'
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { LoginForm } from '@/components/auth/login-form'
@@ -5,10 +6,15 @@ import { LogoMark } from '@/components/logo'
 import { PrefixProvider } from '@/components/prefix-provider'
 import { getAuth } from '@/lib/auth'
 import { env } from '@/lib/env'
+import { prefixedIcons } from '@/lib/icons'
 import { getPrefix, href } from '@/lib/prefix'
 import { HUB_VERSION } from '@/lib/version'
 
 export const dynamic = 'force-dynamic'
+
+export function generateMetadata(): Metadata {
+  return { icons: prefixedIcons() }
+}
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   // Claude's authorization request sends the user here with a signed query (sig=…).

@@ -40,6 +40,7 @@ export function pageCsp(nonce: string, dev: boolean): string {
 export function isPagePath(internalPath: string): boolean {
   if (internalPath.startsWith('/api/') || internalPath.startsWith('/.well-known') || internalPath.includes('/.well-known/')) return false
   if (/^\/admin\/prototypes\/[^/]+\/preview$/.test(internalPath) || internalPath === '/admin/activity/export') return false
+  if (internalPath.startsWith('/brand/')) return false
   if (internalPath.startsWith('/p/')) return /^\/p\/[^/]+\/pin$/.test(internalPath)
   return true
 }

@@ -1,3 +1,4 @@
+import type { Metadata } from 'next'
 import { eq } from 'drizzle-orm'
 import { Check } from 'lucide-react'
 import { headers } from 'next/headers'
@@ -10,10 +11,15 @@ import { getAuth } from '@/lib/auth'
 import { getDb } from '@/lib/db'
 import { oauthClient } from '@/lib/db/schema'
 import { env } from '@/lib/env'
+import { prefixedIcons } from '@/lib/icons'
 import { shortId } from '@/lib/format'
 import { getPrefix, href } from '@/lib/prefix'
 
 export const dynamic = 'force-dynamic'
+
+export function generateMetadata(): Metadata {
+  return { icons: prefixedIcons() }
+}
 
 const CAPABILITIES = [
   'Поиск торрентов через Jackett',

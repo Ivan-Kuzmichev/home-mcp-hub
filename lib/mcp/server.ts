@@ -10,6 +10,7 @@ import { ToolError, type ErasedTool } from '../connectors/types'
 import { logToolCall } from '../journal'
 import { logger } from '../logger'
 import { mcpContext } from './context'
+import { LOGO_DATA_URI } from '../brand'
 import { HUB_VERSION } from '../version'
 
 export const MCP_INSTRUCTIONS = [
@@ -121,8 +122,10 @@ function initializeServer(server: McpServer): void {
 const globalForMcp = globalThis as unknown as { __hubMcp?: (req: Request) => Promise<Response> }
 
 export function getMcpHandler(): (req: Request) => Promise<Response> {
+  // title and icons (MCP Implementation) let clients show the hub's name and logo.
+  const serverInfo = { name: 'home-mcp-hub', title: 'Home Hub', version: HUB_VERSION, icons: [{ src: LOGO_DATA_URI, mimeType: 'image/svg+xml', sizes: ['any'] }] }
   globalForMcp.__hubMcp ??= createMcpHandler(initializeServer, {
-    serverInfo: { name: 'home-mcp-hub', version: HUB_VERSION },
+    serverInfo,
     instructions: MCP_INSTRUCTIONS,
   })
   return globalForMcp.__hubMcp

@@ -1,12 +1,18 @@
+import type { Metadata } from 'next'
 import { MobileTabs, SidebarNav } from '@/components/admin/nav'
 import { SignOutButton } from '@/components/admin/sign-out-button'
 import { LogoMark } from '@/components/logo'
 import { PrefixProvider } from '@/components/prefix-provider'
 import { env } from '@/lib/env'
+import { prefixedIcons } from '@/lib/icons'
 import { getPrefix } from '@/lib/prefix'
 import { requireAdmin } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
+
+export function generateMetadata(): Metadata {
+  return { icons: prefixedIcons() }
+}
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await requireAdmin()
