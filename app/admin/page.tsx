@@ -21,6 +21,9 @@ function formatToday(): string {
 
 export default function DashboardPage() {
   const connected = isClaudeConnected()
+  // Only connectors in use get a card; unconfigured ones are a single hint line below.
+  const summaries = connectorSummaries()
+  const unconfigured = summaries.filter((c) => !c.configured)
   const last = lastToolCall()
   const calls = recentToolCalls(5)
   const failed = failedSignIns(new Date(Date.now() - 86_400_000))
@@ -47,11 +50,11 @@ export default function DashboardPage() {
       />
 
       <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4 md:gap-3.5">
-        {connectorSummaries()
-          .filter((c) => !(c.configured && !c.enabled))
+        {summaries
+          .filter((c) => c.configured && c.enabled)
           .map((c) => {
           const label = TONE_LABEL[c.tone]
-          const detail = c.lastCheckAt ? `проверено ${formatAgo(c.lastCheckAt)}` : c.configured ? 'ещё не проверялся' : 'Настроить'
+          const detail = c.lastCheckAt ? `проверено ${formatAgo(c.lastCheckAt)}` : 'ещё не проверялся'
           return (
             <Link key={c.id} href={href(`/admin/connectors/${c.id}`)} className="text-inherit no-underline hover:text-inherit">
               <Card className={`flex h-full flex-col gap-1.5 p-3 md:gap-2.5 md:p-4 ${c.tone === 'warn' || c.tone === 'err' ? 'border-warn/40' : ''}`}>
@@ -69,6 +72,19 @@ export default function DashboardPage() {
           )
         })}
       </div>
+      {unconfigured.length > 0 && (
+        <div className="-mt-1 px-1 text-xs text-subtle md:-mt-2">
+          Не настроены:{' '}
+          {unconfigured.map((c, i) => (
+            <span key={c.id}>
+              {i > 0 && ', '}
+              <Link href={href(`/admin/connectors/${c.id}`)} className="no-underline">
+                {c.name}
+              </Link>
+            </span>
+          ))}
+        </div>
+      )}
 
       <Card className="flex flex-col gap-3.5 p-3.5 md:p-[18px]">
         <div className="flex items-center justify-between">
