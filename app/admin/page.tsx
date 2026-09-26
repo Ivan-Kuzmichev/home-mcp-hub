@@ -22,9 +22,8 @@ function formatToday(): string {
 
 export default function DashboardPage() {
   const connected = isMcpConnected()
-  // Only connectors in use get a card; unconfigured ones are a single hint line below.
+  // Only connectors in use get a card; the rest are on the connectors screen.
   const summaries = connectorSummaries()
-  const unconfigured = summaries.filter((c) => !c.configured)
   const last = lastToolCall()
   const calls = recentToolCalls(5)
   const failed = failedSignIns(new Date(Date.now() - 86_400_000))
@@ -74,19 +73,6 @@ export default function DashboardPage() {
           )
         })}
       </div>
-      {unconfigured.length > 0 && (
-        <div className="-mt-1 px-1 text-xs text-subtle md:-mt-2">
-          Не настроены:{' '}
-          {unconfigured.map((c, i) => (
-            <span key={c.id}>
-              {i > 0 && ', '}
-              <Link href={href(`/admin/connectors/${c.id}`)} className="no-underline">
-                {c.name}
-              </Link>
-            </span>
-          ))}
-        </div>
-      )}
 
       <Card className="flex flex-col gap-3.5 p-3.5 md:p-[18px]">
         <div className="flex items-center justify-between">
