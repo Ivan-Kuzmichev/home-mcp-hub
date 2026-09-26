@@ -15,7 +15,7 @@ import { HUB_VERSION } from '../version'
 
 export const MCP_INSTRUCTIONS = [
   'Home Hub управляет домашними сервисами пользователя: поиск торрентов (Jackett), закачки (qBittorrent), стриминг (TorrServe) и публикация HTML-прототипов.',
-  'Чтобы скачать фильм или сериал: сначала search_torrents, потом torrent_add или torrserve_add с result_id из результатов поиска. Магнеты и ссылки не перепечатывай.',
+  'Чтобы скачать фильм или сериал: сначала search_torrents, потом torrent_add (qBittorrent), transmission_add (Transmission) или torrserve_add с result_id из результатов поиска. Магнеты и ссылки не перепечатывай.',
   'При прочих равных выбирай релизы с русской озвучкой и сидами больше 10; если подходящих несколько и они заметно отличаются, спроси пользователя.',
   'Перед удалением торрента вместе с файлами и перед удалением прототипа переспроси пользователя.',
   `Прототипы: ${CHUNK_HINT} Один большой вызов с целым HTML может оборваться.`,
@@ -111,10 +111,18 @@ function initializeServer(server: McpServer): void {
     async (args: unknown) => runLogged('hub_status', 'hub', args, hubStatus),
   )
 
+  // Tool names are global in MCP: a clash would make registerTool throw and break every call.
+  const registered = new Set(['hub_status'])
   for (const state of connectorStates()) {
     if (state.status !== 'active') continue
     for (const tool of state.connector.tools) {
-      if (!state.row.disabledTools.includes(tool.name)) registerConnectorTool(server, state.connector.id, tool, state.config)
+      if (state.row.disabledTools.includes(tool.name)) continue
+      if (registered.has(tool.name)) {
+        logger.warn({ tool: tool.name, connector: state.connector.id }, 'duplicate tool name skipped')
+        continue
+      }
+      registered.add(tool.name)
+      registerConnectorTool(server, state.connector.id, tool, state.config)
     }
   }
 }

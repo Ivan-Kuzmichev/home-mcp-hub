@@ -4,6 +4,20 @@
 Один Docker-контейнер на NAS, наружу — через Pangolin, в Claude подключается как custom connector.
 Архитектура и решения — [`docs/SPEC.md`](docs/SPEC.md).
 
+## Коннекторы
+
+| Коннектор | Инструменты для Claude | Проверено |
+| --- | --- | --- |
+| Jackett | `search_torrents`, `list_indexers` | ✅ |
+| qBittorrent | `torrents_status`, `torrent_add`, `torrent_stop`, `torrent_start`, `torrent_delete`, `torrent_files`, `transfer_info` | ✅ |
+| Transmission | `transmission_status`, `transmission_add`, `transmission_stop`, `transmission_start`, `transmission_delete`, `transmission_files`, `transmission_info` | ⚠️ только автотесты, с живым Transmission не проверялся |
+| TorrServe | `torrserve_add`, `torrserve_list`, `torrserve_links`, `torrserve_remove` | ✅ |
+| Прототипы (встроенный) | `prototype_publish`, `prototype_append`, `prototype_update`, `prototype_list`, `prototype_delete` | ✅ |
+| Хаб | `hub_status` | ✅ |
+
+Коннекторы включаются и настраиваются в админке → «Коннекторы»; инструменты выключенного коннектора Claude не видит.
+qBittorrent и Transmission можно держать включёнными одновременно — у инструментов разные имена.
+
 ## Локально
 
 ```bash
@@ -79,7 +93,7 @@ ADMIN_PASSWORD=
    По http MCP выключен (Claude требует https), админка и коннекторы работают.
 
 4. **Первый вход.** `/{secret}/login` → пароль → настройка 2FA (QR-код, резервные коды) — без неё админка не пустит.
-   Затем «Коннекторы»: адреса сервисов внутри docker-сети (`http://qbittorrent:8080`, `http://jackett:9117`, `http://torrserve:8090`),
+   Затем «Коннекторы»: адреса сервисов внутри docker-сети (`http://qbittorrent:8080`, `http://transmission:9091`, `http://jackett:9117`, `http://torrserve:8090`),
    для TorrServe — ещё домашний адрес для плееров.
 
 5. **Pangolin.** HTTP-ресурс `hub.<домен>` → `hub:3000`, авторизация Pangolin **выключена** (авторизует сам хаб).

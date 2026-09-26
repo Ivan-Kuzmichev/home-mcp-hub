@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { magnetInfoHash, torrentInfoHash } from '../bencode'
 import { formatEta, formatSize, formatSpeed, plural, truncate } from '../format'
+import { matchTorrents as matchShared, shortHash } from '../torrents'
 import { baseUrl, defineConnector, field, secret, toolFor, ToolError } from '../types'
 import { QbClient, type QbConfig, type QbTorrent } from './client'
 
@@ -69,8 +70,6 @@ const STATE_LABELS: Record<string, string> = {
   missingFiles: 'нет файлов',
 }
 
-export const shortHash = (hash: string) => hash.slice(0, 8)
-
 export function formatTorrentLine(t: QbTorrent): string {
   const pct = Math.floor(t.progress * 100)
   const parts = [`${pct}%`]
@@ -80,27 +79,8 @@ export function formatTorrentLine(t: QbTorrent): string {
   return `• ${truncate(t.name, 70)} — ${parts.join(' · ')} · hash ${shortHash(t.hash)}`
 }
 
-/**
- * Claude passes back what it saw: a short hash, a full hash or part of the name.
- * Resolve to full hashes or explain the ambiguity.
- */
 export function matchTorrents(all: QbTorrent[], refs: string[]): QbTorrent[] {
-  return refs.map((ref) => {
-    const r = ref.trim().toLowerCase()
-    if (!r) throw new ToolError('Пустой hash')
-    const byHash = all.filter((t) => t.hash.toLowerCase().startsWith(r))
-    if (byHash.length === 1 && r.length >= 4) return byHash[0]!
-    const byName = byHash.length ? [] : all.filter((t) => t.name.toLowerCase().includes(r))
-    const matches = byHash.length ? byHash : byName
-    if (matches.length === 1) return matches[0]!
-    if (matches.length === 0) throw new ToolError(`Торрент «${ref}» не найден — посмотри torrents_status`)
-    throw new ToolError(
-      `«${ref}» подходит к нескольким торрентам:\n${matches
-        .slice(0, 5)
-        .map((t) => `• ${truncate(t.name, 60)} · hash ${shortHash(t.hash)}`)
-        .join('\n')}`,
-    )
-  })
+  return matchShared(all, refs, 'torrents_status')
 }
 
 const FILTERS = {

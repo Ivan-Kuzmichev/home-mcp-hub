@@ -38,6 +38,9 @@
   при логине. Три режима входа: без авторизации (whitelist подсети хаба в qBittorrent), API-ключ (5.2+), логин и пароль.
 - **Jackett:** ссылки `Link` содержат API-ключ — никогда не возвращать их Claude. Результаты поиска кладутся в кэш под `result_id`,
   `torrent_add` / `torrserve_add` принимают `result_id`. Таймаут поиска 25 с, частичный результат вместо ошибки.
+- **Transmission:** RPC `POST /transmission/rpc` с `{method, arguments}`; первый запрос получает `409` с `X-Transmission-Session-Id` —
+  повторить с этим заголовком. Метки (`labels`) вместо категорий, `torrent-add` c `filename` (magnet/URL) или `metainfo` (base64).
+  Имена tools с префиксом `transmission_` — имена в MCP глобальные и не должны совпадать с qBittorrent.
 - **TorrServe:** `POST /torrents` с JSON `{action, link, title, poster, save_to_db}`, `/echo` — версия, Basic-auth только если включён `--httpauth`.
 - **Прототипы** отдаются с `Content-Security-Policy: sandbox allow-scripts allow-forms allow-modals allow-popups` (без `allow-same-origin`)
   и `X-Robots-Tag: noindex`. Пин — argon2-хэш, cookie на 24 ч, 5 попыток за 10 мин.
