@@ -40,7 +40,7 @@ export function pageCsp(nonce: string, dev: boolean): string {
 export function isPagePath(internalPath: string): boolean {
   if (internalPath.startsWith('/api/') || internalPath.startsWith('/.well-known') || internalPath.includes('/.well-known/')) return false
   if (/^\/admin\/prototypes\/[^/]+\/preview$/.test(internalPath) || internalPath === '/admin/activity/export') return false
-  if (internalPath.startsWith('/brand/')) return false
+  if (internalPath.startsWith('/brand/') || internalPath.startsWith('/f/')) return false
   if (internalPath.startsWith('/p/')) return /^\/p\/[^/]+\/pin$/.test(internalPath)
   return true
 }
@@ -87,6 +87,6 @@ export function middleware(request: NextRequest): NextResponse {
   for (const [k, v] of Object.entries(baseHeaders())) response.headers.set(k, v)
   if (csp) response.headers.set('Content-Security-Policy', csp)
   // Prototypes and pin pages are shared by link, never indexed.
-  if (pathname.startsWith('/p/')) response.headers.set('X-Robots-Tag', 'noindex, nofollow')
+  if (pathname.startsWith('/p/') || pathname.startsWith('/f/')) response.headers.set('X-Robots-Tag', 'noindex, nofollow')
   return response
 }

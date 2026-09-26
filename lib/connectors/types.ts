@@ -17,7 +17,7 @@ export type FieldMeta = {
   label: string
   help?: string
   placeholder?: string
-  widget?: 'text' | 'url' | 'number' | 'switch' | 'segmented'
+  widget?: 'text' | 'textarea' | 'url' | 'number' | 'switch' | 'segmented'
   options?: FieldOption[]
   /** Stored encrypted, never shown after saving */
   secret?: boolean
@@ -67,6 +67,13 @@ export type ToolContext<C> = {
   resolveResult: (resultId: string) => Promise<ResolvedResult>
 }
 
+/** A tool answers with text, optionally with images (e.g. a document thumbnail). */
+export type ToolOutput = string | { text: string; images?: { data: string; mimeType: string }[] }
+
+export function outputText(out: ToolOutput): string {
+  return typeof out === 'string' ? out : out.text
+}
+
 export type ToolAnnotations = {
   readOnlyHint?: boolean
   destructiveHint?: boolean
@@ -82,7 +89,7 @@ export type ConnectorTool<C, S extends z.ZodObject = z.ZodObject> = {
   annotations: ToolAnnotations
   // Method syntax on purpose: parameters stay bivariant, so tools with specific
   // input schemas fit into Connector.tools.
-  run(args: z.output<S>, ctx: ToolContext<C>): Promise<string>
+  run(args: z.output<S>, ctx: ToolContext<C>): Promise<ToolOutput>
 }
 
 /** toolFor<Config>()({ inputSchema, run }) — argument types are inferred from inputSchema. */
@@ -122,7 +129,7 @@ export type ErasedTool = {
   description: string
   inputSchema: z.ZodObject
   annotations: ToolAnnotations
-  run: (args: unknown, ctx: ToolContext<unknown>) => Promise<string>
+  run: (args: unknown, ctx: ToolContext<unknown>) => Promise<ToolOutput>
 }
 
 export type RegisteredConnector = {

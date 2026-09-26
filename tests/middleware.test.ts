@@ -60,6 +60,7 @@ describe('middleware', () => {
     ['root protected resource', '/.well-known/oauth-protected-resource'],
     ['well-known with wrong secret', '/.well-known/oauth-authorization-server/nope'],
     ['prototypes under the prefix', `/${PREFIX}/p/abc`],
+    ['download links under the prefix', `/${PREFIX}/f/abc`],
     ['next internals other than static', '/_next/image?url=x'],
     ['favicon', '/favicon.ico'],
   ])('returns an empty 404 for %s', async (_name, pathname) => {
@@ -71,6 +72,7 @@ describe('middleware', () => {
 
   it.each([
     ['prototype', '/p/Ab3xK9qZ'],
+    ['document download link', '/f/abcdefghijklmnopqrstuvwxyzABCDEF'],
     ['static assets', '/_next/static/chunks/main.js'],
     ['AS metadata, RFC 8414 path-insert', `/.well-known/oauth-authorization-server/${PREFIX}`],
     ['AS metadata, OIDC path-insert', `/.well-known/openid-configuration/${PREFIX}`],

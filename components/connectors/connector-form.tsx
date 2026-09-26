@@ -238,6 +238,24 @@ function FieldControl({
     )
   }
 
+  if (f.widget === 'textarea') {
+    return (
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor={id}>{f.label}</Label>
+        <textarea
+          id={id}
+          rows={6}
+          spellCheck={false}
+          className="min-h-28 w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-[13px] leading-5 text-foreground placeholder:text-faint focus-visible:border-primary focus-visible:outline-none"
+          placeholder={f.placeholder}
+          value={typeof value === 'string' ? value : ''}
+          onChange={(e) => onChange(f.name, e.target.value)}
+        />
+        {error ? <span className="text-xs text-err">{error}</span> : f.help && <span className="text-xs text-subtle">{f.help}</span>}
+      </div>
+    )
+  }
+
   const placeholder = f.secret && f.secretSet ? 'задан · оставь пустым, чтобы не менять' : f.placeholder
   return (
     <div className="flex flex-col gap-1.5">

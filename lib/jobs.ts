@@ -1,5 +1,6 @@
 import cron from 'node-cron'
 import { checkAllConnectors } from './connectors/health'
+import { purgeExpiredLinks, purgeOldChanges } from './connectors/paperless/logic'
 import { purgeJournal } from './journal'
 import { logger } from './logger'
 import { purgeExpiredResults } from './mcp/result-cache'
@@ -17,6 +18,8 @@ export function runCleanup(): { prototypes: number; journal: number } {
   purgeExpiredResults()
   const prototypes = purgeExpiredPrototypes()
   const journal = purgeJournal()
+  purgeExpiredLinks()
+  purgeOldChanges()
   if (prototypes || journal) logger.info({ prototypes, journal }, 'cleanup')
   return { prototypes, journal }
 }

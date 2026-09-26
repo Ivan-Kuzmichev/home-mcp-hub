@@ -11,12 +11,18 @@
 | Jackett | `search_torrents`, `list_indexers` | ✅ |
 | qBittorrent | `torrents_status`, `torrent_add`, `torrent_stop`, `torrent_start`, `torrent_delete`, `torrent_files`, `transfer_info` | ✅ |
 | Transmission | `transmission_status`, `transmission_add`, `transmission_stop`, `transmission_start`, `transmission_delete`, `transmission_files`, `transmission_info` | ⚠️ только автотесты, с живым Transmission не проверялся |
+| Paperless (ngx) | `paperless_search`, `paperless_review`, `paperless_get`, `paperless_thumbnail`, `paperless_taxonomy`, `paperless_update`, `paperless_undo`, `paperless_link` | ⚠️ только автотесты, с живым Paperless не проверялся |
 | TorrServe | `torrserve_add`, `torrserve_list`, `torrserve_links`, `torrserve_remove` | ✅ |
 | Прототипы (встроенный) | `prototype_publish`, `prototype_append`, `prototype_update`, `prototype_list`, `prototype_delete` | ✅ |
 | Хаб | `hub_status` | ✅ |
 
 Коннекторы включаются и настраиваются в админке → «Коннекторы»; инструменты выключенного коннектора Claude не видит.
 qBittorrent и Transmission можно держать включёнными одновременно — у инструментов разные имена.
+
+Paperless: ассистент ищет и читает документы (OCR-текст, превью), размечает их пачками — название, дата, корреспондент,
+тип, теги — по «правилам разметки» из настроек коннектора, с откатом пачки (`paperless_undo`). Документы с тегом-исключением
+(по умолчанию `private`) ему не видны. Ссылки на файлы — `/f/{токен}` без секретного префикса: личные (24 ч, только с входом
+в админку) и пересылаемые по прямой просьбе (один раз, 15 минут). Загрузки файлов через ассистента пока нет.
 
 ## Локально
 

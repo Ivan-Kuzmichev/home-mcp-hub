@@ -68,3 +68,26 @@ export const toolCall = sqliteTable('tool_call', {
   ip: text('ip'),
   createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
 }, (t) => [index('tool_call_created_at_idx').on(t.createdAt), index('tool_call_client_idx').on(t.clientId)])
+
+/** Paperless metadata edits made through the hub: before/after for undo, grouped by batch. */
+export const paperlessChange = sqliteTable('paperless_change', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  batchId: text('batch_id').notNull(),
+  documentId: integer('document_id').notNull(),
+  beforeJson: text('before_json').notNull(),
+  afterJson: text('after_json').notNull(),
+  undoneAt: integer('undone_at', { mode: 'timestamp_ms' }),
+  createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+}, (t) => [index('paperless_change_batch_idx').on(t.batchId)])
+
+/** Download links for documents: personal (admin session required) or shareable (one-time, short). */
+export const downloadLink = sqliteTable('download_link', {
+  token: text('token').primaryKey(),
+  connectorId: text('connector_id').notNull(),
+  documentId: integer('document_id').notNull(),
+  original: integer('original', { mode: 'boolean' }).notNull().default(false),
+  shareable: integer('shareable', { mode: 'boolean' }).notNull().default(false),
+  expiresAt: integer('expires_at', { mode: 'timestamp_ms' }).notNull(),
+  usedAt: integer('used_at', { mode: 'timestamp_ms' }),
+  createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+})

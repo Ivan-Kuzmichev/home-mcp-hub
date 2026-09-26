@@ -6,7 +6,7 @@ import { scrub } from '../connectors/http'
 import { resolveResult, type JackettLinkAccess } from '../connectors/resolve'
 import { checkConnector } from '../connectors/health'
 import { CHUNK_HINT } from '../connectors/prototypes'
-import { ToolError, type ErasedTool } from '../connectors/types'
+import { outputText, ToolError, type ErasedTool, type ToolOutput } from '../connectors/types'
 import { logToolCall } from '../journal'
 import { logger } from '../logger'
 import { mcpContext } from './context'
@@ -19,6 +19,7 @@ export const MCP_INSTRUCTIONS = [
   'При прочих равных выбирай релизы с русской озвучкой и сидами больше 10; если подходящих несколько и они заметно отличаются, спроси пользователя.',
   'Перед удалением торрента вместе с файлами и перед удалением прототипа переспроси пользователя.',
   `Прототипы: ${CHUNK_HINT} Один большой вызов с целым HTML может оборваться.`,
+  'Paperless: для разметки — paperless_review (там правила пользователя и примеры прошлой разметки), затем paperless_update списком изменений. Используй существующие теги и корреспондентов из paperless_taxonomy. Для массовой правки сначала покажи план (dry_run), если пользователь не попросил применять сразу. Пересылаемую ссылку (shareable) — только по прямой просьбе.',
   'Если что-то не работает, вызови hub_status: он покажет, какие сервисы подключены и отвечают.',
   'Отвечай коротко: пользователь читает ответы на телефоне.',
 ].join('\n')
@@ -38,21 +39,31 @@ function text(value: string, isError = false) {
   return { content: [{ type: 'text' as const, text: value }], ...(isError ? { isError: true } : {}) }
 }
 
+function toContent(out: ToolOutput) {
+  if (typeof out === 'string') return text(out)
+  return {
+    content: [
+      { type: 'text' as const, text: out.text },
+      ...(out.images ?? []).map((img) => ({ type: 'image' as const, data: img.data, mimeType: img.mimeType })),
+    ],
+  }
+}
+
 function jackettAccess(): JackettLinkAccess | null {
   const cfg = activeConfig('jackett') as { baseUrl?: string; apiKey?: string } | null
   return cfg?.baseUrl && cfg.apiKey ? { baseUrl: cfg.baseUrl, apiKey: cfg.apiKey } : null
 }
 
 /** Run a tool, turn errors into short messages and write the journal entry. */
-async function runLogged(name: string, connectorId: string, args: unknown, fn: () => Promise<string>) {
+async function runLogged(name: string, connectorId: string, args: unknown, fn: () => Promise<ToolOutput>) {
   const started = Date.now()
   const ctx = mcpContext.getStore()
   const log = (ok: boolean, message: string) =>
     logToolCall({ tool: name, connectorId, args, ok, [ok ? 'result' : 'error']: message, durationMs: Date.now() - started, clientId: ctx?.clientId, ip: ctx?.ip })
   try {
     const result = await fn()
-    log(true, result)
-    return text(result)
+    log(true, outputText(result))
+    return toContent(result)
   } catch (error) {
     let message: string
     if (error instanceof ToolError) message = error.message

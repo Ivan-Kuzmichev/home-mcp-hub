@@ -1,5 +1,5 @@
 import { vi } from 'vitest'
-import type { RegisteredConnector, ResolvedResult } from '@/lib/connectors/types'
+import { outputText, type RegisteredConnector, type ResolvedResult, type ToolOutput } from '@/lib/connectors/types'
 
 export type Call = { method: string; url: URL; headers: Headers; body: BodyInit | null | undefined }
 
@@ -36,6 +36,18 @@ export async function runTool(
     throw new Error('resolveResult not expected')
   },
 ): Promise<string> {
+  return outputText(await runToolRaw(c, name, config, args, resolveResult))
+}
+
+export async function runToolRaw(
+  c: RegisteredConnector,
+  name: string,
+  config: unknown,
+  args: Record<string, unknown> = {},
+  resolveResult: (id: string) => Promise<ResolvedResult> = async () => {
+    throw new Error('resolveResult not expected')
+  },
+): Promise<ToolOutput> {
   const tool = c.tools.find((t) => t.name === name)
   if (!tool) throw new Error(`no tool ${name}`)
   return tool.run(args, { config, resolveResult })

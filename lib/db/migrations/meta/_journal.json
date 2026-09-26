@@ -36,6 +36,13 @@
       "when": 1790276473324,
       "tag": "0004_journal",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1790429377396,
+      "tag": "0005_paperless",
+      "breakpoints": true
     }
   ]
 }

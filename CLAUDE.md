@@ -41,6 +41,9 @@
 - **Transmission:** RPC `POST /transmission/rpc` с `{method, arguments}`; первый запрос получает `409` с `X-Transmission-Session-Id` —
   повторить с этим заголовком. Метки (`labels`) вместо категорий, `torrent-add` c `filename` (magnet/URL) или `metainfo` (base64).
   Имена tools с префиксом `transmission_` — имена в MCP глобальные и не должны совпадать с qBittorrent.
+- **Paperless (ngx, совместимо с ng):** `Authorization: Token …`; фильтры дат — только `date__gt`/`date__lt` (в ng нет `__gte`);
+  «неразмеченные» = inbox-тег ИЛИ без корреспондента ИЛИ без типа — API не умеет OR, запросы сливаются. Тег-исключение проверяется
+  на каждом чтении и правке. Правки пишутся в `paperless_change` для `paperless_undo`. Ссылки на файлы — `/f/{token}` вне префикса.
 - **TorrServe:** `POST /torrents` с JSON `{action, link, title, poster, save_to_db}`, `/echo` — версия, Basic-auth только если включён `--httpauth`.
 - **Прототипы** отдаются с `Content-Security-Policy: sandbox allow-scripts allow-forms allow-modals allow-popups` (без `allow-same-origin`)
   и `X-Robots-Tag: noindex`. Пин — argon2-хэш, cookie на 24 ч, 5 попыток за 10 мин.
