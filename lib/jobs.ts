@@ -2,6 +2,8 @@ import cron from 'node-cron'
 import { checkAllConnectors } from './connectors/health'
 import { purgeExpiredLinks, purgeOldChanges } from './connectors/paperless/logic'
 import { purgeJournal } from './journal'
+import { syncSchedules } from './scripts/scheduler'
+import { purgeOldRuns } from './scripts/store'
 import { logger } from './logger'
 import { purgeExpiredResults } from './mcp/result-cache'
 import { purgeExpired as purgeExpiredPrototypes } from './prototypes/store'
@@ -20,6 +22,7 @@ export function runCleanup(): { prototypes: number; journal: number } {
   const journal = purgeJournal()
   purgeExpiredLinks()
   purgeOldChanges()
+  purgeOldRuns()
   if (prototypes || journal) logger.info({ prototypes, journal }, 'cleanup')
   return { prototypes, journal }
 }
@@ -46,6 +49,8 @@ export function startJobs(): void {
   globalForJobs.__hubJobs = true
   cron.schedule('*/2 * * * *', safe('health', runHealthCheck), { name: 'health', noOverlap: true })
   cron.schedule('7 * * * *', safe('cleanup', runCleanup), { name: 'cleanup', noOverlap: true })
+  // Cron scripts written by the assistant and approved by the admin.
+  safe('scripts', syncSchedules)()
   // First pass right away so the dashboard is not empty after a restart.
   void safe('health', runHealthCheck)()
   void safe('cleanup', runCleanup)()

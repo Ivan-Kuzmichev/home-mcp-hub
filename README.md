@@ -13,6 +13,7 @@
 | Transmission | `transmission_status`, `transmission_add`, `transmission_stop`, `transmission_start`, `transmission_delete`, `transmission_files`, `transmission_info` | ⚠️ только автотесты, с живым Transmission не проверялся |
 | Paperless (ngx) | `paperless_search`, `paperless_review`, `paperless_get`, `paperless_thumbnail`, `paperless_taxonomy`, `paperless_update`, `paperless_undo`, `paperless_link` | ⚠️ только автотесты, с живым Paperless не проверялся |
 | TorrServe | `torrserve_add`, `torrserve_list`, `torrserve_links`, `torrserve_remove` | ✅ |
+| Cron-скрипты (встроенный) | `cron_create`, `cron_update`, `cron_enable`, `cron_run`, `cron_logs`, `cron_list`, `cron_get`, `cron_delete`, `cron_secrets` | ⚠️ автотесты и локальная сборка, в бою не запускался |
 | Прототипы (встроенный) | `prototype_publish`, `prototype_append`, `prototype_update`, `prototype_list`, `prototype_delete` | ✅ |
 | Хаб | `hub_status` | ✅ |
 
@@ -23,6 +24,13 @@ Paperless: ассистент ищет и читает документы (OCR-�
 тип, теги — по «правилам разметки» из настроек коннектора, с откатом пачки (`paperless_undo`). Документы с тегом-исключением
 (по умолчанию `private`) ему не видны. Ссылки на файлы — `/f/{токен}` без секретного префикса: личные (24 ч, только с входом
 в админку) и пересылаемые по прямой просьбе (один раз, 15 минут). Загрузки файлов через ассистента пока нет.
+
+Cron-скрипты: ассистент пишет JS и расписание, ты одобряешь код в админке → «Скрипты», после этого ассистент включает скрипт.
+Любое изменение кода снова ждёт одобрения и ставит скрипт на паузу. Скрипт работает в песочнице QuickJS (WebAssembly): без доступа
+к файлам, процессу и базе хаба, 30 с и 64 МБ на запуск, только внешние адреса (локальная сеть закрыта, в том числе через DNS).
+Секреты (например токен Telegram-бота) заводятся в админке с привязкой к хостам; в коде — заглушка `{{secret:ИМЯ}}`, хаб
+подставляет значение только в запрос на разрешённый хост. Ни скрипт, ни ассистент значения не видят и отправить его в другое
+место не могут. Из скрипта доступны инструменты хаба только для чтения: `await hub.tool('torrents_status', { filter: 'completed' })`.
 
 ## Локально
 

@@ -45,6 +45,10 @@
   «неразмеченные» = inbox-тег ИЛИ без корреспондента ИЛИ без типа — API не умеет OR, запросы сливаются. Тег-исключение проверяется
   на каждом чтении и правке. Правки пишутся в `paperless_change` для `paperless_undo`. Ссылки на файлы — `/f/{token}` вне префикса.
 - **TorrServe:** `POST /torrents` с JSON `{action, link, title, poster, save_to_db}`, `/echo` — версия, Basic-auth только если включён `--httpauth`.
+- **Cron-скрипты:** код пишет модель, запускается только версия, одобренная админом (`approved_hash` = sha256 кода). Песочница —
+  `quickjs-emscripten` (sync-вариант, host-функции через промисы; asyncify-вариант падает при dispose). Секреты — только через заглушки
+  `{{secret:NAME}}`, подставляются в `fetch` для своих хостов; хост запроса фиксируется до подстановки. Сеть — undici `Agent` с проверкой
+  IP в `lookup` (защита от DNS rebinding). Никогда не отдавать модели значения секретов и не давать скриптам write-инструменты хаба.
 - **Прототипы** отдаются с `Content-Security-Policy: sandbox allow-scripts allow-forms allow-modals allow-popups` (без `allow-same-origin`)
   и `X-Robots-Tag: noindex`. Пин — argon2-хэш, cookie на 24 ч, 5 попыток за 10 мин.
 - **Разрушающие tools** (`torrent_delete` с файлами, `prototype_delete`) требуют `confirm: true` и помечены `destructiveHint`.

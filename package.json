@@ -38,9 +38,11 @@
     "node-cron": "^4.6.0",
     "pino": "^10.3.1",
     "qrcode": "^1.5.4",
+    "quickjs-emscripten": "^0.32.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "tailwind-merge": "^3.7.0",
+    "undici": "^8.11.2",
     "zod": "^4.6.5"
   },
   "devDependencies": {

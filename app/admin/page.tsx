@@ -3,6 +3,7 @@ import { PageHeader } from '@/components/admin/page-header'
 import { Card } from '@/components/ui/card'
 import { Pill, StatusDot } from '@/components/ui/pill'
 import { isClaudeConnected } from '@/lib/access'
+import { listScripts, statusOf } from '@/lib/scripts/store'
 import { connectorSummaries } from '@/lib/connectors/summary'
 import { formatAgo, formatWhen } from '@/lib/format'
 import { failedSignIns, lastToolCall, recentToolCalls } from '@/lib/journal'
@@ -27,6 +28,7 @@ export default function DashboardPage() {
   const last = lastToolCall()
   const calls = recentToolCalls(5)
   const failed = failedSignIns(new Date(Date.now() - 86_400_000))
+  const awaiting = listScripts().filter((s) => statusOf(s) === 'pending').length
   const claudeText = connected ? `Claude подключён${last ? ` · вызов ${formatAgo(last.createdAt)}` : ''}` : 'Claude не подключён'
   return (
     <>
@@ -127,6 +129,14 @@ export default function DashboardPage() {
           {connected ? 'Claude подключён' : 'Claude не подключён'}
         </span>
       </div>
+
+      {awaiting > 0 && (
+        <Link href={href('/admin/scripts')} className="no-underline">
+          <Card className="border-warn/40 px-4 py-3 text-[13px] text-warn">
+            {awaiting === 1 ? 'Скрипт ждёт' : `${awaiting} скрипта ждут`} твоего одобрения — открыть
+          </Card>
+        </Link>
+      )}
 
       {failed > 0 && (
         <Link href={`${href('/admin/activity')}?connector=auth&status=error&period=1`} className="no-underline">

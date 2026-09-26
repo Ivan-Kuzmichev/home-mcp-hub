@@ -4,12 +4,17 @@ import { NAV_ITEMS } from '@/components/admin/nav-items'
 import { PageHeader } from '@/components/admin/page-header'
 import { SignOutButton } from '@/components/admin/sign-out-button'
 import { Card } from '@/components/ui/card'
+import { connectorStates } from '@/lib/connectors/active'
 import { href } from '@/lib/prefix'
 
 // Phone-only «Ещё» tab: sections that do not fit into the bottom bar.
-const MORE = NAV_ITEMS.filter((i) => i.path === '/admin/activity' || i.path === '/admin/settings')
+const MORE_ITEMS = ['/admin/scripts', '/admin/activity', '/admin/settings']
+
+export const dynamic = 'force-dynamic'
 
 export default function MorePage() {
+  const scriptsOn = connectorStates().find((c) => c.connector.id === 'scripts')?.status === 'active'
+  const MORE = NAV_ITEMS.filter((i) => MORE_ITEMS.includes(i.path) && (scriptsOn || i.path !== '/admin/scripts'))
   return (
     <>
       <PageHeader title="Ещё" />

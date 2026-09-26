@@ -21,8 +21,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const host = new URL(env().BASE_URL).host
   const name = session.user.name || session.user.email
   // Sections of switched-off connectors disappear from the navigation.
-  const prototypesOn = connectorStates().find((c) => c.connector.id === 'prototypes')?.status === 'active'
-  const hidden = prototypesOn ? [] : ['/admin/prototypes']
+  const states = connectorStates()
+  const isOn = (id: string) => states.find((c) => c.connector.id === id)?.status === 'active'
+  const hidden = [!isOn('prototypes') && '/admin/prototypes', !isOn('scripts') && '/admin/scripts'].filter((p): p is string => !!p)
 
   return (
     <PrefixProvider prefix={prefix}>
