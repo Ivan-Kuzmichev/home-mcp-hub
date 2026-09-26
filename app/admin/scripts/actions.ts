@@ -18,7 +18,7 @@ export async function approveAction(id: string, codeHash: string): Promise<Actio
     logAuthEvent({ event: 'auth.script_review', ok: true, detail: `одобрен «${getScript(id)?.name ?? id}»` })
     syncSchedules()
     refresh()
-    return { ok: 'Одобрено — ассистент может включить скрипт' }
+    return { ok: 'Одобрено и включено' }
   } catch (e) {
     return { error: e instanceof ScriptError ? e.message : String(e) }
   }

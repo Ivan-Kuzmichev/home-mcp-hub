@@ -32,11 +32,16 @@ describe('cron scripts: approval flow', () => {
     expect(await runTool(scripts, 'cron_list', cfg)).toContain('ждёт одобрения')
   })
 
-  it('after approval the assistant can run and enable it; the scheduler picks it up', async () => {
+  it('approval switches the script on; the scheduler picks it up and the assistant can run it', async () => {
     const s = store.findScript('Счётчик')
     expect(() => store.approveScript(s.id, 'other-hash')).toThrow('Код изменился')
     store.approveScript(s.id, s.codeHash)
+    syncSchedules()
+    expect(store.statusOf(store.findScript(s.id))).toBe('active')
+    expect(scheduledCount()).toBe(1)
     expect(await runTool(scripts, 'cron_run', cfg, { script: s.id })).toMatch(/^Готово за .+\nРезультат:\nn=1\nЛог:\nrun$/)
+    expect(await runTool(scripts, 'cron_enable', cfg, { script: s.id, enabled: false })).toBe('«Счётчик» выключен.')
+    expect(scheduledCount()).toBe(0)
     expect(await runTool(scripts, 'cron_enable', cfg, { script: s.id, enabled: true })).toContain('включён, следующий запуск')
     expect(scheduledCount()).toBe(1)
     expect(queryJournal({ connector: 'scripts' })[0]).toMatchObject({ tool: 'cron:Счётчик', ok: true, resultSummary: 'n=1' })

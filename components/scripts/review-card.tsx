@@ -86,7 +86,7 @@ export function ReviewCard({ data }: { data: ReviewData }) {
             })
           }
         >
-          Одобрить этот код
+          Одобрить и включить
         </Button>
       </div>
     </Card>

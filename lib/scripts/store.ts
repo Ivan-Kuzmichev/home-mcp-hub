@@ -118,12 +118,16 @@ export async function updateScript(s: Script, change: { name?: string; descripti
   return { ...s, ...set }
 }
 
-/** Admin only: approves exactly this code (by hash). Enabling stays a separate step. */
+/** Admin only: approves exactly this code (by hash) and switches the script on. */
 export function approveScript(id: string, codeHash: string): void {
   const s = getScript(id)
   if (!s) throw new ScriptError('Скрипт не найден')
   if (s.codeHash !== codeHash) throw new ScriptError('Код изменился, пока ты смотрел — открой заново')
-  getDb().update(script).set({ approvedHash: s.codeHash, approvedCode: s.code, approvedAt: new Date(), rejectedHash: null, rejectReason: null }).where(eq(script.id, id)).run()
+  getDb()
+    .update(script)
+    .set({ approvedHash: s.codeHash, approvedCode: s.code, approvedAt: new Date(), rejectedHash: null, rejectReason: null, enabled: true })
+    .where(eq(script.id, id))
+    .run()
 }
 
 export function rejectScript(id: string, codeHash: string, reason: string): void {

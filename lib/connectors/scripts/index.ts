@@ -24,7 +24,7 @@ const configSchema = z.object({})
 type Config = z.output<typeof configSchema>
 const tool = toolFor<Config>()
 
-const APPROVAL = 'Код ждёт одобрения пользователя в админке хаба → «Скрипты». После одобрения включи его через cron_enable.'
+const APPROVAL = 'Код ждёт одобрения пользователя в админке хаба → «Скрипты»; после одобрения скрипт включится сам.'
 
 async function guard<T>(fn: () => Promise<T> | T): Promise<T> {
   try {
@@ -106,7 +106,7 @@ export const scripts = defineConnector<Config>({
     tool({
       name: 'cron_create',
       title: 'Создать cron-скрипт',
-      description: `Создать JS-скрипт, который хаб будет запускать по cron-расписанию. Код не запускается, пока пользователь не одобрит его в админке; затем включи его через cron_enable.\n${SANDBOX_API_DOC}`,
+      description: `Создать JS-скрипт, который хаб будет запускать по cron-расписанию. Код не запускается, пока пользователь не одобрит его в админке; одобренный скрипт включается сам.\n${SANDBOX_API_DOC}`,
       annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
       inputSchema: z.object({
         name: z.string().min(1).max(80),
@@ -144,7 +144,7 @@ export const scripts = defineConnector<Config>({
     tool({
       name: 'cron_enable',
       title: 'Включить или выключить скрипт',
-      description: 'Включить скрипт по расписанию (только одобренный код) или выключить.',
+      description: 'Выключить скрипт или включить обратно (только одобренный код). После одобрения скрипт включается сам — вызывать не нужно.',
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
       inputSchema: z.object({ script: refInput, enabled: z.boolean() }),
       async run({ script, enabled }) {
