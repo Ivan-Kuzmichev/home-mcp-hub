@@ -42,6 +42,8 @@ export const prototype = sqliteTable('prototype', {
   pinHash: text('pin_hash'),
   /** Bumped on every pin change: invalidates access cookies */
   pinVersion: integer('pin_version').notNull().default(0),
+  /** Digits in the pin, so the pin page shows exactly that many cells; null for pins set before it was stored */
+  pinLength: integer('pin_length'),
   expiresAt: integer('expires_at', { mode: 'timestamp_ms' }),
   sizeBytes: integer('size_bytes').notNull(),
   version: integer('version').notNull().default(1),

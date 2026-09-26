@@ -43,6 +43,13 @@
       "when": 1790429377396,
       "tag": "0005_paperless",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1790433045934,
+      "tag": "0006_pin_length",
+      "breakpoints": true
     }
   ]
 }

@@ -20,10 +20,13 @@ function attemptsWord(n: number): string {
 }
 
 /**
- * Pin entry. Cells grow from 4 to 8 as digits come in (the page does not reveal
- * the pin length). Keyboard on desktop, on-screen keypad on the phone.
+ * Pin entry: exactly `length` cells and auto-submit when they are filled. For pins set
+ * before the length was stored, cells grow from 4 to 8 as digits come in.
+ * Keyboard on desktop, on-screen keypad on the phone.
  */
-export function PinForm({ slug, title }: { slug: string; title: string }) {
+export function PinForm({ slug, title, length }: { slug: string; title: string; length?: number }) {
+  const max = length ?? MAX
+  const min = length ?? MIN
   const [pin, setPin] = useState('')
   const [busy, setBusy] = useState(false)
   const [status, setStatus] = useState<Status>({ kind: 'idle' })
@@ -35,14 +38,14 @@ export function PinForm({ slug, title }: { slug: string; title: string }) {
       if (key === 'back') return setPin((p) => p.slice(0, -1))
       if (/^\d$/.test(key)) {
         setStatus((s) => (s.kind === 'wrong' ? { kind: 'idle' } : s))
-        setPin((p) => (p.length < MAX ? p + key : p))
+        setPin((p) => (p.length < max ? p + key : p))
       }
     },
-    [busy, locked],
+    [busy, locked, max],
   )
 
   const submit = useCallback(async () => {
-    if (pin.length < MIN || busy || locked) return
+    if (pin.length < min || busy || locked) return
     setBusy(true)
     try {
       const res = await fetch(`/p/${slug}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pin }) })
@@ -57,7 +60,12 @@ export function PinForm({ slug, title }: { slug: string; title: string }) {
     } finally {
       setBusy(false)
     }
-  }, [pin, busy, locked, slug])
+  }, [pin, busy, locked, slug, min])
+
+  // Known length: send as soon as the last digit is in.
+  useEffect(() => {
+    if (length && pin.length === length) void submit()
+  }, [length, pin, submit])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -81,7 +89,7 @@ export function PinForm({ slug, title }: { slug: string; title: string }) {
     return () => clearInterval(t)
   }, [status.kind])
 
-  const cells = Math.min(MAX, Math.max(MIN, pin.length + (pin.length >= MIN && pin.length < MAX ? 1 : 0)))
+  const cells = length ?? Math.min(MAX, Math.max(MIN, pin.length + (pin.length >= MIN && pin.length < MAX ? 1 : 0)))
 
   return (
     <Card className="flex w-full max-w-[400px] flex-col items-center gap-6 border-0 bg-transparent p-0 sm:border sm:bg-card sm:p-8">
@@ -89,7 +97,7 @@ export function PinForm({ slug, title }: { slug: string; title: string }) {
         <span className="text-xs font-semibold tracking-[0.06em] text-subtle uppercase">Прототип</span>
         <h1 className="text-2xl">{title}</h1>
         <p className="text-muted-foreground">
-          Страница закрыта пинкодом. Его знает тот, кто прислал ссылку<span className="hidden sm:inline"> — введи цифры с клавиатуры</span>.
+          Страница закрыта пинкодом. Его знает тот, кто прислал ссылку<span className="hidden sm:inline"> — введи {length ? `${length} цифр${length < 5 ? 'ы' : ''}` : 'цифры'} с клавиатуры</span>.
         </p>
       </div>
 
@@ -138,7 +146,7 @@ export function PinForm({ slug, title }: { slug: string; title: string }) {
         </Key>
       </div>
 
-      <Button variant="primary" className="w-full max-w-[300px]" disabled={pin.length < MIN || busy || locked} onClick={() => void submit()}>
+      <Button variant="primary" className="w-full max-w-[300px]" disabled={pin.length < min || busy || locked} onClick={() => void submit()}>
         {busy ? 'Проверяю…' : 'Открыть'}
       </Button>
 

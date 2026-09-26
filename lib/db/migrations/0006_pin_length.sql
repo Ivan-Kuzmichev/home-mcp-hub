@@ -1,0 +1,1 @@
+ALTER TABLE `prototype` ADD `pin_length` integer;

@@ -30,7 +30,7 @@ export default async function PinPage({ params }: Props) {
         {host}/p/{slug}
       </div>
       <main className="flex flex-1 items-center justify-center">
-        <PinForm slug={slug} title={p.title} />
+        <PinForm slug={slug} title={p.title} length={p.pinLength ?? undefined} />
       </main>
       <div className="hidden justify-end font-mono text-xs text-faint sm:flex">noindex</div>
     </div>

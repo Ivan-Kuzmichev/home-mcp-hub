@@ -132,7 +132,7 @@ export async function publish(input: { html: string; title: string; pin?: string
   if (input.draft) writeDraft(id, input.html)
   else writeVersion(id, 1, input.html)
   const version = input.draft ? 0 : 1
-  const row = { id, slug, title, pinHash, pinVersion: 0, expiresAt: expiryDate(input.expiry ?? 'never', now), sizeBytes: input.draft ? 0 : size, version, views: 0, lastViewedAt: null, createdAt: now, updatedAt: now }
+  const row = { id, slug, title, pinHash, pinVersion: 0, pinLength: input.pin ? input.pin.length : null, expiresAt: expiryDate(input.expiry ?? 'never', now), sizeBytes: input.draft ? 0 : size, version, views: 0, lastViewedAt: null, createdAt: now, updatedAt: now }
   getDb().insert(prototype).values(row).run()
   return row
 }
@@ -155,6 +155,7 @@ export async function update(
   }
   if (change.pin !== undefined) {
     set.pinHash = change.pin === null ? null : await hashPin(change.pin)
+    set.pinLength = change.pin === null ? null : change.pin.length
     // Old access cookies stop working after any pin change.
     set.pinVersion = p.pinVersion + 1
   }
