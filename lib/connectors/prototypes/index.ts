@@ -41,7 +41,8 @@ const moreInput = z
   .default(false)
   .describe('true — это не последняя часть HTML: остальное допиши через prototype_append, последний кусок — с more: false')
 
-export const CHUNK_HINT = 'HTML больше ~15 КБ отправляй частями по 10–15 КБ: первый кусок с more: true, остальные — prototype_append, последний — с more: false.'
+// Measured: one tool argument breaks at ~10 KB of generated HTML on Claude's side, 5–6 KB parts go through.
+export const CHUNK_HINT = 'HTML больше ~5 КБ отправляй частями по 4–5 КБ: первый кусок с more: true, остальные — prototype_append, последний — с more: false.'
 
 function find(ref: string): Prototype {
   const p = getBySlug(slugFrom(ref))
