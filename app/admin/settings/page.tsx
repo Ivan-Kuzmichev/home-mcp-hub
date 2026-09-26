@@ -1,13 +1,11 @@
-import { and, eq } from 'drizzle-orm'
-import { headers } from 'next/headers'
+import { and, desc, eq, gt } from 'drizzle-orm'
 import { PageHeader } from '@/components/admin/page-header'
 import { BackupCodesRow, PasswordRow, SessionsRow, SettingsRow } from '@/components/settings/account'
 import { Card } from '@/components/ui/card'
 import { StatusDot } from '@/components/ui/pill'
-import { getAuth } from '@/lib/auth'
 import { plural } from '@/lib/connectors/format'
 import { getDb } from '@/lib/db'
-import { account } from '@/lib/db/schema'
+import { account, session as sessionTable } from '@/lib/db/schema'
 import { env } from '@/lib/env'
 import { formatAgo, formatWhen } from '@/lib/format'
 import { JOURNAL_RETENTION_DAYS } from '@/lib/journal'
@@ -30,7 +28,14 @@ const version = (name: string) => (pkg.dependencies as Record<string, string>)[n
 export default async function SettingsPage() {
   const session = await requireAdmin()
   const e = env()
-  const sessions = await getAuth().api.listSessions({ headers: await headers() })
+  // Straight from the table: better-auth's list-sessions demands a «fresh» session (< 1 day since
+  // sign-in) and throws on the 7-day admin session.
+  const sessions = getDb()
+    .select({ id: sessionTable.id, userAgent: sessionTable.userAgent, ipAddress: sessionTable.ipAddress })
+    .from(sessionTable)
+    .where(and(eq(sessionTable.userId, session.user.id), gt(sessionTable.expiresAt, new Date())))
+    .orderBy(desc(sessionTable.updatedAt))
+    .all()
   const credential = getDb()
     .select({ updatedAt: account.updatedAt })
     .from(account)
