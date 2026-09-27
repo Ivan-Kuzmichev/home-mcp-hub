@@ -64,3 +64,20 @@ describe('MCP server', () => {
     expect(snap.parts.find((p) => p.connector === 'TorrServe')).toMatchObject({ mode: 'replace', text: null })
   })
 })
+
+describe('custom MCP tools', () => {
+  it('appear in tools/list once approved and are called like any tool', async () => {
+    const store = await import('@/lib/scripts/store')
+    const s = await store.createTool({ name: 'greet', description: 'Здоровается', params: [{ name: 'who', type: 'string', description: '', required: true }], readOnly: true, code: `return 'привет, ' + args.who` })
+    const names = async () => (await rpc<{ tools: { name: string }[] }>('tools/list')).tools.map((t) => t.name)
+    expect(await names()).not.toContain('my_greet')
+
+    store.approveScript(s.id, s.codeHash)
+    const tools = (await rpc<{ tools: { name: string; inputSchema: { required?: string[] }; annotations?: { readOnlyHint?: boolean } }[] }>('tools/list')).tools
+    const greet = tools.find((t) => t.name === 'my_greet')
+    expect(greet).toMatchObject({ inputSchema: { required: ['who'] }, annotations: { readOnlyHint: true } })
+
+    const called = await rpc<{ content: { text: string }[] }>('tools/call', { name: 'my_greet', arguments: { who: 'Ваня' } })
+    expect(called.content[0]!.text).toBe('привет, Ваня')
+  })
+})

@@ -4,12 +4,14 @@ import { ReviewCard } from '@/components/scripts/review-card'
 import { ScriptRow } from '@/components/scripts/script-row'
 import { ConnectorSharing } from '@/components/scripts/connector-sharing'
 import { SecretsForm } from '@/components/scripts/secrets-form'
+import { ToolForm } from '@/components/scripts/tool-form'
 import { Card } from '@/components/ui/card'
 import { formatAgo, formatWhen } from '@/lib/format'
 import { activeConfig } from '@/lib/connectors/active'
 import { describeConnectorSharing } from '@/lib/scripts/connector-secrets'
 import { listSecrets } from '@/lib/scripts/secrets'
-import { listRuns, listScripts, nextRun, STATUS_LABELS, statusOf } from '@/lib/scripts/store'
+import { listRuns, listScripts, nextRun, STATUS_LABELS, statusOf, type Script } from '@/lib/scripts/store'
+import { describeParams } from '@/lib/scripts/tool-spec'
 
 export const dynamic = 'force-dynamic'
 
@@ -21,11 +23,13 @@ export default function ScriptsPage() {
   const all = listScripts()
   const pending = all.filter((s) => statusOf(s) === 'pending')
   const secrets = listSecrets()
+  const crons = all.filter((s) => s.kind === 'cron')
+  const tools = all.filter((s) => s.kind === 'tool')
   const localOff = (activeConfig('scripts') as { allowLocal?: boolean } | null)?.allowLocal !== true
 
   return (
     <>
-      <PageHeader title="Скрипты" subtitle="JS по расписанию. Код пишет ассистент, запускается только одобренный тобой." />
+      <PageHeader title="Скрипты" subtitle="JS по расписанию и свои MCP-инструменты. Код пишет ассистент, запускается только одобренный тобой." />
 
       {pending.length > 0 && (
         <div className="flex flex-col gap-3">
@@ -38,6 +42,7 @@ export default function ScriptsPage() {
                 name: s.name,
                 description: s.description,
                 schedule: s.schedule,
+                tool: s.kind === 'tool' ? { params: describeParams(s.spec), readOnly: !!s.spec?.readOnly, previousParams: s.approvedHash ? describeParams(s.approvedSpec) : null } : null,
                 code: s.code,
                 codeHash: s.codeHash,
                 previousCode: s.approvedCode,
@@ -51,45 +56,27 @@ export default function ScriptsPage() {
       )}
 
       <Card className="flex flex-col p-4 md:p-5">
-        <h2 className="pb-1 text-[15px]">Все скрипты</h2>
-        {all.length === 0 ? (
+        <h2 className="pb-1 text-[15px]">Cron-скрипты</h2>
+        {crons.length === 0 ? (
           <div className="py-6 text-center text-[13px] text-subtle">Скриптов нет. Попроси ассистента: «заведи cron, который каждое утро присылает в Telegram список докачанного».</div>
         ) : (
-          all.map((s) => {
-            const status = statusOf(s)
-            const next = status === 'active' ? nextRun(s.schedule) : null
-            return (
-              <ScriptRow
-                key={`${s.id}-${s.updatedAt.getTime()}`}
-                s={{
-                  id: s.id,
-                  name: s.name,
-                  description: s.description,
-                  schedule: s.schedule,
-                  status,
-                  statusLabel: STATUS_LABELS[status],
-                  tone: TONES[status],
-                  approved: s.approvedHash === s.codeHash,
-                  enabled: s.enabled,
-                  next: next ? formatWhen(next) : null,
-                  last: s.lastRunAt ? `${formatAgo(s.lastRunAt)} — ${s.lastRunOk ? 'ок' : 'ошибка'}` : null,
-                  rejectReason: status === 'rejected' ? s.rejectReason : null,
-                  code: s.code,
-                  runs: listRuns(s.id, 10).map((r) => ({
-                    id: r.id,
-                    when: formatWhen(r.startedAt),
-                    trigger: r.trigger,
-                    ok: r.ok,
-                    duration: `${(r.durationMs / 1000).toFixed(1)} с`,
-                    error: r.error,
-                    output: r.output,
-                    logs: r.logs,
-                  })),
-                }}
-              />
-            )
-          })
+          crons.map((s) => <ScriptRow key={`${s.id}-${s.updatedAt.getTime()}`} s={rowOf(s)} />)
         )}
+      </Card>
+
+      <Card className="flex flex-col p-4 md:p-5">
+        <div className="flex flex-col gap-0.5 pb-1">
+          <h2 className="text-[15px]">MCP-инструменты</h2>
+          <span className="text-xs text-subtle">
+            Свои инструменты, которые ассистент вызывает сам: код с параметрами, те же секреты и сеть, что у скриптов. Новый инструмент появляется у ассистента в новом чате.
+          </span>
+        </div>
+        {tools.length === 0 ? (
+          <div className="py-4 text-[13px] text-subtle">Инструментов нет. Попроси ассистента: «сделай инструмент, который по городу возвращает погоду», или добавь сам ниже.</div>
+        ) : (
+          tools.map((s) => <ScriptRow key={`${s.id}-${s.updatedAt.getTime()}`} s={rowOf(s)} />)
+        )}
+        <ToolForm />
       </Card>
 
       <Card className="flex flex-col gap-3 p-4 md:p-5">
@@ -112,4 +99,35 @@ export default function ScriptsPage() {
       </Card>
     </>
   )
+}
+
+function rowOf(s: Script) {
+  const status = statusOf(s)
+  const next = status === 'active' && s.kind === 'cron' ? nextRun(s.schedule) : null
+  return {
+    id: s.id,
+    name: s.name,
+    description: s.description,
+    schedule: s.schedule,
+    tool: s.kind === 'tool' ? { params: describeParams(s.spec), readOnly: !!s.spec?.readOnly } : null,
+    status,
+    statusLabel: STATUS_LABELS[status],
+    tone: TONES[status],
+    approved: s.approvedHash === s.codeHash,
+    enabled: s.enabled,
+    next: next ? formatWhen(next) : null,
+    last: s.lastRunAt ? `${formatAgo(s.lastRunAt)} — ${s.lastRunOk ? 'ок' : 'ошибка'}` : null,
+    rejectReason: status === 'rejected' ? s.rejectReason : null,
+    code: s.code,
+    runs: listRuns(s.id, 10).map((r) => ({
+      id: r.id,
+      when: formatWhen(r.startedAt),
+      trigger: r.trigger,
+      ok: r.ok,
+      duration: `${(r.durationMs / 1000).toFixed(1)} с`,
+      error: r.error,
+      output: r.output,
+      logs: r.logs,
+    })),
+  }
 }

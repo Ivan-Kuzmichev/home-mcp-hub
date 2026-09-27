@@ -14,6 +14,7 @@ export type ScriptView = {
   name: string
   description: string
   schedule: string
+  tool: { params: string; readOnly: boolean } | null
   status: string
   statusLabel: string
   tone: PillTone
@@ -55,7 +56,7 @@ export function ScriptRow({ s }: { s: ScriptView }) {
         <Switch
           checked={enabled}
           disabled={pending || !s.approved}
-          label={`${s.name} включён`}
+          label={s.tool ? `${s.name} доступен ассистенту` : `${s.name} включён`}
           onChange={(v) =>
             start(async () => {
               setEnabled(v)
@@ -68,13 +69,22 @@ export function ScriptRow({ s }: { s: ScriptView }) {
           }
         />
         <div className="flex min-w-0 flex-1 flex-col">
-          <span className="font-medium break-words">
-            {s.name} <span className="font-mono text-xs text-subtle">{s.id}</span>
+          <span className={s.tool ? 'font-mono text-[13px] font-medium break-words' : 'font-medium break-words'}>
+            {s.name} <span className="font-mono text-xs font-normal text-subtle">{s.id}</span>
           </span>
           <span className="text-xs break-words text-subtle">
-            <span className="font-mono">{s.schedule}</span>
-            {s.next && ` · следующий ${s.next}`}
-            {s.last && ` · последний ${s.last}`}
+            {s.tool ? (
+              <>
+                <span className="font-mono">{s.tool.params}</span> · {s.tool.readOnly ? 'только чтение' : 'меняет данные'}
+                {s.last && ` · последний вызов ${s.last}`}
+              </>
+            ) : (
+              <>
+                <span className="font-mono">{s.schedule}</span>
+                {s.next && ` · следующий ${s.next}`}
+                {s.last && ` · последний ${s.last}`}
+              </>
+            )}
           </span>
         </div>
         <div className="hidden shrink-0 gap-2 lg:flex">{actions}</div>

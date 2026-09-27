@@ -4,24 +4,37 @@ import { logger } from '../logger'
 import { DEFAULT_NET_POLICY, type NetPolicy } from './net'
 import { runScript, type RunResult } from './sandbox'
 import { SecretVault } from './secrets'
+import { TOOL_TIME_MS } from './tool-spec'
 import { getScript, listScripts, recordRun, statusOf, type Script } from './store'
 
-/** Read-only hub tools for hub.tool(); imported lazily to avoid a cycle with the registry. */
-async function callReadOnlyTool(name: string, args: unknown): Promise<string> {
-  const { connectorStates } = await import('../connectors/active')
-  const { activeConfig } = await import('../connectors/active')
+/**
+ * Hub tools for hub.tool(); imported lazily to avoid a cycle with the registry. Read-only tools
+ * always; tools that change data only while scripts may reach the local network — the same
+ * services are reachable over fetch then anyway. The scripts connector's own tools are never
+ * available: a script must not write or approve scripts.
+ */
+async function callHubTool(name: string, args: unknown, allowWrite: boolean): Promise<string> {
+  const { connectorStates, activeConfig } = await import('../connectors/active')
   const { resolveResult } = await import('../connectors/resolve')
   const { outputText } = await import('../connectors/types')
   for (const state of connectorStates()) {
     if (state.status !== 'active') continue
     const tool = state.connector.tools.find((t) => t.name === name)
     if (!tool || state.row.disabledTools.includes(name)) continue
-    if (!tool.annotations.readOnlyHint) throw new Error(`${name} меняет данные — из скриптов доступны только инструменты для чтения`)
+    if (state.connector.id === 'scripts') throw new Error(`${name} недоступен из скриптов`)
+    if (!tool.annotations.readOnlyHint && !allowWrite) throw new Error(`${name} меняет данные — из скриптов это можно, только когда в настройках скриптов открыта локальная сеть`)
     const jackett = activeConfig('jackett') as { baseUrl?: string; apiKey?: string } | null
     const access = jackett?.baseUrl && jackett.apiKey ? { baseUrl: jackett.baseUrl, apiKey: jackett.apiKey } : null
     return outputText(await tool.run(args, { config: state.config, resolveResult: (id) => resolveResult(id, access) }))
   }
   throw new Error(`Инструмента ${name} нет или его коннектор выключен`)
+}
+
+/** Everything a run needs from the hub: network policy, secrets with shared connector values, hub tools. */
+async function runDeps() {
+  const net = await netPolicy()
+  const { connectorValues } = await import('./connector-secrets')
+  return { net, vault: new SecretVault(connectorValues()), callTool: (name: string, args: unknown) => callHubTool(name, args, net.local) }
 }
 
 /** Network switches from the scripts connector; external only if it cannot be read. */
@@ -43,9 +56,7 @@ export async function executeScript(id: string, trigger: 'cron' | 'manual' | 'as
   if (busy.has(id)) throw new Error('Скрипт уже выполняется')
   busy.add(id)
   try {
-    const { connectorValues } = await import('./connector-secrets')
-    const vault = new SecretVault(connectorValues())
-    const r = await runScript(s.id, s.code, { callTool: callReadOnlyTool, net: await netPolicy(), vault })
+    const r = await runScript(s.id, s.code, await runDeps())
     recordRun(s, trigger, r)
     logToolCall({
       tool: `cron:${s.name}`,
@@ -62,9 +73,22 @@ export async function executeScript(id: string, trigger: 'cron' | 'manual' | 'as
   }
 }
 
+/**
+ * Call an approved MCP tool. The journal entry is written by the MCP layer, like for every
+ * tool; the run history is kept here.
+ */
+export async function executeTool(id: string, args: Record<string, unknown>, trigger: 'assistant' | 'manual' = 'assistant'): Promise<RunResult> {
+  const s = getScript(id)
+  if (!s || s.kind !== 'tool') throw new Error('Инструмент не найден')
+  if (s.approvedHash !== s.codeHash) throw new Error('Код не одобрен — вызов невозможен')
+  const r = await runScript(s.id, s.code, { ...(await runDeps()), args, timeMs: TOOL_TIME_MS })
+  recordRun(s, trigger, r)
+  return r
+}
+
 /** Align node-cron tasks with active scripts. Called at start and after every change. */
 export function syncSchedules(): void {
-  const active = new Map(listScripts().filter((s) => statusOf(s) === 'active').map((s) => [s.id, s] as [string, Script]))
+  const active = new Map(listScripts().filter((s) => s.kind === 'cron' && statusOf(s) === 'active').map((s) => [s.id, s] as [string, Script]))
   for (const [id, entry] of tasks) {
     const s = active.get(id)
     if (!s || s.schedule !== entry.schedule) {

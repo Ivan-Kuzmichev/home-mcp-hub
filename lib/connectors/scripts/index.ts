@@ -1,12 +1,14 @@
 import { z } from 'zod'
 import { formatAgo, formatWhen } from '../../format'
 import { logger } from '../../logger'
-import { executeScript, syncSchedules } from '../../scripts/scheduler'
+import { executeScript, executeTool, syncSchedules } from '../../scripts/scheduler'
 import { LIMITS, SANDBOX_API_DOC } from '../../scripts/sandbox'
 import { listSecrets } from '../../scripts/secrets'
+import { describeParams, inputSchemaOf, MAX_PARAMS, paramInput } from '../../scripts/tool-spec'
 import {
   approveScript,
   createScript,
+  createTool,
   deleteScript,
   findScript,
   listRuns,
@@ -25,7 +27,7 @@ import { defineConnector, field, toolFor, ToolError } from '../types'
 const configSchema = z.object({
   autoApprove: field(z.boolean().default(false), {
     label: 'Без одобрения',
-    help: 'Код от ассистента сразу одобряется и включается, без проверки в админке. Скрипт выполнится по расписанию, и ты его не увидишь заранее',
+    help: 'Код от ассистента — cron-скрипты и MCP-инструменты — сразу одобряется и включается, без проверки в админке. Ты не увидишь его заранее',
     widget: 'switch',
   }),
   allowExternal: field(z.boolean().default(true), {
@@ -35,7 +37,7 @@ const configSchema = z.object({
   }),
   allowLocal: field(z.boolean().default(false), {
     label: 'Доступ к локальной сети',
-    help: 'fetch к NAS, контейнерам, роутеру и localhost. Скрипт сможет ходить в сервисы напрямую, мимо инструментов хаба',
+    help: 'fetch к NAS, контейнерам, роутеру и localhost, плюс инструменты хаба с записью через hub.tool (torrent_add, paperless_update…). Скрипт сможет менять данные в домашних сервисах',
     widget: 'switch',
   }),
 })
@@ -55,10 +57,11 @@ function autoApprove(config: Config, s: Script): Script {
 }
 
 function networkLine(c: Config): string {
-  if (c.allowExternal && c.allowLocal) return 'fetch может ходить и во внешние адреса, и в локальную сеть.'
-  if (c.allowLocal) return 'fetch может ходить только в локальную сеть (NAS, контейнеры, localhost); интернет закрыт.'
-  if (c.allowExternal) return 'fetch может ходить только во внешние адреса; локальная сеть закрыта.'
-  return 'Сеть скриптам выключена: fetch не работает, доступны только hub.tool и state.'
+  const hub = c.allowLocal ? ' hub.tool — любые инструменты хаба, включая запись.' : ' hub.tool — только инструменты для чтения.'
+  if (c.allowExternal && c.allowLocal) return `fetch может ходить и во внешние адреса, и в локальную сеть.${hub}`
+  if (c.allowLocal) return `fetch может ходить только в локальную сеть (NAS, контейнеры, localhost); интернет закрыт.${hub}`
+  if (c.allowExternal) return `fetch может ходить только во внешние адреса; локальная сеть закрыта.${hub}`
+  return `Сеть скриптам выключена: fetch не работает, доступны только hub.tool и state.${hub}`
 }
 
 async function guard<T>(fn: () => Promise<T> | T): Promise<T> {
@@ -72,6 +75,17 @@ async function guard<T>(fn: () => Promise<T> | T): Promise<T> {
 
 function line(s: Script): string {
   const status = statusOf(s)
+  if (s.kind === 'tool') {
+    const parts = [
+      `${s.name} (${s.id})`,
+      'MCP-инструмент',
+      describeParams(s.spec),
+      s.spec?.readOnly ? 'только чтение' : 'меняет данные',
+      status === 'active' ? 'доступен' : STATUS_LABELS[status],
+      s.lastRunAt ? `последний вызов ${formatAgo(s.lastRunAt)} — ${s.lastRunOk ? 'ок' : 'ошибка'}` : null,
+    ].filter(Boolean)
+    return `• ${parts.join(' · ')}`
+  }
   const next = status === 'active' ? nextRun(s.schedule) : null
   const parts = [
     `«${s.name}» (${s.id})`,
@@ -83,12 +97,20 @@ function line(s: Script): string {
   return `• ${parts.join(' · ')}`
 }
 
-const refInput = z.string().min(1).describe('Id (sc_…) или имя скрипта из cron_list')
+const refInput = z.string().min(1).describe('Id (sc_…) или имя скрипта / инструмента из cron_list')
+
+const TOOL_APPROVAL =
+  'Инструмент ждёт одобрения пользователя в админке хаба → «Скрипты». После одобрения он появится в новом чате (в текущем список инструментов не обновляется); проверить сейчас можно через cron_run с args.'
+
+const paramsInput = z
+  .array(paramInput)
+  .max(MAX_PARAMS)
+  .describe('Параметры: name (латиница, snake_case), type (string | number | boolean | enum), description, required (по умолчанию true), options — для enum')
 
 export const scripts = defineConnector<Config>({
   id: 'scripts',
   name: 'Cron-скрипты',
-  description: 'JS-скрипты по расписанию, код одобряет пользователь',
+  description: 'JS-скрипты по расписанию и свои MCP-инструменты, код одобряет пользователь',
   builtin: true,
   configSchema,
 
@@ -102,8 +124,13 @@ export const scripts = defineConnector<Config>({
         ? `Cron-скрипты: ${writes.join('/')} сразу включают скрипт — одобрения нет, поэтому покажи пользователю код и расписание, прежде чем сохранять.`
         : `Cron-скрипты: ${writes.join('/')} ${verb} код на одобрение пользователю; одобренный скрипт включается сам, запускать можно только одобренный.`,
       networkLine(c),
+      tools.includes('tool_create')
+        ? `Свои MCP-инструменты: tool_create/tool_update — JS с параметрами, который потом вызываешь ты сам (имя с префиксом my_); после ${c.autoApprove ? 'сохранения' : 'одобрения'} он появится в новом чате, в текущем проверяй через cron_run с args.`
+        : null,
       tools.includes('cron_secrets') ? 'Секреты — только заглушками {{secret:ИМЯ}} (список — cron_secrets), значения тебе недоступны.' : 'Секреты — только заглушками {{secret:ИМЯ}}, значения тебе недоступны.',
-    ].join(' ')
+    ]
+      .filter(Boolean)
+      .join(' ')
   },
 
   async test(c) {
@@ -143,8 +170,9 @@ export const scripts = defineConnector<Config>({
         return [
           line(s),
           s.description ? `Описание: ${s.description}` : null,
+          s.kind === 'tool' && s.spec?.params.length ? `Параметры:\n${s.spec.params.map((p) => `  ${p.name}${p.required ? '' : '?'} (${p.type === 'enum' ? (p.options ?? []).join('|') : p.type})${p.description ? ` — ${p.description}` : ''}`).join('\n')}` : null,
           status === 'rejected' && s.rejectReason ? `Причина отказа: ${s.rejectReason}` : null,
-          status === 'pending' ? APPROVAL : null,
+          status === 'pending' ? (s.kind === 'tool' ? TOOL_APPROVAL : APPROVAL) : null,
           `Код:\n\`\`\`js\n${s.code}\n\`\`\``,
         ]
           .filter(Boolean)
@@ -187,12 +215,63 @@ export const scripts = defineConnector<Config>({
       }),
       async run({ script, ...change }, { config }) {
         const before = await guard(() => findScript(script))
+        if (before.kind === 'tool') throw new ToolError(`${before.name} — MCP-инструмент, меняй его через tool_update`)
         const updated = await guard(() => updateScript(before, change))
         // Only new code is auto-approved: a script the admin switched off stays off.
         const s = updated.codeHash !== before.codeHash ? autoApprove(config, updated) : updated
         syncSchedules()
         const codeChanged = s.codeHash !== before.codeHash
         return [`Обновлён «${s.name}»: ${STATUS_LABELS[statusOf(s)]}.`, codeChanged && statusOf(s) === 'pending' ? `Новый код выключен до одобрения. ${APPROVAL}` : null].filter(Boolean).join('\n')
+      },
+    }),
+
+    tool({
+      name: 'tool_create',
+      title: 'Создать MCP-инструмент',
+      description: `Создать свой MCP-инструмент: JS-код с параметрами, который ты потом вызываешь сам, как любой другой инструмент (например «курс валюты», «рейтинг фильма по API с ключом пользователя»). Имя получит префикс my_. Описание — то, что ты увидишь в списке инструментов: когда вызывать и что вернёт. Код видит аргументы в args, результат — через return (текст или объект, до 10 КБ), лимит 25 с. Обычно ждёт одобрения пользователя; после него доступен в новом чате.\n${SANDBOX_API_DOC}`,
+      annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
+      inputSchema: z.object({
+        name: z.string().min(1).max(40).describe('Имя, например eth_price → my_eth_price'),
+        description: z.string().min(1).max(1000).describe('Для модели: что делает, когда вызывать, что возвращает'),
+        params: paramsInput.default([]),
+        read_only: z.boolean().default(true).describe('true — только читает; false — меняет данные где-то (шлёт сообщения, пишет в сервисы)'),
+        code: z.string().min(1),
+      }),
+      async run({ read_only, ...args }, { config }) {
+        const s = autoApprove(config, await guard(() => createTool({ ...args, readOnly: read_only })))
+        return [
+          `Создан ${s.name} (${s.id}): ${describeParams(s.spec)}.`,
+          statusOf(s) === 'active' ? 'Доступен без одобрения — появится в новом чате; проверить сейчас — cron_run с args.' : TOOL_APPROVAL,
+        ].join('\n')
+      },
+    }),
+
+    tool({
+      name: 'tool_update',
+      title: 'Изменить MCP-инструмент',
+      description: 'Изменить имя, описание, параметры, флаг read_only или код своего инструмента. Новый код или параметры снова ждут одобрения, и до него инструмент недоступен; имя и описание — без одобрения (обновятся в новом чате).',
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+      inputSchema: z.object({
+        tool: z.string().min(1).describe('Имя (my_…) или id инструмента'),
+        name: z.string().min(1).max(40).optional(),
+        description: z.string().min(1).max(1000).optional(),
+        params: paramsInput.optional(),
+        read_only: z.boolean().optional(),
+        code: z.string().min(1).optional(),
+      }),
+      async run({ tool: ref, read_only, ...change }, { config }) {
+        const before = await guard(() => findScript(ref))
+        if (before.kind !== 'tool') throw new ToolError(`«${before.name}» — cron-скрипт, меняй его через cron_update`)
+        const updated = await guard(() => updateScript(before, { ...change, readOnly: read_only }))
+        const s = updated.codeHash !== before.codeHash ? autoApprove(config, updated) : updated
+        const changed = s.codeHash !== before.codeHash
+        return [
+          `Обновлён ${s.name}: ${statusOf(s) === 'active' ? 'доступен' : STATUS_LABELS[statusOf(s)]}.`,
+          changed && statusOf(s) === 'pending' ? `Новая версия недоступна до одобрения. ${TOOL_APPROVAL}` : null,
+          !changed ? 'Изменения видны в новом чате.' : null,
+        ]
+          .filter(Boolean)
+          .join('\n')
       },
     }),
 
@@ -214,13 +293,21 @@ export const scripts = defineConnector<Config>({
     tool({
       name: 'cron_run',
       title: 'Запустить скрипт сейчас',
-      description: 'Запустить одобренный скрипт прямо сейчас и получить результат, лог и ошибку — чтобы проверить его.',
+      description: 'Запустить одобренный скрипт или MCP-инструмент прямо сейчас и получить результат, лог и ошибку — чтобы проверить его. Для инструмента передай args.',
       annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
-      inputSchema: z.object({ script: refInput }),
-      async run({ script }) {
+      inputSchema: z.object({ script: refInput, args: z.record(z.string(), z.unknown()).optional().describe('Аргументы для MCP-инструмента') }),
+      async run({ script, args }) {
         const s = await guard(() => findScript(script))
-        if (s.approvedHash !== s.codeHash) throw new ToolError(`Код «${s.name}» не одобрен. ${APPROVAL}`)
-        const r = await executeScript(s.id, 'assistant').catch((e: Error) => {
+        if (s.approvedHash !== s.codeHash) throw new ToolError(`Код «${s.name}» не одобрен. ${s.kind === 'tool' ? TOOL_APPROVAL : APPROVAL}`)
+        const run =
+          s.kind === 'tool' && s.spec
+            ? (() => {
+                const parsed = inputSchemaOf(s.spec).safeParse(args ?? {})
+                if (!parsed.success) throw new ToolError(`Неверные args: ${parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ')}`)
+                return executeTool(s.id, parsed.data)
+              })()
+            : executeScript(s.id, 'assistant')
+        const r = await run.catch((e: Error) => {
           throw new ToolError(e.message)
         })
         return [

@@ -139,3 +139,57 @@ describe('cron scripts: connector settings for scripts', () => {
     expect(connectorValues()).toEqual([])
   })
 })
+
+describe('MCP tools from the Scripts screen', () => {
+  it('tool_create waits for approval; after it the tool runs with args', async () => {
+    const out = await runTool(scripts, 'tool_create', cfg, {
+      name: 'Echo Name',
+      description: 'Повторяет имя',
+      params: [{ name: 'who', type: 'string', description: 'кого' }, { name: 'times', type: 'number', required: false }],
+      code: `return 'hi ' + args.who + ' x' + (args.times ?? 1)`,
+    })
+    expect(out).toContain('Создан my_echo_name')
+    expect(out).toContain('who: string, times?: number')
+    const s = store.findScript('my_echo_name')
+    expect(store.statusOf(s)).toBe('pending')
+    await expect(runTool(scripts, 'cron_run', cfg, { script: 'my_echo_name', args: { who: 'a' } })).rejects.toThrow('не одобрен')
+
+    store.approveScript(s.id, s.codeHash)
+    expect(await runTool(scripts, 'cron_run', cfg, { script: 'my_echo_name', args: { who: 'Ваня', times: 2 } })).toContain('hi Ваня x2')
+    await expect(runTool(scripts, 'cron_run', cfg, { script: 'my_echo_name', args: {} })).rejects.toThrow('Неверные args')
+  })
+
+  it('new parameters need a new approval; rejecting brings the old version back', async () => {
+    const before = store.findScript('my_echo_name')
+    await runTool(scripts, 'tool_update', cfg, { tool: 'my_echo_name', params: [{ name: 'who', type: 'enum', options: ['a', 'b'] }] })
+    const changed = store.findScript('my_echo_name')
+    expect(store.statusOf(changed)).toBe('pending')
+    expect(changed.spec?.params[0]).toMatchObject({ type: 'enum', options: ['a', 'b'] })
+    store.rejectScript(changed.id, changed.codeHash)
+    const back = store.findScript('my_echo_name')
+    expect(back.codeHash).toBe(before.codeHash)
+    expect(back.spec?.params).toHaveLength(2)
+    expect(store.statusOf(back)).toBe('active')
+
+    // A new description alone needs no approval.
+    await runTool(scripts, 'tool_update', cfg, { tool: 'my_echo_name', description: 'Здоровается' })
+    expect(store.statusOf(store.findScript('my_echo_name'))).toBe('active')
+    await expect(runTool(scripts, 'cron_update', cfg, { script: 'my_echo_name', code: 'return 1' })).rejects.toThrow('tool_update')
+  })
+
+  it('hub.tool writes only with the local network open; never the scripts tools', async () => {
+    const { saveConfig } = await import('@/lib/connectors/store')
+    const { getConnector } = await import('@/lib/connectors/registry')
+    const { executeTool } = await import('@/lib/scripts/scheduler')
+    saveConfig(getConnector('prototypes')!, {})
+    const create = (name: string, code: string) => runTool(scripts, 'tool_create', configOf(scripts, { autoApprove: true }), { name, description: 't', code })
+
+    await create('hub_write', `return await hub.tool('prototype_delete', { prototype: 'nope', confirm: true })`)
+    await create('hub_self', `return await hub.tool('cron_list', {})`)
+    saveConfig(getConnector('scripts')!, { allowLocal: false })
+    expect((await executeTool(store.findScript('my_hub_write').id, {})).error).toContain('меняет данные')
+    saveConfig(getConnector('scripts')!, { allowLocal: true })
+    expect((await executeTool(store.findScript('my_hub_write').id, {})).error ?? '').not.toContain('меняет данные')
+    expect((await executeTool(store.findScript('my_hub_self').id, {})).error).toContain('недоступен из скриптов')
+  })
+})

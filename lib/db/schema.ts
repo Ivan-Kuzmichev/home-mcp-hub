@@ -98,12 +98,20 @@ export const downloadLink = sqliteTable('download_link', {
 })
 
 /** Cron scripts written by the assistant; run only while the approved code hash matches. */
+export type ToolParam = { name: string; type: 'string' | 'number' | 'boolean' | 'enum'; description: string; required: boolean; options?: string[] }
+export type ToolSpec = { params: ToolParam[]; readOnly: boolean }
+
 export const script = sqliteTable('script', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
   description: text('description').notNull().default(''),
+  /** cron: runs on `schedule`; tool: an MCP tool the assistant calls (`name` is the tool name) */
+  kind: text('kind').$type<'cron' | 'tool'>().notNull().default('cron'),
   schedule: text('schedule').notNull(),
   code: text('code').notNull(),
+  /** tool only: parameters and the read-only flag; part of the approved version */
+  spec: text('spec', { mode: 'json' }).$type<ToolSpec | null>(),
+  approvedSpec: text('approved_spec', { mode: 'json' }).$type<ToolSpec | null>(),
   codeHash: text('code_hash').notNull(),
   approvedHash: text('approved_hash'),
   approvedCode: text('approved_code'),

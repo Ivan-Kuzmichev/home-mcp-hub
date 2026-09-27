@@ -12,6 +12,8 @@ export type ReviewData = {
   name: string
   description: string
   schedule: string
+  /** set for MCP tools: parameters line, read-only flag, what changed */
+  tool: { params: string; readOnly: boolean; previousParams: string | null } | null
   code: string
   codeHash: string
   previousCode: string | null
@@ -32,12 +34,31 @@ export function ReviewCard({ data }: { data: ReviewData }) {
         <div className="flex min-w-0 flex-col gap-0.5">
           <span className="font-semibold">{data.name}</span>
           <span className="text-xs text-subtle">
-            {data.previousCode ? 'Изменение кода' : 'Новый скрипт'} · <span className="font-mono">{data.schedule}</span> · {data.updatedAgo}
+            {data.tool ? (
+              <>
+                {data.previousCode ? 'Изменение инструмента' : 'Новый MCP-инструмент'} · {data.tool.readOnly ? 'только чтение' : 'меняет данные'} · {data.updatedAgo}
+              </>
+            ) : (
+              <>
+                {data.previousCode ? 'Изменение кода' : 'Новый скрипт'} · <span className="font-mono">{data.schedule}</span> · {data.updatedAgo}
+              </>
+            )}
           </span>
         </div>
         <Pill tone="warn">ждёт одобрения</Pill>
       </div>
-      {data.description && <p className="text-[13px] text-muted-foreground">{data.description}</p>}
+      {data.description && <p className="text-[13px] whitespace-pre-wrap text-muted-foreground">{data.description}</p>}
+      {data.tool && (
+        <div className="text-xs text-subtle">
+          Параметры: <span className="font-mono text-muted-foreground">{data.tool.params}</span>
+          {data.tool.previousParams !== null && data.tool.previousParams !== data.tool.params && (
+            <>
+              {' '}
+              · было: <span className="font-mono">{data.tool.previousParams}</span>
+            </>
+          )}
+        </div>
+      )}
       <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-subtle">
         <span>
           Секреты: {data.secretsUsed.length ? <span className="font-mono text-muted-foreground">{data.secretsUsed.join(', ')}</span> : 'не использует'}

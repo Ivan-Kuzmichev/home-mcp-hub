@@ -13,7 +13,7 @@
 | Transmission | `transmission_status`, `transmission_add`, `transmission_stop`, `transmission_start`, `transmission_delete`, `transmission_files`, `transmission_info` | ⚠️ только автотесты, с живым Transmission не проверялся |
 | Paperless (ngx) | `paperless_search`, `paperless_review`, `paperless_get`, `paperless_thumbnail`, `paperless_taxonomy`, `paperless_update`, `paperless_undo`, `paperless_link` | ⚠️ только автотесты, с живым Paperless не проверялся |
 | TorrServe | `torrserve_add`, `torrserve_list`, `torrserve_links`, `torrserve_remove` | ✅ |
-| Cron-скрипты (встроенный) | `cron_create`, `cron_update`, `cron_enable`, `cron_run`, `cron_logs`, `cron_list`, `cron_get`, `cron_delete`, `cron_secrets` | ✅ |
+| Cron-скрипты (встроенный) | `cron_create`, `cron_update`, `tool_create`, `tool_update`, `cron_enable`, `cron_run`, `cron_logs`, `cron_list`, `cron_get`, `cron_delete`, `cron_secrets`, свои `my_*` | ✅ |
 | Прототипы (встроенный) | `prototype_publish`, `prototype_append`, `prototype_update`, `prototype_list`, `prototype_delete` | ✅ |
 | Хаб | `hub_status` | ✅ |
 
@@ -39,7 +39,12 @@ Cron-скрипты: ассистент пишет JS и расписание, �
 к файлам, процессу и базе хаба, 30 с и 64 МБ на запуск; по умолчанию только внешние адреса (локальная сеть закрыта, в том числе через DNS).
 Секреты (например токен Telegram-бота) заводятся в админке с привязкой к хостам; в коде — заглушка `{{secret:ИМЯ}}`, хаб
 подставляет значение только в запрос на разрешённый хост. Ни скрипт, ни ассистент значения не видят и отправить его в другое
-место не могут. Из скрипта доступны инструменты хаба только для чтения: `await hub.tool('torrents_status', { filter: 'completed' })`.
+место не могут. Из скрипта доступны инструменты хаба: `await hub.tool('torrents_status', { filter: 'completed' })` — только для чтения, а при включённом
+«Доступе к локальной сети» и с записью (`torrent_add`, `paperless_update`…).
+Свои MCP-инструменты: блок «MCP-инструменты» на экране «Скрипты». Ассистент создаёт их через `tool_create` (или ты — кнопкой
+«Добавить инструмент»): имя `my_*`, описание, параметры, код с `args` и `return`. Одобренный инструмент ассистент вызывает сам,
+как любой другой, — в новом чате. Секреты, сеть, `hub.tool` и «Без одобрения» — общие со скриптами, лимит вызова 25 с.
+
 Настройками коннекторов можно поделиться со скриптами: «Скрипты» → «Настройки коннекторов», переключатель на коннектор.
 Поля становятся доступны как `{{secret:JACKETT_BASE_URL}}`, `{{secret:JACKETT_API_KEY}}`, `{{secret:JACKETT_MIN_SEEDERS}}` и т. п.:
 ключи и пароли подставляются только в запросы на адрес коннектора, адрес и параметры — обычные значения (адрес можно ставить в начало URL).

@@ -96,6 +96,12 @@ describe('network policy', () => {
     expect(assertPublicUrl('https://api.telegram.org/x').hostname).toBe('api.telegram.org')
   })
 
+  it('passes tool arguments as data', async () => {
+    const r = await runScript('s1', `return args.city + ':' + typeof args.n`, { args: { city: "O'Hare\"); throw 1; //", n: 2 } })
+    expect(r.output).toBe(`O'Hare"); throw 1; //:number`)
+    expect((await runScript('s1', `return JSON.stringify(args)`)).output).toBe('{}')
+  })
+
   it('follows the network switches', async () => {
     const local = { local: true, external: false }
     expect(assertAllowedUrl('http://jackett:9117/', local).hostname).toBe('jackett')

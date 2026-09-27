@@ -8,6 +8,9 @@ import { resolveResult, type JackettLinkAccess } from '../connectors/resolve'
 import { checkConnector } from '../connectors/health'
 import { outputText, ToolError, type ErasedTool, type ToolOutput } from '../connectors/types'
 import { logToolCall } from '../journal'
+import { executeTool } from '../scripts/scheduler'
+import { listScripts, statusOf } from '../scripts/store'
+import { inputSchemaOf } from '../scripts/tool-spec'
 import { logger } from '../logger'
 import { mcpContext } from './context'
 import { LOGO_DATA_URI } from '../brand'
@@ -144,6 +147,36 @@ function initializeServer(server: McpServer): void {
       registered.add(tool.name)
       registerConnectorTool(server, state.connector.id, tool, state.config)
     }
+  }
+  registerCustomTools(server, registered)
+}
+
+/** Approved, switched-on MCP tools from the Scripts screen — only while that connector is on. */
+function registerCustomTools(server: McpServer, registered: Set<string>): void {
+  if (!activeConfig('scripts')) return
+  for (const s of listScripts()) {
+    if (s.kind !== 'tool' || statusOf(s) !== 'active' || !s.spec) continue
+    if (registered.has(s.name)) {
+      logger.warn({ tool: s.name }, 'duplicate tool name skipped')
+      continue
+    }
+    registered.add(s.name)
+    const spec = s.spec
+    server.registerTool(
+      s.name,
+      {
+        title: s.name,
+        description: s.description,
+        inputSchema: inputSchemaOf(spec),
+        annotations: spec.readOnly ? { readOnlyHint: true, openWorldHint: true } : { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
+      },
+      async (args: unknown) =>
+        runLogged(s.name, 'scripts', args, async () => {
+          const r = await executeTool(s.id, inputSchemaOf(spec).parse(args))
+          if (!r.ok) throw new ToolError(r.error ?? 'ошибка')
+          return r.output ?? (r.logs.length ? r.logs.join('\n') : 'Готово')
+        }),
+    )
   }
 }
 

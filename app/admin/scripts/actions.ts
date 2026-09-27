@@ -6,7 +6,8 @@ import { logAuthEvent } from '@/lib/journal'
 import { setConnectorShared } from '@/lib/scripts/connector-secrets'
 import { executeScript, syncSchedules } from '@/lib/scripts/scheduler'
 import { deleteSecret, saveSecret } from '@/lib/scripts/secrets'
-import { approveScript, deleteScript, getScript, rejectScript, ScriptError, setScriptEnabled } from '@/lib/scripts/store'
+import { approveScript, createTool, deleteScript, getScript, rejectScript, ScriptError, setScriptEnabled } from '@/lib/scripts/store'
+import type { ToolParam } from '@/lib/scripts/tool-spec'
 import { requireAdmin } from '@/lib/session'
 
 export type ActionState = { error?: string; ok?: string }
@@ -106,4 +107,32 @@ export async function setConnectorSharedAction(id: string, shared: boolean): Pro
   logAuthEvent({ event: 'auth.script_review', ok: true, detail: `${shared ? 'скриптам открыты' : 'скриптам закрыты'} настройки ${getConnector(id)!.name}` })
   refresh()
   return { ok: shared ? 'Открыто скриптам' : 'Закрыто' }
+}
+
+/** Admin-written tool: approved at once — the admin is the reviewer. */
+export async function createToolAction(_prev: ActionState, form: FormData): Promise<ActionState> {
+  await requireAdmin()
+  let params: unknown
+  try {
+    const raw = String(form.get('params') ?? '').trim()
+    params = raw ? JSON.parse(raw) : []
+  } catch {
+    return { error: 'Параметры — JSON-массив, см. пример в поле' }
+  }
+  if (!Array.isArray(params)) return { error: 'Параметры — JSON-массив, см. пример в поле' }
+  try {
+    const s = await createTool({
+      name: String(form.get('name') ?? ''),
+      description: String(form.get('description') ?? ''),
+      params: params as ToolParam[],
+      readOnly: form.get('readOnly') === 'on',
+      code: String(form.get('code') ?? ''),
+    })
+    approveScript(s.id, s.codeHash)
+    logAuthEvent({ event: 'auth.script_review', ok: true, detail: `добавлен инструмент ${s.name}` })
+    refresh()
+    return { ok: `Добавлен ${s.name} — появится у ассистента в новом чате` }
+  } catch (e) {
+    return { error: e instanceof ScriptError ? e.message : String(e) }
+  }
 }

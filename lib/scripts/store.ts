@@ -4,6 +4,7 @@ import cron from 'node-cron'
 import { getDb } from '../db'
 import { script, scriptRun } from '../db/schema'
 import { checkSyntax, type RunResult } from './sandbox'
+import { normalizeSpec, toolNameOf, type ToolParam, type ToolSpec } from './tool-spec'
 
 export type Script = typeof script.$inferSelect
 export type ScriptStatus = 'pending' | 'rejected' | 'approved' | 'active'
@@ -32,6 +33,9 @@ export function nextRun(expr: string): Date | null {
 }
 
 export const hashCode = (code: string) => createHash('sha256').update(code).digest('hex')
+
+/** The approved unit: code alone for cron, code plus parameters and read-only flag for a tool. */
+export const versionHash = (code: string, spec: ToolSpec | null) => (spec ? hashCode(`${code}\n${JSON.stringify(spec)}`) : hashCode(code))
 
 export function statusOf(s: Script): ScriptStatus {
   if (s.approvedHash !== s.codeHash) return s.rejectedHash === s.codeHash ? 'rejected' : 'pending'
@@ -84,9 +88,12 @@ export async function createScript(input: { name: string; description?: string; 
     id: newId(),
     name,
     description: (input.description ?? '').slice(0, 500),
+    kind: 'cron' as const,
     schedule,
     code: input.code,
     codeHash: hashCode(input.code),
+    spec: null,
+    approvedSpec: null,
     approvedHash: null,
     approvedCode: null,
     approvedAt: null,
@@ -102,17 +109,78 @@ export async function createScript(input: { name: string; description?: string; 
   return row
 }
 
-/** A code change needs a new approval and pauses the script; name/description/schedule do not. */
-export async function updateScript(s: Script, change: { name?: string; description?: string; schedule?: string; code?: string }): Promise<Script> {
+function assertFreeName(name: string): void {
+  if (listScripts().some((x) => x.name.toLowerCase() === name.toLowerCase())) throw new ScriptError(`«${name}» уже есть — меняй через ${name.startsWith('my_') ? 'tool_update' : 'cron_update'}`)
+}
+
+export async function createTool(input: { name: string; description: string; params: ToolParam[]; readOnly: boolean; code: string }): Promise<Script> {
+  let name: string
+  let spec: ToolSpec
+  try {
+    name = toolNameOf(input.name)
+    spec = normalizeSpec(input.params, input.readOnly)
+  } catch (e) {
+    throw new ScriptError(e instanceof Error ? e.message : String(e))
+  }
+  assertFreeName(name)
+  if (!input.description.trim()) throw new ScriptError('Нужно описание — по нему ассистент решает, когда вызывать инструмент')
+  await checkCode(input.code)
+  const now = new Date()
+  const row: Script = {
+    id: newId(),
+    name,
+    description: input.description.slice(0, 1000),
+    kind: 'tool',
+    schedule: '',
+    code: input.code,
+    codeHash: versionHash(input.code, spec),
+    spec,
+    approvedSpec: null,
+    approvedHash: null,
+    approvedCode: null,
+    approvedAt: null,
+    rejectedHash: null,
+    rejectReason: null,
+    enabled: false,
+    lastRunAt: null,
+    lastRunOk: null,
+    createdAt: now,
+    updatedAt: now,
+  }
+  getDb().insert(script).values(row).run()
+  return row
+}
+
+export type ScriptChange = { name?: string; description?: string; schedule?: string; code?: string; params?: ToolParam[]; readOnly?: boolean }
+
+/** A new version (code, or a tool's parameters) needs a new approval and pauses the script; name/description/schedule do not. */
+export async function updateScript(s: Script, change: ScriptChange): Promise<Script> {
+  try {
+    return await applyChange(s, change)
+  } catch (e) {
+    if (e instanceof ScriptError || !(e instanceof Error)) throw e
+    throw new ScriptError(e.message)
+  }
+}
+
+async function applyChange(s: Script, change: ScriptChange): Promise<Script> {
   const set: Partial<Script> = { updatedAt: new Date() }
-  if (change.name !== undefined) set.name = change.name.trim().slice(0, 80) || s.name
-  if (change.description !== undefined) set.description = change.description.slice(0, 500)
-  if (change.schedule !== undefined) set.schedule = validateSchedule(change.schedule)
-  if (change.code !== undefined && hashCode(change.code) !== s.codeHash) {
-    await checkCode(change.code)
-    set.code = change.code
-    set.codeHash = hashCode(change.code)
-    if (set.codeHash !== s.approvedHash) set.enabled = false
+  if (change.name !== undefined) {
+    const name = s.kind === 'tool' ? toolNameOf(change.name) : change.name.trim().slice(0, 80) || s.name
+    if (name !== s.name) assertFreeName(name)
+    set.name = name
+  }
+  if (change.description !== undefined) set.description = change.description.slice(0, s.kind === 'tool' ? 1000 : 500)
+  if (change.schedule !== undefined && s.kind === 'cron') set.schedule = validateSchedule(change.schedule)
+  const code = change.code ?? s.code
+  const spec = s.kind === 'tool' && s.spec ? normalizeSpec(change.params ?? s.spec.params, change.readOnly ?? s.spec.readOnly) : null
+  const hash = versionHash(code, spec)
+  if (hash !== s.codeHash) {
+    if (change.code !== undefined) await checkCode(change.code)
+    set.code = code
+    set.spec = spec
+    set.codeHash = hash
+    if (hash !== s.approvedHash) set.enabled = false
   }
   getDb().update(script).set(set).where(eq(script.id, s.id)).run()
   return { ...s, ...set }
@@ -125,7 +193,7 @@ export function approveScript(id: string, codeHash: string): void {
   if (s.codeHash !== codeHash) throw new ScriptError('Код изменился, пока ты смотрел — открой заново')
   getDb()
     .update(script)
-    .set({ approvedHash: s.codeHash, approvedCode: s.code, approvedAt: new Date(), rejectedHash: null, rejectReason: null, enabled: true })
+    .set({ approvedHash: s.codeHash, approvedCode: s.code, approvedSpec: s.spec, approvedAt: new Date(), rejectedHash: null, rejectReason: null, enabled: true })
     .where(eq(script.id, id))
     .run()
 }
@@ -144,7 +212,7 @@ export function rejectScript(id: string, codeHash: string): 'deleted' | 'reverte
   }
   getDb()
     .update(script)
-    .set({ code: s.approvedCode, codeHash: s.approvedHash, rejectedHash: null, rejectReason: null, enabled: true, updatedAt: new Date() })
+    .set({ code: s.approvedCode, spec: s.approvedSpec, codeHash: s.approvedHash, rejectedHash: null, rejectReason: null, enabled: true, updatedAt: new Date() })
     .where(eq(script.id, id))
     .run()
   return 'reverted'

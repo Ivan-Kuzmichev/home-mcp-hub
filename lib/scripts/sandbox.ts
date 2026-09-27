@@ -24,7 +24,8 @@ export const SANDBOX_API_DOC = `Код — тело async-функции (мож
 - Секреты — только заглушками {{secret:ИМЯ}} в url, headers или body; хаб подставит значение, если адрес совпадает с хостами секрета. Значение секрета скрипту недоступно. Список — cron_secrets: там же настройки коннекторов, которыми поделился пользователь (адрес вроде {{secret:JACKETT_BASE_URL}} можно ставить в начало url).
 - log(...значения) — в журнал запуска.
 - state.get(key), state.set(key, value) — память между запусками (JSON).
-- await hub.tool(имя, аргументы) — инструменты хаба только для чтения (torrents_status, search_torrents, paperless_search…), возвращают текст.
+- await hub.tool(имя, аргументы) — инструменты хаба (torrents_status, search_torrents, paperless_search…), возвращают текст. Инструменты с записью (torrent_add, paperless_update…) — только если пользователь открыл скриптам локальную сеть; удаление по-прежнему требует confirm: true.
+- args — аргументы вызова (для MCP-инструментов; у cron-скрипта пустой объект).
 - return значение — результат запуска.
 Нет: require/import, process, файлов, таймеров. Лимиты: 30 с, 64 МБ, ${LIMITS.fetches} запросов, ответ до 1 МБ.`
 
@@ -38,6 +39,10 @@ export type SandboxDeps = {
   vault?: SecretVault
   /** Which networks fetch may reach; external only by default */
   net?: NetPolicy
+  /** Tool arguments, visible to the code as `args` */
+  args?: Record<string, unknown>
+  /** Shorter limit for tools the model is waiting on */
+  timeMs?: number
 }
 
 // Friendly wrappers over the raw host functions.
@@ -109,7 +114,8 @@ export async function checkSyntax(code: string): Promise<string | null> {
 
 export async function runScript(scriptId: string, code: string, deps: SandboxDeps = {}): Promise<RunResult> {
   const started = Date.now()
-  const deadline = started + LIMITS.timeMs
+  const timeMs = Math.min(deps.timeMs ?? LIMITS.timeMs, LIMITS.timeMs)
+  const deadline = started + timeMs
   const vault = deps.vault ?? new SecretVault()
   const net = deps.net ?? DEFAULT_NET_POLICY
   const logs: string[] = []
@@ -226,6 +232,13 @@ export async function runScript(scriptId: string, code: string, deps: SandboxDep
     const prelude = ctx.evalCode(PRELUDE)
     if (prelude.error) throw new Error(errorText(ctx, prelude.error))
     prelude.value.dispose()
+    // Arguments go in as JSON text, never as code: nothing the model sends is evaluated.
+    const argsHandle = ctx.newString(JSON.stringify(deps.args ?? {}))
+    ctx.setProp(ctx.global, '__args', argsHandle)
+    argsHandle.dispose()
+    const argsSet = ctx.evalCode('globalThis.args = JSON.parse(__args); delete globalThis.__args')
+    if (argsSet.error) throw new Error(errorText(ctx, argsSet.error))
+    argsSet.value.dispose()
 
     const evaluated = ctx.evalCode(`(async () => {\n${code}\n})()`)
     if (evaluated.error) {
@@ -238,7 +251,7 @@ export async function runScript(scriptId: string, code: string, deps: SandboxDep
     rt.executePendingJobs()
     const timeout = new Promise<'timeout'>((r) => setTimeout(() => r('timeout'), Math.max(0, deadline - Date.now()) + 50))
     const outcome = await Promise.race([settled, timeout])
-    if (outcome === 'timeout') throw new Error(`Превышено время выполнения (${LIMITS.timeMs / 1000} с)`)
+    if (outcome === 'timeout') throw new Error(`Превышено время выполнения (${timeMs / 1000} с)`)
     if (outcome.error) {
       const msg = errorText(ctx, outcome.error)
       outcome.error.dispose()
