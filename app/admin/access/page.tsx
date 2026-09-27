@@ -36,7 +36,17 @@ export default function AccessPage() {
 
   return (
     <>
-      <PageHeader title="MCP доступ" subtitle="Подключение ИИ-ассистентов по MCP: адрес, разрешённые клиенты, OAuth-клиенты и токены." actions={status} mobileAside={status} />
+      <PageHeader
+        title="MCP доступ"
+        subtitle="Подключение ИИ-ассистентов по MCP: адрес, разрешённые клиенты, OAuth-клиенты и токены."
+        actions={status}
+        mobileAside={
+          // Phone: the short form, as on the dashboard, so the title keeps its room.
+          <Pill tone={connected ? 'ok' : 'muted'} dot>
+            MCP{connected && last ? ` · ${formatAgo(last.createdAt).replace(' назад', '')}` : ''}
+          </Pill>
+        }
+      />
 
       {!isMcpAvailable() && (
         <Card className="border-warn/40 p-4 text-[13px] text-warn">

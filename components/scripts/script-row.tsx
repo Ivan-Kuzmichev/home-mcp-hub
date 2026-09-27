@@ -77,10 +77,11 @@ export function ScriptRow({ s }: { s: ScriptView }) {
             {s.last && ` · последний ${s.last}`}
           </span>
         </div>
+        <div className="hidden shrink-0 gap-2 lg:flex">{actions}</div>
+        {/* Status sits in the top-right corner of the row. */}
         <span className="shrink-0">
           <Pill tone={s.tone}>{s.statusLabel}</Pill>
         </span>
-        <div className="hidden shrink-0 gap-2 lg:flex">{actions}</div>
       </div>
       {/* Phone: the buttons get their own row so the name keeps the width. */}
       <div className="flex gap-2 pl-[52px] lg:hidden">{actions}</div>
