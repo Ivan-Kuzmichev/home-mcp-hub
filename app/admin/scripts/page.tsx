@@ -4,6 +4,7 @@ import { ReviewCard } from '@/components/scripts/review-card'
 import { ScriptRow } from '@/components/scripts/script-row'
 import { ConnectorSharing } from '@/components/scripts/connector-sharing'
 import { SecretsForm } from '@/components/scripts/secrets-form'
+import { CronForm } from '@/components/scripts/cron-form'
 import { ToolForm } from '@/components/scripts/tool-form'
 import { Card } from '@/components/ui/card'
 import { formatAgo, formatWhen } from '@/lib/format'
@@ -58,10 +59,11 @@ export default function ScriptsPage() {
       <Card className="flex flex-col p-4 md:p-5">
         <h2 className="pb-1 text-[15px]">Cron-скрипты</h2>
         {crons.length === 0 ? (
-          <div className="py-6 text-center text-[13px] text-subtle">Скриптов нет. Попроси ассистента: «заведи cron, который каждое утро присылает в Telegram список докачанного».</div>
+          <div className="py-6 text-center text-[13px] text-subtle">Скриптов нет. Попроси ассистента: «заведи cron, который каждое утро присылает в Telegram список докачанного», или добавь сам ниже.</div>
         ) : (
           crons.map((s) => <ScriptRow key={`${s.id}-${s.updatedAt.getTime()}`} s={rowOf(s)} />)
         )}
+        <CronForm />
       </Card>
 
       <Card className="flex flex-col p-4 md:p-5">

@@ -13,7 +13,7 @@
 | Transmission | `transmission_status`, `transmission_add`, `transmission_stop`, `transmission_start`, `transmission_delete`, `transmission_files`, `transmission_info` | ⚠️ только автотесты, с живым Transmission не проверялся |
 | Paperless (ngx) | `paperless_search`, `paperless_review`, `paperless_get`, `paperless_thumbnail`, `paperless_taxonomy`, `paperless_update`, `paperless_undo`, `paperless_link` | ⚠️ только автотесты, с живым Paperless не проверялся |
 | TorrServe | `torrserve_add`, `torrserve_list`, `torrserve_links`, `torrserve_remove` | ✅ |
-| Cron-скрипты (встроенный) | `cron_create`, `cron_update`, `tool_create`, `tool_update`, `cron_enable`, `cron_run`, `cron_logs`, `cron_list`, `cron_get`, `cron_delete`, `cron_secrets`, свои `my_*` | ✅ |
+| Скрипты (встроенный) | `cron_create`, `cron_update`, `tool_create`, `tool_update`, `cron_enable`, `cron_run`, `cron_logs`, `cron_list`, `cron_get`, `cron_delete`, `cron_secrets`, свои `my_*` | ✅ |
 | Прототипы (встроенный) | `prototype_publish`, `prototype_append`, `prototype_update`, `prototype_list`, `prototype_delete` | ✅ |
 | Хаб | `hub_status` | ✅ |
 
@@ -32,7 +32,7 @@ Paperless: ассистент ищет и читает документы (OCR-�
 в админку) и пересылаемые по прямой просьбе (один раз, 15 минут). Загрузки файлов через ассистента пока нет.
 
 Cron-скрипты: ассистент пишет JS и расписание, ты одобряешь код в админке → «Скрипты» — и скрипт сразу включается.
-В настройках коннектора «Cron-скрипты» три переключателя: «Без одобрения» (код ассистента включается сразу, по умолчанию выключено),
+В настройках коннектора «Скрипты» три переключателя: «Без одобрения» (код ассистента включается сразу, по умолчанию выключено),
 «Доступ к внешним адресам» (по умолчанию включён) и «Доступ к локальной сети» (по умолчанию выключен — NAS, контейнеры, localhost).
 Любое изменение кода снова ждёт одобрения и ставит скрипт на паузу; смена расписания одобрения не требует.
 Выключить и включить обратно можно в админке или попросить ассистента (`cron_enable`). Скрипт работает в песочнице QuickJS (WebAssembly): без доступа

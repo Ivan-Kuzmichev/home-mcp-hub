@@ -109,7 +109,7 @@ const paramsInput = z
 
 export const scripts = defineConnector<Config>({
   id: 'scripts',
-  name: 'Cron-скрипты',
+  name: 'Скрипты',
   description: 'JS-скрипты по расписанию и свои MCP-инструменты, код одобряет пользователь',
   builtin: true,
   configSchema,
@@ -147,7 +147,7 @@ export const scripts = defineConnector<Config>({
   tools: [
     tool({
       name: 'cron_list',
-      title: 'Cron-скрипты',
+      title: 'Скрипты и инструменты',
       description: 'Список скриптов: расписание, статус (ждёт одобрения / одобрен / включён), следующий и последний запуск.',
       annotations: { readOnlyHint: true, openWorldHint: false },
       inputSchema: z.object({}),

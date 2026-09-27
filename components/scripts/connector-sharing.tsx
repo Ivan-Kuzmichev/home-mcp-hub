@@ -64,7 +64,7 @@ export function ConnectorSharing({ items, localOff }: { items: Item[]; localOff:
       {error && <span className="pt-2 text-[13px] text-err">{error}</span>}
       {anyOn && localOff && (
         <span className="pt-2 text-xs text-warn">
-          Доступ скриптов к локальной сети выключен — до сервисов по адресам вроде http://jackett:9117 они не достучатся. Включается в Коннекторы → Cron-скрипты.
+          Доступ скриптов к локальной сети выключен — до сервисов по адресам вроде http://jackett:9117 они не достучатся. Включается в Коннекторы → Скрипты.
         </span>
       )}
     </div>

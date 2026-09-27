@@ -6,7 +6,7 @@ import { logAuthEvent } from '@/lib/journal'
 import { setConnectorShared } from '@/lib/scripts/connector-secrets'
 import { executeScript, syncSchedules } from '@/lib/scripts/scheduler'
 import { deleteSecret, saveSecret } from '@/lib/scripts/secrets'
-import { approveScript, createTool, deleteScript, getScript, rejectScript, ScriptError, setScriptEnabled } from '@/lib/scripts/store'
+import { approveScript, createScript, createTool, deleteScript, getScript, rejectScript, ScriptError, setScriptEnabled } from '@/lib/scripts/store'
 import type { ToolParam } from '@/lib/scripts/tool-spec'
 import { requireAdmin } from '@/lib/session'
 
@@ -132,6 +132,26 @@ export async function createToolAction(_prev: ActionState, form: FormData): Prom
     logAuthEvent({ event: 'auth.script_review', ok: true, detail: `добавлен инструмент ${s.name}` })
     refresh()
     return { ok: `Добавлен ${s.name} — появится у ассистента в новом чате` }
+  } catch (e) {
+    return { error: e instanceof ScriptError ? e.message : String(e) }
+  }
+}
+
+/** Admin-written cron script: approved (and so switched on) at once. */
+export async function createCronAction(_prev: ActionState, form: FormData): Promise<ActionState> {
+  await requireAdmin()
+  try {
+    const s = await createScript({
+      name: String(form.get('name') ?? ''),
+      description: String(form.get('description') ?? ''),
+      schedule: String(form.get('schedule') ?? ''),
+      code: String(form.get('code') ?? ''),
+    })
+    approveScript(s.id, s.codeHash)
+    logAuthEvent({ event: 'auth.script_review', ok: true, detail: `добавлен скрипт «${s.name}»` })
+    syncSchedules()
+    refresh()
+    return { ok: `Добавлен «${s.name}» и включён` }
   } catch (e) {
     return { error: e instanceof ScriptError ? e.message : String(e) }
   }
