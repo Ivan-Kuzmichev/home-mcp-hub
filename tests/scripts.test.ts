@@ -110,3 +110,25 @@ describe('cron scripts: switches', () => {
     expect(scripts.instructions?.(open, { tools })).toContain('и в локальную сеть')
   })
 })
+
+describe('cron scripts: connector settings for scripts', () => {
+  it('shares only switched-on connectors, with names derived from fields', async () => {
+    const { saveConfig } = await import('@/lib/connectors/store')
+    const { getConnector } = await import('@/lib/connectors/registry')
+    const { connectorValues, setConnectorShared, describeConnectorSharing } = await import('@/lib/scripts/connector-secrets')
+    saveConfig(getConnector('jackett')!, { baseUrl: 'http://jackett:9117', apiKey: 'jk-1', minSeeders: 2 })
+    expect(connectorValues()).toEqual([])
+    expect(describeConnectorSharing().find((c) => c.id === 'jackett')?.entries.map((e) => e.name)).toEqual(['JACKETT_BASE_URL', 'JACKETT_API_KEY', 'JACKETT_MIN_SEEDERS'])
+
+    setConnectorShared('jackett', true)
+    const values = connectorValues()
+    expect(values.find((v) => v.name === 'JACKETT_API_KEY')).toMatchObject({ secret: true, value: 'jk-1', hosts: ['jackett'] })
+    expect(values.find((v) => v.name === 'JACKETT_BASE_URL')).toMatchObject({ secret: false, value: 'http://jackett:9117' })
+    const listed = await runTool(scripts, 'cron_secrets', cfg)
+    expect(listed).toContain('JACKETT_API_KEY — API-ключ · секрет → jackett')
+    expect(listed).not.toContain('jk-1')
+    expect(listed).not.toContain('http://jackett:9117')
+    setConnectorShared('jackett', false)
+    expect(connectorValues()).toEqual([])
+  })
+})

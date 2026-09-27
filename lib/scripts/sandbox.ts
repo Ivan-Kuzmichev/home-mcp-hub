@@ -21,7 +21,7 @@ export const LIMITS = {
 /** What the model reads before writing a script (cron_create description). */
 export const SANDBOX_API_DOC = `Код — тело async-функции (можно await и return). Доступно:
 - await fetch(url, { method, headers, body }) → { status, ok, headers, text, json() }. body — строка или объект (уйдёт как JSON). Редиректы не выполняются сами (3xx вернётся как есть). Куда можно ходить (внешние адреса, локальная сеть) — задаёт пользователь, см. инструкции хаба.
-- Секреты — только заглушками {{secret:ИМЯ}} в url, headers или body; хаб подставит значение, если адрес совпадает с хостами секрета. Значение секрета скрипту недоступно. Список — cron_secrets.
+- Секреты — только заглушками {{secret:ИМЯ}} в url, headers или body; хаб подставит значение, если адрес совпадает с хостами секрета. Значение секрета скрипту недоступно. Список — cron_secrets: там же настройки коннекторов, которыми поделился пользователь (адрес вроде {{secret:JACKETT_BASE_URL}} можно ставить в начало url).
 - log(...значения) — в журнал запуска.
 - state.get(key), state.set(key, value) — память между запусками (JSON).
 - await hub.tool(имя, аргументы) — инструменты хаба только для чтения (torrents_status, search_torrents, paperless_search…), возвращают текст.
@@ -169,16 +169,18 @@ export async function runScript(scriptId: string, code: string, deps: SandboxDep
     if (++fetches > LIMITS.fetches) throw new Error(`Больше ${LIMITS.fetches} запросов за запуск`)
     const opts = JSON.parse(optsJson) as { method?: string; headers?: Record<string, unknown>; body?: unknown }
     // Host is fixed before secrets go in: a placeholder cannot change where the request goes.
-    const host = assertAllowedUrl(rawUrl.replace(/\{\{secret:[A-Z0-9_]+\}\}/g, 'x'), net).hostname
-    const url = vault.substitute(rawUrl, host)
+    // Plain values (a connector's address) may set the host; secrets never can.
+    const expanded = vault.expandParams(rawUrl)
+    const host = assertAllowedUrl(expanded.replace(/\{\{secret:[A-Z0-9_]+\}\}/g, 'x'), net).hostname
+    const url = vault.substitute(expanded, host)
     if (assertAllowedUrl(url, net).hostname !== host) throw new SecretPolicyError('Секрет не может менять адрес запроса')
     const headers: Record<string, string> = {}
-    for (const [k, v] of Object.entries(opts.headers ?? {})) headers[k] = vault.substitute(String(v), host)
+    for (const [k, v] of Object.entries(opts.headers ?? {})) headers[k] = vault.substitute(vault.expandParams(String(v)), host)
     let body: string | undefined
     if (opts.body !== undefined && opts.body !== null) {
       body = typeof opts.body === 'string' ? opts.body : JSON.stringify(opts.body)
       if (typeof opts.body !== 'string' && !Object.keys(headers).some((k) => k.toLowerCase() === 'content-type')) headers['Content-Type'] = 'application/json'
-      body = vault.substitute(body, host)
+      body = vault.substitute(vault.expandParams(body), host)
     }
     const signal = AbortSignal.any([abort.signal, AbortSignal.timeout(Math.min(LIMITS.fetchTimeoutMs, Math.max(1, deadline - Date.now())))])
     const init = { method: (opts.method ?? 'GET').toUpperCase(), headers, body, redirect: 'manual' as const, signal }

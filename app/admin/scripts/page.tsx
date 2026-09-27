@@ -1,9 +1,13 @@
+import { Lock } from 'lucide-react'
 import { PageHeader } from '@/components/admin/page-header'
 import { ReviewCard } from '@/components/scripts/review-card'
 import { ScriptRow } from '@/components/scripts/script-row'
+import { ConnectorSharing } from '@/components/scripts/connector-sharing'
 import { SecretsForm } from '@/components/scripts/secrets-form'
 import { Card } from '@/components/ui/card'
 import { formatAgo, formatWhen } from '@/lib/format'
+import { activeConfig } from '@/lib/connectors/active'
+import { describeConnectorSharing } from '@/lib/scripts/connector-secrets'
 import { listSecrets } from '@/lib/scripts/secrets'
 import { listRuns, listScripts, nextRun, STATUS_LABELS, statusOf } from '@/lib/scripts/store'
 
@@ -17,6 +21,7 @@ export default function ScriptsPage() {
   const all = listScripts()
   const pending = all.filter((s) => statusOf(s) === 'pending')
   const secrets = listSecrets()
+  const localOff = (activeConfig('scripts') as { allowLocal?: boolean } | null)?.allowLocal !== true
 
   return (
     <>
@@ -93,6 +98,17 @@ export default function ScriptsPage() {
           <span className="text-xs text-subtle">Токены и ключи для скриптов. Шифруются мастер-ключом, после сохранения не показываются.</span>
         </div>
         <SecretsForm secrets={secrets.map((s) => ({ name: s.name, hosts: s.hosts, description: s.description, updated: formatAgo(s.updatedAt) }))} />
+      </Card>
+
+      <Card className="flex flex-col gap-2 p-4 md:p-5">
+        <div className="flex flex-col gap-0.5">
+          <h2 className="text-[15px]">Настройки коннекторов</h2>
+          <span className="text-xs text-subtle">
+            Открыть скриптам адрес, ключи и параметры коннектора. В коде — та же запись <span className="font-mono">{'{{secret:ИМЯ}}'}</span>; значения берутся из
+            коннектора при каждом запуске. Ключи и пароли (<Lock size={11} className="inline" />) подставляются только в запросы на адрес коннектора, остальное — обычные значения.
+          </span>
+        </div>
+        <ConnectorSharing items={describeConnectorSharing()} localOff={localOff} />
       </Card>
     </>
   )

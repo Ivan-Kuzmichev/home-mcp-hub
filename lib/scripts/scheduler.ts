@@ -3,6 +3,7 @@ import { logToolCall } from '../journal'
 import { logger } from '../logger'
 import { DEFAULT_NET_POLICY, type NetPolicy } from './net'
 import { runScript, type RunResult } from './sandbox'
+import { SecretVault } from './secrets'
 import { getScript, listScripts, recordRun, statusOf, type Script } from './store'
 
 /** Read-only hub tools for hub.tool(); imported lazily to avoid a cycle with the registry. */
@@ -42,7 +43,9 @@ export async function executeScript(id: string, trigger: 'cron' | 'manual' | 'as
   if (busy.has(id)) throw new Error('Скрипт уже выполняется')
   busy.add(id)
   try {
-    const r = await runScript(s.id, s.code, { callTool: callReadOnlyTool, net: await netPolicy() })
+    const { connectorValues } = await import('./connector-secrets')
+    const vault = new SecretVault(connectorValues())
+    const r = await runScript(s.id, s.code, { callTool: callReadOnlyTool, net: await netPolicy(), vault })
     recordRun(s, trigger, r)
     logToolCall({
       tool: `cron:${s.name}`,

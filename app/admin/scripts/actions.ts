@@ -1,7 +1,9 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { getConnector } from '@/lib/connectors/registry'
 import { logAuthEvent } from '@/lib/journal'
+import { setConnectorShared } from '@/lib/scripts/connector-secrets'
 import { executeScript, syncSchedules } from '@/lib/scripts/scheduler'
 import { deleteSecret, saveSecret } from '@/lib/scripts/secrets'
 import { approveScript, deleteScript, getScript, rejectScript, ScriptError, setScriptEnabled } from '@/lib/scripts/store'
@@ -85,4 +87,13 @@ export async function deleteSecretAction(form: FormData): Promise<void> {
   await requireAdmin()
   deleteSecret(String(form.get('name')))
   refresh()
+}
+
+export async function setConnectorSharedAction(id: string, shared: boolean): Promise<ActionState> {
+  await requireAdmin()
+  if (!getConnector(id) || getConnector(id)!.builtin) return { error: 'Нет такого коннектора' }
+  setConnectorShared(id, shared)
+  logAuthEvent({ event: 'auth.script_review', ok: true, detail: `${shared ? 'скриптам открыты' : 'скриптам закрыты'} настройки ${getConnector(id)!.name}` })
+  refresh()
+  return { ok: shared ? 'Открыто скриптам' : 'Закрыто' }
 }

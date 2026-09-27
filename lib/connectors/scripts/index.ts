@@ -282,12 +282,21 @@ export const scripts = defineConnector<Config>({
       inputSchema: z.object({}),
       async run() {
         const list = listSecrets()
-        if (list.length === 0) return 'Секретов нет. Попроси пользователя добавить их в админке → «Скрипты» → «Секреты» (например TELEGRAM_TOKEN для api.telegram.org).'
+        const { connectorValues } = await import('../../scripts/connector-secrets')
+        // Names only: values of shared connector settings are not shown, secret or not.
+        const shared = connectorValues()
+        if (list.length === 0 && shared.length === 0)
+          return 'Секретов нет. Попроси пользователя добавить их в админке → «Скрипты» → «Секреты» (например TELEGRAM_TOKEN для api.telegram.org) или поделиться настройками коннектора.'
         return [
-          'Секреты (в коде — {{secret:ИМЯ}}; подставляются только для своих хостов):',
+          list.length ? 'Секреты (в коде — {{secret:ИМЯ}}; подставляются только для своих хостов):' : null,
           ...list.map((s) => `• ${s.name} → ${s.hosts.join(', ')}${s.description ? ` — ${s.description}` : ''}`),
+          shared.length ? 'Настройки коннекторов (та же запись {{secret:ИМЯ}}):' : null,
+          ...shared.map((v) => `• ${v.name} — ${v.label}${v.secret ? ` · секрет → ${v.hosts.join(', ')}` : ' · обычное значение, можно в начало url'}`),
+          shared.length ? 'Сервисы коннекторов обычно в локальной сети — нужен доступ к ней в настройках скриптов.' : null,
           `Лимиты запуска: ${LIMITS.timeMs / 1000} с, ${LIMITS.fetches} запросов.`,
-        ].join('\n')
+        ]
+          .filter(Boolean)
+          .join('\n')
       },
     }),
   ],

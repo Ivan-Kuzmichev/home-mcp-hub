@@ -52,8 +52,10 @@ function hostAllowed(host: string, patterns: string[]): boolean {
 /** Loaded once per run: names → decrypted values and allowed hosts. */
 export class SecretVault {
   private readonly secrets = new Map<string, { value: string; hosts: string[] }>()
+  /** Non-secret connector values (address, defaults): substituted anywhere, never redacted */
+  private readonly params = new Map<string, string>()
 
-  constructor() {
+  constructor(extra: { name: string; secret: boolean; value: string; hosts: string[] }[] = []) {
     for (const row of getDb().select().from(scriptSecret).all()) {
       try {
         this.secrets.set(row.name, { value: decryptSecret(row.valueEnc), hosts: row.hosts })
@@ -61,6 +63,19 @@ export class SecretVault {
         // Undecryptable (master key changed): simply unavailable.
       }
     }
+    // Shared connector settings win over a hand-made secret of the same name.
+    for (const e of extra) {
+      if (e.secret) this.secrets.set(e.name, { value: e.value, hosts: e.hosts })
+      else {
+        this.secrets.delete(e.name)
+        this.params.set(e.name, e.value)
+      }
+    }
+  }
+
+  /** Put in plain connector values (e.g. {{secret:JACKETT_BASE_URL}}) — before the host is fixed. */
+  expandParams(text: string): string {
+    return text.replace(PLACEHOLDER, (m, name: string) => this.params.get(name) ?? m)
   }
 
   /**
