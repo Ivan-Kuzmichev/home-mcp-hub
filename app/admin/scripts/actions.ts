@@ -28,11 +28,21 @@ export async function approveAction(id: string, codeHash: string): Promise<Actio
 
 export async function rejectAction(id: string, codeHash: string, reason: string): Promise<ActionState> {
   await requireAdmin()
-  rejectScript(id, codeHash, reason)
-  logAuthEvent({ event: 'auth.script_review', ok: false, detail: `отклонён «${getScript(id)?.name ?? id}»`, error: reason || 'без причины' })
-  syncSchedules()
-  refresh()
-  return { ok: 'Отклонено' }
+  const name = getScript(id)?.name ?? id
+  try {
+    const outcome = rejectScript(id, codeHash)
+    logAuthEvent({
+      event: 'auth.script_review',
+      ok: false,
+      detail: outcome === 'deleted' ? `отклонён и удалён «${name}»` : `отклонено изменение «${name}», возвращена одобренная версия`,
+      error: reason || 'без причины',
+    })
+    syncSchedules()
+    refresh()
+    return { ok: outcome === 'deleted' ? 'Отклонено, скрипт удалён' : 'Изменение отклонено, работает прежняя версия' }
+  } catch (e) {
+    return { error: e instanceof ScriptError ? e.message : String(e) }
+  }
 }
 
 export async function setEnabledAction(id: string, enabled: boolean): Promise<ActionState> {

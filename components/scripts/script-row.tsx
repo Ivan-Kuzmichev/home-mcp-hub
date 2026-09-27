@@ -78,8 +78,8 @@ export function ScriptRow({ s }: { s: ScriptView }) {
           </span>
         </div>
         <div className="hidden shrink-0 gap-2 lg:flex">{actions}</div>
-        {/* On/off is the switch itself; a label only for code that is not approved. */}
-        {!s.approved && (
+        {/* On/off is the switch itself and pending code has its review card above: only a rejection needs a label. */}
+        {s.status === 'rejected' && (
           <span className="shrink-0">
             <Pill tone={s.tone}>{s.statusLabel}</Pill>
           </span>

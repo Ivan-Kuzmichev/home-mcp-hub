@@ -130,8 +130,24 @@ export function approveScript(id: string, codeHash: string): void {
     .run()
 }
 
-export function rejectScript(id: string, codeHash: string, reason: string): void {
-  getDb().update(script).set({ rejectedHash: codeHash, rejectReason: reason.slice(0, 500) || null, enabled: false }).where(and(eq(script.id, id), eq(script.codeHash, codeHash))).run()
+/**
+ * Admin only: a rejected new script is deleted; a rejected change of an approved script is
+ * dropped, and the script goes back to its approved code and runs again.
+ */
+export function rejectScript(id: string, codeHash: string): 'deleted' | 'reverted' {
+  const s = getScript(id)
+  if (!s) throw new ScriptError('Скрипт не найден')
+  if (s.codeHash !== codeHash) throw new ScriptError('Код изменился, пока ты смотрел — открой заново')
+  if (!s.approvedHash || s.approvedCode === null) {
+    deleteScript(id)
+    return 'deleted'
+  }
+  getDb()
+    .update(script)
+    .set({ code: s.approvedCode, codeHash: s.approvedHash, rejectedHash: null, rejectReason: null, enabled: true, updatedAt: new Date() })
+    .where(eq(script.id, id))
+    .run()
+  return 'reverted'
 }
 
 export function setScriptEnabled(s: Script, enabled: boolean): void {

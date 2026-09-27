@@ -42,7 +42,8 @@ const configSchema = z.object({
 type Config = z.output<typeof configSchema>
 const tool = toolFor<Config>()
 
-const APPROVAL = 'Код ждёт одобрения пользователя в админке хаба → «Скрипты»; после одобрения скрипт включится сам.'
+const APPROVAL =
+  'Код ждёт одобрения пользователя в админке хаба → «Скрипты»; после одобрения скрипт включится сам. Если пользователь отклонит, новый скрипт удалится, а изменение откатится к прежней версии.'
 
 /** «Без одобрения»: the assistant's code is approved (and so enabled) as soon as it is saved. */
 function autoApprove(config: Config, s: Script): Script {

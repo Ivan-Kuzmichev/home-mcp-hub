@@ -53,7 +53,7 @@ export function ReviewCard({ data }: { data: ReviewData }) {
           <pre className="mt-2 max-h-72 overflow-auto rounded-md border border-border bg-background p-3 font-mono text-xs leading-5 text-subtle">{data.previousCode}</pre>
         </details>
       )}
-      {rejecting && <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Причина — ассистент её увидит (необязательно)" />}
+      {rejecting && <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Причина — для журнала (необязательно)" />}
       {msg && <span className={msg.ok ? 'text-[13px] text-ok' : 'text-[13px] text-err'}>{msg.text}</span>}
       <div className="flex flex-wrap justify-end gap-2">
         {!rejecting ? (

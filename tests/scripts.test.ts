@@ -60,10 +60,17 @@ describe('cron scripts: approval flow', () => {
     expect(s.approvedCode).toBe(CODE)
   })
 
-  it('rejection is shown to the assistant', async () => {
+  it('rejecting a change brings back the approved code; rejecting a new script deletes it', async () => {
     const s = store.findScript('Счётчик')
-    store.rejectScript(s.id, s.codeHash, 'слишком часто')
-    expect(await runTool(scripts, 'cron_get', cfg, { script: s.id })).toContain('Причина отказа: слишком часто')
+    store.rejectScript(s.id, s.codeHash)
+    const back = store.findScript(s.id)
+    expect(back.code).toBe(CODE)
+    expect(store.statusOf(back)).toBe('active')
+
+    await runTool(scripts, 'cron_create', cfg, { name: 'Лишний', schedule: '0 9 * * *', code: 'return 1' })
+    const extra = store.findScript('Лишний')
+    expect(store.rejectScript(extra.id, extra.codeHash)).toBe('deleted')
+    expect(() => store.findScript('Лишний')).toThrow()
   })
 
   it('lists secret names and hosts, never values', async () => {
