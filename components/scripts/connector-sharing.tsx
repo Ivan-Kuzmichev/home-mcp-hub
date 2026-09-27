@@ -27,7 +27,7 @@ export function ConnectorSharing({ items, localOff }: { items: Item[]; localOff:
     <div className="flex flex-col">
       {items.map((i) => (
         <div key={i.id} className="flex flex-col gap-2 border-b border-divider py-3 last:border-b-0">
-          <label className="flex cursor-pointer items-center gap-3">
+          <label className="flex cursor-pointer items-start gap-3">
             <Switch
               checked={state[i.id] ?? false}
               label={i.name}

@@ -1,4 +1,4 @@
-import { and, count, desc, eq, gte, like, lt, or, sql, type SQL } from 'drizzle-orm'
+import { and, count, desc, eq, gte, isNotNull, like, lt, or, sql, type SQL } from 'drizzle-orm'
 import { scrub } from './connectors/http'
 import { getDb } from './db'
 import { toolCall } from './db/schema'
@@ -147,8 +147,12 @@ export function countJournal(f: JournalFilter): { total: number; errors: number 
   return { total: row?.total ?? 0, errors: Number(row?.errors ?? 0) }
 }
 
+/**
+ * Calls made by the assistant over MCP. Every MCP request carries its OAuth client id;
+ * cron runs, runs from the admin panel and auth events have none.
+ */
 export function recentToolCalls(limit = 5): JournalRow[] {
-  return getDb().select().from(toolCall).where(sql`${toolCall.connectorId} <> 'auth'`).orderBy(desc(toolCall.createdAt), desc(toolCall.id)).limit(limit).all()
+  return getDb().select().from(toolCall).where(isNotNull(toolCall.clientId)).orderBy(desc(toolCall.createdAt), desc(toolCall.id)).limit(limit).all()
 }
 
 export function lastCallByClient(clientId: string): JournalRow | undefined {

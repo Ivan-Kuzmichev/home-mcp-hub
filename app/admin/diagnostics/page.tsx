@@ -5,7 +5,12 @@ import { approxTokens, inspectMcp, type InspectedTool } from '@/lib/mcp/inspect'
 
 export const dynamic = 'force-dynamic'
 
-const MODE_LABEL = { append: 'стандартная + своя', replace: 'своя вместо стандартной' } as const
+/** What actually went in: the mode alone does not say whether there is an own text. */
+function source(p: { mode: 'append' | 'replace'; standard: string | null; own: string | null }): string {
+  if (p.mode === 'replace') return 'своя вместо стандартной'
+  if (p.standard && p.own) return 'стандартная + своя'
+  return p.own ? 'своя (стандартной нет)' : 'стандартная'
+}
 
 function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
@@ -58,8 +63,7 @@ export default async function DiagnosticsPage() {
               <div key={p.connector} className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-divider py-2 text-[13px] last:border-b-0">
                 <span className="w-32 shrink-0 font-medium">{p.connector}</span>
                 <span className="text-muted-foreground">
-                  {p.text ? `${MODE_LABEL[p.mode]} · ${n(p.text.length)} симв.` : 'без инструкции'}
-                  {p.mode === 'append' && p.own && !p.standard ? ' (стандартной нет)' : ''}
+                  {p.text ? `${source(p)} · ${n(p.text.length)} симв.` : 'без инструкции'}
                 </span>
               </div>
             ))}

@@ -84,3 +84,13 @@ describe('CIDR', () => {
     expect(isValidCidr('nope')).toBe(false)
   })
 })
+
+describe('dashboard «last MCP call»', () => {
+  it('counts only calls from MCP clients, not cron runs or admin actions', () => {
+    journal.logToolCall({ tool: 'torrents_status', connectorId: 'qbittorrent', args: {}, ok: true, result: 'ok', durationMs: 5, clientId: 'c-mcp', ip: '1.2.3.4' })
+    journal.logToolCall({ tool: 'cron:Утро', connectorId: 'scripts', args: { trigger: 'cron' }, ok: true, result: 'ok', durationMs: 5 })
+    journal.logAuthEvent({ event: 'auth.script_review', ok: true, detail: 'одобрен «Утро»' })
+    expect(journal.lastToolCall()?.tool).toBe('torrents_status')
+    expect(journal.recentToolCalls(10).every((r) => r.clientId)).toBe(true)
+  })
+})

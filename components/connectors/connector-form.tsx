@@ -282,7 +282,7 @@ function FieldControl({
 
   if (f.widget === 'switch') {
     return (
-      <label className="flex cursor-pointer items-center gap-3">
+      <label className="flex cursor-pointer items-start gap-3">
         <Switch checked={value === true} label={f.label} onChange={(v) => onChange(f.name, v)} />
         <span className="flex flex-col">
           <span>{f.label}</span>
