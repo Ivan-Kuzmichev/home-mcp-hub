@@ -127,7 +127,7 @@ export const scripts = defineConnector<Config>({
       tools.includes('tool_create')
         ? `Свои MCP-инструменты: tool_create/tool_update — JS с параметрами, который потом вызываешь ты сам (имя с префиксом my_); после ${c.autoApprove ? 'сохранения' : 'одобрения'} он появится в новом чате, в текущем проверяй через cron_run с args.`
         : null,
-      tools.includes('cron_secrets') ? 'Секреты — только заглушками {{secret:ИМЯ}} (список — cron_secrets), значения тебе недоступны.' : 'Секреты — только заглушками {{secret:ИМЯ}}, значения тебе недоступны.',
+      tools.includes('script_secrets') ? 'Секреты — только заглушками {{secret:ИМЯ}} (список — script_secrets), значения тебе недоступны.' : 'Секреты — только заглушками {{secret:ИМЯ}}, значения тебе недоступны.',
     ]
       .filter(Boolean)
       .join(' ')
@@ -363,9 +363,9 @@ export const scripts = defineConnector<Config>({
     }),
 
     tool({
-      name: 'cron_secrets',
-      title: 'Секреты для скриптов',
-      description: 'Имена секретов, которые пользователь завёл в админке, и хосты, куда их можно отправлять. Значения недоступны — в коде пиши {{secret:ИМЯ}}.',
+      name: 'script_secrets',
+      title: 'Секреты для скриптов и инструментов',
+      description: 'Имена секретов для cron-скриптов и MCP-инструментов: заведённые пользователем и открытые настройки коннекторов, с хостами, куда их можно отправлять. Значения недоступны — в коде пиши {{secret:ИМЯ}}.',
       annotations: { readOnlyHint: true, openWorldHint: false },
       inputSchema: z.object({}),
       async run() {

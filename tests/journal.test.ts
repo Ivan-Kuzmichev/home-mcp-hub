@@ -94,3 +94,15 @@ describe('dashboard «last MCP call»', () => {
     expect(journal.recentToolCalls(10).every((r) => r.clientId)).toBe(true)
   })
 })
+
+describe('failed sign-ins', () => {
+  it('counts only password and 2FA failures', () => {
+    const since = new Date(Date.now() - 60_000)
+    const before = journal.failedSignIns(since)
+    journal.logAuthEvent({ event: 'auth.script_review', ok: true, detail: 'отклонён и удалён «x»' })
+    journal.logAuthEvent({ event: 'auth.consent', ok: false, detail: 'отказ' })
+    expect(journal.failedSignIns(since)).toBe(before)
+    journal.logAuthEvent({ event: 'auth.second_factor', ok: false, detail: 'TOTP', error: 'неверные данные' })
+    expect(journal.failedSignIns(since)).toBe(before + 1)
+  })
+})

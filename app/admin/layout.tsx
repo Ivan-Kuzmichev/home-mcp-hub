@@ -33,9 +33,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             <LogoMark />
             <div className="flex min-w-0 flex-col">
               <div className="font-heading text-[15px] leading-[18px] font-bold">Home Hub</div>
-              <div className="truncate font-mono text-[11px] text-subtle">
-                {host}/{prefix}
-              </div>
+              {/* Domain only: the secret prefix is not shown on screen. */}
+              <div className="truncate font-mono text-[11px] text-subtle">{host}</div>
             </div>
           </div>
           <SidebarNav hidden={hidden} />

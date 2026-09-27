@@ -33,10 +33,10 @@ export async function rejectAction(id: string, codeHash: string, reason: string)
   try {
     const outcome = rejectScript(id, codeHash)
     logAuthEvent({
+      // The admin's decision went through: not an error, whatever was decided.
       event: 'auth.script_review',
-      ok: false,
-      detail: outcome === 'deleted' ? `отклонён и удалён «${name}»` : `отклонено изменение «${name}», возвращена одобренная версия`,
-      error: reason || 'без причины',
+      ok: true,
+      detail: `${outcome === 'deleted' ? `отклонён и удалён «${name}»` : `отклонено изменение «${name}», возвращена одобренная версия`}${reason ? ` · причина: ${reason}` : ''}`,
     })
     syncSchedules()
     refresh()

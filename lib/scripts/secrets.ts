@@ -85,7 +85,7 @@ export class SecretVault {
   substitute(text: string, host: string): string {
     return text.replace(PLACEHOLDER, (_m, name: string) => {
       const s = this.secrets.get(name)
-      if (!s) throw new SecretPolicyError(`Секрета ${name} нет — список: cron_secrets`)
+      if (!s) throw new SecretPolicyError(`Секрета ${name} нет — список: script_secrets`)
       if (!hostAllowed(host, s.hosts)) throw new SecretPolicyError(`Секрет ${name} нельзя отправлять на ${host} (разрешено: ${s.hosts.join(', ')})`)
       return s.value
     })

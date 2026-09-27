@@ -71,6 +71,13 @@
       "when": 1790530196882,
       "tag": "0009_script_tools",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1790533559715,
+      "tag": "0010_fix_script_review_ok",
+      "breakpoints": true
     }
   ]
 }

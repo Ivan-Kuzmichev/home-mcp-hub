@@ -1,4 +1,4 @@
-import { and, count, desc, eq, gte, isNotNull, like, lt, or, sql, type SQL } from 'drizzle-orm'
+import { and, count, desc, eq, gte, inArray, isNotNull, like, lt, or, sql, type SQL } from 'drizzle-orm'
 import { scrub } from './connectors/http'
 import { getDb } from './db'
 import { toolCall } from './db/schema'
@@ -163,12 +163,15 @@ export function lastToolCall(): JournalRow | undefined {
   return recentToolCalls(1)[0]
 }
 
+/** Password and 2FA steps; other auth-tagged entries (consent, script review) are not sign-ins. */
+const SIGN_IN_EVENTS: AuthEvent[] = ['auth.password', 'auth.second_factor']
+
 export function failedSignIns(since: Date): number {
   return (
     getDb()
       .select({ n: count() })
       .from(toolCall)
-      .where(and(eq(toolCall.connectorId, 'auth'), eq(toolCall.ok, false), gte(toolCall.createdAt, since)))
+      .where(and(inArray(toolCall.tool, SIGN_IN_EVENTS), eq(toolCall.ok, false), gte(toolCall.createdAt, since)))
       .get()?.n ?? 0
   )
 }

@@ -21,7 +21,7 @@ export const LIMITS = {
 /** What the model reads before writing a script (cron_create description). */
 export const SANDBOX_API_DOC = `Код — тело async-функции (можно await и return). Доступно:
 - await fetch(url, { method, headers, body }) → { status, ok, headers, text, json() }. body — строка или объект (уйдёт как JSON). Редиректы не выполняются сами (3xx вернётся как есть). Куда можно ходить (внешние адреса, локальная сеть) — задаёт пользователь, см. инструкции хаба.
-- Секреты — только заглушками {{secret:ИМЯ}} в url, headers или body; хаб подставит значение, если адрес совпадает с хостами секрета. Значение секрета скрипту недоступно. Список — cron_secrets: там же настройки коннекторов, которыми поделился пользователь (адрес вроде {{secret:JACKETT_BASE_URL}} можно ставить в начало url).
+- Секреты — только заглушками {{secret:ИМЯ}} в url, headers или body; хаб подставит значение, если адрес совпадает с хостами секрета. Значение секрета скрипту недоступно. Список — script_secrets: там же настройки коннекторов, которыми поделился пользователь (адрес вроде {{secret:JACKETT_BASE_URL}} можно ставить в начало url).
 - log(...значения) — в журнал запуска.
 - state.get(key), state.set(key, value) — память между запусками (JSON).
 - await hub.tool(имя, аргументы) — инструменты хаба (torrents_status, search_torrents, paperless_search…), возвращают текст. Инструменты с записью (torrent_add, paperless_update…) — только если пользователь открыл скриптам локальную сеть; удаление по-прежнему требует confirm: true.

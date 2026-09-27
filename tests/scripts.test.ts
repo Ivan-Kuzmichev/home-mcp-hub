@@ -75,7 +75,7 @@ describe('cron scripts: approval flow', () => {
 
   it('lists secret names and hosts, never values', async () => {
     saveSecret({ name: 'TELEGRAM_TOKEN', value: '8123:very-secret', hosts: ['api.telegram.org'], description: 'бот' })
-    const out = await runTool(scripts, 'cron_secrets', cfg)
+    const out = await runTool(scripts, 'script_secrets', cfg)
     expect(out).toContain('TELEGRAM_TOKEN → api.telegram.org — бот')
     expect(out).not.toContain('very-secret')
   })
@@ -90,7 +90,7 @@ describe('cron scripts: approval flow', () => {
     const hints = Object.fromEntries(scripts.tools.map((t) => [t.name, t.annotations]))
     expect(hints.cron_delete?.destructiveHint).toBe(true)
     expect(hints.cron_list?.readOnlyHint).toBe(true)
-    expect(hints.cron_secrets?.readOnlyHint).toBe(true)
+    expect(hints.script_secrets?.readOnlyHint).toBe(true)
   })
 })
 
@@ -131,7 +131,7 @@ describe('cron scripts: connector settings for scripts', () => {
     const values = connectorValues()
     expect(values.find((v) => v.name === 'JACKETT_API_KEY')).toMatchObject({ secret: true, value: 'jk-1', hosts: ['jackett'] })
     expect(values.find((v) => v.name === 'JACKETT_BASE_URL')).toMatchObject({ secret: false, value: 'http://jackett:9117' })
-    const listed = await runTool(scripts, 'cron_secrets', cfg)
+    const listed = await runTool(scripts, 'script_secrets', cfg)
     expect(listed).toContain('JACKETT_API_KEY — API-ключ · секрет → jackett')
     expect(listed).not.toContain('jk-1')
     expect(listed).not.toContain('http://jackett:9117')
