@@ -3,7 +3,7 @@ import { and, count, eq } from 'drizzle-orm'
 import { fetch as undiciFetch } from 'undici'
 import { getDb } from '../db'
 import { scriptState } from '../db/schema'
-import { assertPublicUrl, NetworkPolicyError, scriptAgent } from './net'
+import { assertAllowedUrl, DEFAULT_NET_POLICY, NetworkPolicyError, scriptAgent, type NetPolicy } from './net'
 import { SecretPolicyError, SecretVault } from './secrets'
 
 export const LIMITS = {
@@ -20,7 +20,7 @@ export const LIMITS = {
 
 /** What the model reads before writing a script (cron_create description). */
 export const SANDBOX_API_DOC = `Код — тело async-функции (можно await и return). Доступно:
-- await fetch(url, { method, headers, body }) → { status, ok, headers, text, json() }. body — строка или объект (уйдёт как JSON). Редиректы не выполняются сами (3xx вернётся как есть). Только внешние адреса: локальная сеть закрыта.
+- await fetch(url, { method, headers, body }) → { status, ok, headers, text, json() }. body — строка или объект (уйдёт как JSON). Редиректы не выполняются сами (3xx вернётся как есть). Куда можно ходить (внешние адреса, локальная сеть) — задаёт пользователь, см. инструкции хаба.
 - Секреты — только заглушками {{secret:ИМЯ}} в url, headers или body; хаб подставит значение, если адрес совпадает с хостами секрета. Значение секрета скрипту недоступно. Список — cron_secrets.
 - log(...значения) — в журнал запуска.
 - state.get(key), state.set(key, value) — память между запусками (JSON).
@@ -36,6 +36,8 @@ export type SandboxDeps = {
   /** Hub read-only tools; injected to avoid an import cycle with the connector registry */
   callTool?: (name: string, args: unknown) => Promise<string>
   vault?: SecretVault
+  /** Which networks fetch may reach; external only by default */
+  net?: NetPolicy
 }
 
 // Friendly wrappers over the raw host functions.
@@ -109,6 +111,7 @@ export async function runScript(scriptId: string, code: string, deps: SandboxDep
   const started = Date.now()
   const deadline = started + LIMITS.timeMs
   const vault = deps.vault ?? new SecretVault()
+  const net = deps.net ?? DEFAULT_NET_POLICY
   const logs: string[] = []
   let logBytes = 0
   let fetches = 0
@@ -166,9 +169,9 @@ export async function runScript(scriptId: string, code: string, deps: SandboxDep
     if (++fetches > LIMITS.fetches) throw new Error(`Больше ${LIMITS.fetches} запросов за запуск`)
     const opts = JSON.parse(optsJson) as { method?: string; headers?: Record<string, unknown>; body?: unknown }
     // Host is fixed before secrets go in: a placeholder cannot change where the request goes.
-    const host = assertPublicUrl(rawUrl.replace(/\{\{secret:[A-Z0-9_]+\}\}/g, 'x')).hostname
+    const host = assertAllowedUrl(rawUrl.replace(/\{\{secret:[A-Z0-9_]+\}\}/g, 'x'), net).hostname
     const url = vault.substitute(rawUrl, host)
-    if (assertPublicUrl(url).hostname !== host) throw new SecretPolicyError('Секрет не может менять адрес запроса')
+    if (assertAllowedUrl(url, net).hostname !== host) throw new SecretPolicyError('Секрет не может менять адрес запроса')
     const headers: Record<string, string> = {}
     for (const [k, v] of Object.entries(opts.headers ?? {})) headers[k] = vault.substitute(String(v), host)
     let body: string | undefined
@@ -181,7 +184,7 @@ export async function runScript(scriptId: string, code: string, deps: SandboxDep
     const init = { method: (opts.method ?? 'GET').toUpperCase(), headers, body, redirect: 'manual' as const, signal }
     let res: Response
     try {
-      res = deps.fetchImpl ? await deps.fetchImpl(url, init) : ((await undiciFetch(url, { ...init, dispatcher: scriptAgent })) as unknown as Response)
+      res = deps.fetchImpl ? await deps.fetchImpl(url, init) : ((await undiciFetch(url, { ...init, dispatcher: scriptAgent(net) })) as unknown as Response)
     } catch (error) {
       const cause = (error as { cause?: Error }).cause
       if (cause && (cause instanceof NetworkPolicyError || (cause as { code?: string }).code === 'EPOLICY')) throw new NetworkPolicyError(cause.message)

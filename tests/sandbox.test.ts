@@ -4,7 +4,7 @@ import { setupTempDb } from './helpers'
 const cleanup = await setupTempDb()
 const { runScript, checkSyntax } = await import('@/lib/scripts/sandbox')
 const { saveSecret, SecretVault } = await import('@/lib/scripts/secrets')
-const { isPrivateAddress, assertPublicUrl } = await import('@/lib/scripts/net')
+const { isPrivateAddress, assertPublicUrl, assertAllowedUrl } = await import('@/lib/scripts/net')
 const { getDb } = await import('@/lib/db')
 const { script } = await import('@/lib/db/schema')
 
@@ -94,6 +94,17 @@ describe('network policy', () => {
     expect(() => assertPublicUrl('http://nas.local/')).toThrow()
     expect(() => assertPublicUrl('http://jackett:9117/')).toThrow()
     expect(assertPublicUrl('https://api.telegram.org/x').hostname).toBe('api.telegram.org')
+  })
+
+  it('follows the network switches', async () => {
+    const local = { local: true, external: false }
+    expect(assertAllowedUrl('http://jackett:9117/', local).hostname).toBe('jackett')
+    expect(assertAllowedUrl('http://192.168.1.10:8080/', local).hostname).toBe('192.168.1.10')
+    expect(() => assertAllowedUrl('http://8.8.8.8/', local)).toThrow('внешние адреса')
+    expect(assertAllowedUrl('http://127.0.0.1:8080/', { local: true, external: true }).hostname).toBe('127.0.0.1')
+    expect(() => assertAllowedUrl('https://example.com/', { local: false, external: false })).toThrow('Сеть скриптам выключена')
+    const r = await runScript('s1', `await fetch('https://example.com/')`, { fetchImpl: fakeFetch([]), net: { local: false, external: false } })
+    expect(r.error).toContain('Сеть скриптам выключена')
   })
 
   it('vault matches wildcard hosts', () => {

@@ -119,7 +119,7 @@ function namesLine(targets: QbTorrent[] | 'all'): string {
 export const qbittorrent = defineConnector<Config>({
   id: 'qbittorrent',
   name: 'qBittorrent',
-  description: 'Закачки на NAS',
+  description: 'Закачки на устройство пользователя',
   docsUrl: 'https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-5.0)',
   configSchema,
 

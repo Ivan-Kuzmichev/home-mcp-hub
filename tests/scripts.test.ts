@@ -86,3 +86,27 @@ describe('cron scripts: approval flow', () => {
     expect(hints.cron_secrets?.readOnlyHint).toBe(true)
   })
 })
+
+describe('cron scripts: switches', () => {
+  it('«Без одобрения» turns new code on at once, including updates', async () => {
+    const auto = configOf(scripts, { autoApprove: true })
+    const out = await runTool(scripts, 'cron_create', auto, { name: 'Авто', schedule: '0 9 * * *', code: 'return 1' })
+    expect(out).toContain('Включён без одобрения')
+    expect(store.statusOf(store.findScript('Авто'))).toBe('active')
+    expect(await runTool(scripts, 'cron_run', auto, { script: 'Авто' })).toContain('Готово')
+
+    await runTool(scripts, 'cron_update', auto, { script: 'Авто', code: 'return 2' })
+    expect(store.statusOf(store.findScript('Авто'))).toBe('active')
+    await runTool(scripts, 'cron_update', cfg, { script: 'Авто', code: 'return 3' })
+    expect(store.statusOf(store.findScript('Авто'))).toBe('pending')
+  })
+
+  it('instructions describe approval and network access', () => {
+    const tools = scripts.tools.map((t) => t.name)
+    expect(scripts.instructions?.(cfg, { tools })).toContain('на одобрение')
+    expect(scripts.instructions?.(cfg, { tools })).toContain('только во внешние адреса')
+    const open = configOf(scripts, { autoApprove: true, allowLocal: true })
+    expect(scripts.instructions?.(open, { tools })).toContain('одобрения нет')
+    expect(scripts.instructions?.(open, { tools })).toContain('и в локальную сеть')
+  })
+})

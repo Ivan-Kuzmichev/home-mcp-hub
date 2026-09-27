@@ -116,7 +116,7 @@ function namesLine(targets: Row[] | 'all'): string {
 export const transmission = defineConnector<Config>({
   id: 'transmission',
   name: 'Transmission',
-  description: 'Закачки на NAS (Transmission)',
+  description: 'Закачки на устройство пользователя (Transmission)',
   docsUrl: 'https://github.com/transmission/transmission/blob/main/docs/rpc-spec.md',
   configSchema,
 

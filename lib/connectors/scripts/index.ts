@@ -1,9 +1,11 @@
 import { z } from 'zod'
 import { formatAgo, formatWhen } from '../../format'
+import { logger } from '../../logger'
 import { executeScript, syncSchedules } from '../../scripts/scheduler'
 import { LIMITS, SANDBOX_API_DOC } from '../../scripts/sandbox'
 import { listSecrets } from '../../scripts/secrets'
 import {
+  approveScript,
   createScript,
   deleteScript,
   findScript,
@@ -18,13 +20,45 @@ import {
   type Script,
 } from '../../scripts/store'
 import { plural, truncate } from '../format'
-import { defineConnector, toolFor, ToolError } from '../types'
+import { defineConnector, field, toolFor, ToolError } from '../types'
 
-const configSchema = z.object({})
+const configSchema = z.object({
+  autoApprove: field(z.boolean().default(false), {
+    label: 'Без одобрения',
+    help: 'Код от ассистента сразу одобряется и включается, без проверки в админке. Скрипт выполнится по расписанию, и ты его не увидишь заранее',
+    widget: 'switch',
+  }),
+  allowExternal: field(z.boolean().default(true), {
+    label: 'Доступ к внешним адресам',
+    help: 'fetch к сайтам и API в интернете (Telegram, погода и т. п.)',
+    widget: 'switch',
+  }),
+  allowLocal: field(z.boolean().default(false), {
+    label: 'Доступ к локальной сети',
+    help: 'fetch к NAS, контейнерам, роутеру и localhost. Скрипт сможет ходить в сервисы напрямую, мимо инструментов хаба',
+    widget: 'switch',
+  }),
+})
 type Config = z.output<typeof configSchema>
 const tool = toolFor<Config>()
 
 const APPROVAL = 'Код ждёт одобрения пользователя в админке хаба → «Скрипты»; после одобрения скрипт включится сам.'
+
+/** «Без одобрения»: the assistant's code is approved (and so enabled) as soon as it is saved. */
+function autoApprove(config: Config, s: Script): Script {
+  if (!config.autoApprove || s.approvedHash === s.codeHash) return s
+  approveScript(s.id, s.codeHash)
+  logger.info({ script: s.id }, 'script auto-approved')
+  syncSchedules()
+  return findScript(s.id)
+}
+
+function networkLine(c: Config): string {
+  if (c.allowExternal && c.allowLocal) return 'fetch может ходить и во внешние адреса, и в локальную сеть.'
+  if (c.allowLocal) return 'fetch может ходить только в локальную сеть (NAS, контейнеры, localhost); интернет закрыт.'
+  if (c.allowExternal) return 'fetch может ходить только во внешние адреса; локальная сеть закрыта.'
+  return 'Сеть скриптам выключена: fetch не работает, доступны только hub.tool и state.'
+}
 
 async function guard<T>(fn: () => Promise<T> | T): Promise<T> {
   try {
@@ -57,23 +91,28 @@ export const scripts = defineConnector<Config>({
   builtin: true,
   configSchema,
 
-  instructions(_c, { tools }) {
+  instructions(c, { tools }) {
     const writes = ['cron_create', 'cron_update'].filter((t) => tools.includes(t))
-    if (writes.length === 0) return tools.some((t) => t.startsWith('cron_')) ? 'Cron-скрипты: можно смотреть и запускать существующие; создавать и менять код нельзя.' : null
+    if (!tools.some((t) => t.startsWith('cron_'))) return null
+    if (writes.length === 0) return `Cron-скрипты: можно смотреть и запускать существующие; создавать и менять код нельзя. ${networkLine(c)}`
+    const verb = writes.length > 1 ? 'отправляют' : 'отправляет'
     return [
-      `Cron-скрипты: ${writes.join('/')} ${writes.length > 1 ? 'отправляют' : 'отправляет'} код на одобрение пользователю; одобренный скрипт включается сам, запускать можно только одобренный.`,
+      c.autoApprove
+        ? `Cron-скрипты: ${writes.join('/')} сразу включают скрипт — одобрения нет, поэтому покажи пользователю код и расписание, прежде чем сохранять.`
+        : `Cron-скрипты: ${writes.join('/')} ${verb} код на одобрение пользователю; одобренный скрипт включается сам, запускать можно только одобренный.`,
+      networkLine(c),
       tools.includes('cron_secrets') ? 'Секреты — только заглушками {{secret:ИМЯ}} (список — cron_secrets), значения тебе недоступны.' : 'Секреты — только заглушками {{secret:ИМЯ}}, значения тебе недоступны.',
     ].join(' ')
   },
 
-  async test() {
+  async test(c) {
     const list = listScripts()
     const active = list.filter((s) => statusOf(s) === 'active').length
     const pending = list.filter((s) => statusOf(s) === 'pending').length
     return {
       ok: true,
       summary: `${list.length} ${plural(list.length, ['скрипт', 'скрипта', 'скриптов'])}`,
-      details: [`включено ${active}`, pending ? `ждут одобрения ${pending}` : null].filter((d): d is string => !!d),
+      details: [`включено ${active}`, pending ? `ждут одобрения ${pending}` : null, c.autoApprove ? 'без одобрения' : null].filter((d): d is string => !!d),
     }
   },
 
@@ -115,7 +154,7 @@ export const scripts = defineConnector<Config>({
     tool({
       name: 'cron_create',
       title: 'Создать cron-скрипт',
-      description: `Создать JS-скрипт, который хаб будет запускать по cron-расписанию. Код не запускается, пока пользователь не одобрит его в админке; одобренный скрипт включается сам.\n${SANDBOX_API_DOC}`,
+      description: `Создать JS-скрипт, который хаб будет запускать по cron-расписанию. Обычно код ждёт одобрения пользователя в админке и после него включается сам; если в хабе выключено одобрение — включается сразу (ответ скажет, какой случай).\n${SANDBOX_API_DOC}`,
       annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
       inputSchema: z.object({
         name: z.string().min(1).max(80),
@@ -123,16 +162,20 @@ export const scripts = defineConnector<Config>({
         schedule: z.string().describe('Cron из 5 полей: «*/15 * * * *», «0 9 * * *» (время хаба)'),
         code: z.string().min(1),
       }),
-      async run(args) {
-        const s = await guard(() => createScript(args))
-        return [`Создан «${s.name}» (${s.id}), расписание \`${s.schedule}\`.`, APPROVAL].join('\n')
+      async run(args, { config }) {
+        const s = autoApprove(config, await guard(() => createScript(args)))
+        const next = statusOf(s) === 'active' ? nextRun(s.schedule) : null
+        return [
+          `Создан «${s.name}» (${s.id}), расписание \`${s.schedule}\`.`,
+          statusOf(s) === 'active' ? `Включён без одобрения${next ? `, следующий запуск ${formatWhen(next)}` : ''}. Проверить — cron_run.` : APPROVAL,
+        ].join('\n')
       },
     }),
 
     tool({
       name: 'cron_update',
       title: 'Изменить cron-скрипт',
-      description: 'Изменить имя, описание, расписание или код. Новый код снова ждёт одобрения, а скрипт до него выключается; смена расписания одобрения не требует.',
+      description: 'Изменить имя, описание, расписание или код. Новый код снова ждёт одобрения, а скрипт до него выключается (если одобрение не выключено в хабе); смена расписания одобрения не требует.',
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
       inputSchema: z.object({
         script: refInput,
@@ -141,9 +184,11 @@ export const scripts = defineConnector<Config>({
         schedule: z.string().optional(),
         code: z.string().min(1).optional(),
       }),
-      async run({ script, ...change }) {
+      async run({ script, ...change }, { config }) {
         const before = await guard(() => findScript(script))
-        const s = await guard(() => updateScript(before, change))
+        const updated = await guard(() => updateScript(before, change))
+        // Only new code is auto-approved: a script the admin switched off stays off.
+        const s = updated.codeHash !== before.codeHash ? autoApprove(config, updated) : updated
         syncSchedules()
         const codeChanged = s.codeHash !== before.codeHash
         return [`Обновлён «${s.name}»: ${STATUS_LABELS[statusOf(s)]}.`, codeChanged && statusOf(s) === 'pending' ? `Новый код выключен до одобрения. ${APPROVAL}` : null].filter(Boolean).join('\n')

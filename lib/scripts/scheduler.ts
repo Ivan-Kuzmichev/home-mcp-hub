@@ -1,6 +1,7 @@
 import cron, { type ScheduledTask } from 'node-cron'
 import { logToolCall } from '../journal'
 import { logger } from '../logger'
+import { DEFAULT_NET_POLICY, type NetPolicy } from './net'
 import { runScript, type RunResult } from './sandbox'
 import { getScript, listScripts, recordRun, statusOf, type Script } from './store'
 
@@ -22,6 +23,13 @@ async function callReadOnlyTool(name: string, args: unknown): Promise<string> {
   throw new Error(`Инструмента ${name} нет или его коннектор выключен`)
 }
 
+/** Network switches from the scripts connector; external only if it cannot be read. */
+async function netPolicy(): Promise<NetPolicy> {
+  const { activeConfig } = await import('../connectors/active')
+  const c = activeConfig('scripts') as { allowLocal?: boolean; allowExternal?: boolean } | null
+  return c ? { local: c.allowLocal === true, external: c.allowExternal !== false } : DEFAULT_NET_POLICY
+}
+
 const globalForSched = globalThis as unknown as { __hubScriptTasks?: Map<string, { task: ScheduledTask; schedule: string }>; __hubScriptBusy?: Set<string> }
 const tasks = (globalForSched.__hubScriptTasks ??= new Map())
 const busy = (globalForSched.__hubScriptBusy ??= new Set())
@@ -34,7 +42,7 @@ export async function executeScript(id: string, trigger: 'cron' | 'manual' | 'as
   if (busy.has(id)) throw new Error('Скрипт уже выполняется')
   busy.add(id)
   try {
-    const r = await runScript(s.id, s.code, { callTool: callReadOnlyTool })
+    const r = await runScript(s.id, s.code, { callTool: callReadOnlyTool, net: await netPolicy() })
     recordRun(s, trigger, r)
     logToolCall({
       tool: `cron:${s.name}`,

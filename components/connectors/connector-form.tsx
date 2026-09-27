@@ -253,7 +253,7 @@ function InstructionsBlock(p: {
         aria-label={p.mode === 'append' ? 'Своя инструкция' : 'Инструкция'}
         rows={p.mode === 'replace' ? 6 : 3}
         className={TEXTAREA}
-        placeholder={p.mode === 'append' ? 'Своё дополнение, например: «Перед загрузкой найди постер на TMDB»' : 'Пусто — у коннектора не будет инструкции'}
+        placeholder={p.mode === 'append' ? 'Своё дополнение, добавляемое в инструкцию' : 'Пусто — у коннектора не будет инструкции'}
         value={p.text}
         onChange={(e) => p.onText(e.target.value)}
       />
