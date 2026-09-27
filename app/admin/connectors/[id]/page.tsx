@@ -27,7 +27,7 @@ export default async function ConnectorPage({ params }: { params: Promise<{ id: 
         <PageHeader title="Коннекторы" subtitle="Сервисы, к которым ИИ-ассистент получает доступ через хаб. Секреты хранятся зашифрованными." />
       </div>
       {/* Phone: the form is its own screen with a back button. */}
-      <header className="sticky top-0 z-10 -mx-4 -mt-4 flex h-14 items-center gap-2 border-b border-border bg-background px-2 md:hidden">
+      <header className="sticky top-0 z-10 -mx-4 -mt-4 flex h-14 items-center gap-2 border-b border-border bg-background pr-4 pl-2 md:hidden">
         <Link href={href('/admin/connectors')} aria-label="Назад" className="flex size-10 items-center justify-center text-muted-foreground">
           <ChevronLeft size={22} />
         </Link>
@@ -38,7 +38,7 @@ export default async function ConnectorPage({ params }: { params: Promise<{ id: 
         <EnabledSwitch id={c.id} name={c.name} enabled={row?.enabled ?? false} disabled={!row} />
       </header>
 
-      <div className="grid gap-3.5 md:grid-cols-[320px_minmax(0,1fr)]">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-3.5 md:grid-cols-[320px_minmax(0,1fr)]">
         <div className="hidden md:block">
           <ConnectorList items={connectorSummaries()} selected={id} />
         </div>

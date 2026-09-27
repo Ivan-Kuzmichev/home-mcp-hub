@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useEffect, useRef } from 'react'
 import { MOBILE_TABS, MORE_PATHS, NAV_ITEMS } from '@/components/admin/nav-items'
 import { usePrefix, useHref } from '@/components/prefix-provider'
 import { cn } from '@/lib/utils'
@@ -47,8 +48,22 @@ export function MobileTabs({ hidden = [] }: { hidden?: string[] }) {
   const current = useAppPath()
   const href = useHref()
   const tabs = MOBILE_TABS.filter((t) => !hidden.includes(t.path))
+  const ref = useRef<HTMLElement>(null)
+  // Sticky action bars sit right on top of the tabs: their real height depends on the
+  // safe area and the browser toolbar, so it is measured rather than guessed.
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const root = document.documentElement
+    const update = () => root.style.setProperty('--tabs-h', `${el.offsetHeight}px`)
+    update()
+    const ro = new ResizeObserver(update)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
   return (
     <nav
+      ref={ref}
       className="fixed inset-x-0 bottom-0 z-20 grid border-t border-border bg-panel px-1 pb-[max(18px,env(safe-area-inset-bottom))] md:hidden"
       style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}
     >

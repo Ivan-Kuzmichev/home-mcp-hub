@@ -112,7 +112,10 @@ export default async function ActivityPage({ searchParams }: { searchParams: Pro
                 </div>
                 <span className="line-clamp-2 text-xs text-muted-foreground">{r.argsRedacted}</span>
                 <div className="flex items-center justify-between gap-3">
-                  <Result row={r} />
+                  {/* min-w-0: a long result truncates instead of pushing the duration out */}
+                  <div className="min-w-0">
+                    <Result row={r} />
+                  </div>
                   <span className="shrink-0 font-mono text-[11px] text-subtle">{formatDuration(r.durationMs)}</span>
                 </div>
               </div>

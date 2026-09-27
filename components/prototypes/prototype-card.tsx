@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Pill } from '@/components/ui/pill'
 import { Switch } from '@/components/ui/switch'
+import { PreviewFrame } from './preview-frame'
 
 export type CardData = {
   id: string
@@ -34,7 +35,7 @@ export function PrototypeCard({ data }: { data: CardData }) {
   const [uploadState, upload, uploading] = useActionState<ActionState, FormData>(uploadVersionAction, {})
 
   return (
-    <Card className="flex flex-col gap-5 p-4 pb-24 md:p-5 md:pb-5">
+    <Card className="flex min-w-0 flex-col gap-5 p-4 pb-24 md:p-5 md:pb-5">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="flex min-w-0 flex-col gap-0.5">
           <h2 className="truncate text-lg">{data.title}</h2>
@@ -46,7 +47,7 @@ export function PrototypeCard({ data }: { data: CardData }) {
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="pt-link">Публичная ссылка</Label>
         <div className="flex gap-2">
-          <Input id="pt-link" className="font-mono" value={data.url} readOnly />
+          <Input id="pt-link" className="min-w-0 font-mono" value={data.url} readOnly />
           <CopyButton value={data.url} />
           <Button size="icon" className="size-10 shrink-0" aria-label="Показать QR" title="QR-код" onClick={() => setShowQr((v) => !v)}>
             <QrCode size={16} />
@@ -58,15 +59,7 @@ export function PrototypeCard({ data }: { data: CardData }) {
         )}
       </div>
 
-      <div className="overflow-hidden rounded-md border border-border">
-        <iframe
-          title={`Превью: ${data.title}`}
-          src={data.previewUrl}
-          sandbox="allow-scripts allow-forms allow-modals allow-popups"
-          className="block h-64 w-full bg-white md:h-80"
-          loading="lazy"
-        />
-      </div>
+      <PreviewFrame src={data.previewUrl} title={`Превью: ${data.title}`} />
 
       <form action={save} className="flex flex-col gap-4">
         <input type="hidden" name="id" value={data.id} />
@@ -113,7 +106,7 @@ export function PrototypeCard({ data }: { data: CardData }) {
 
         {saveState.error && <div className="text-[13px] text-err">{saveState.error}</div>}
 
-        <div className="fixed inset-x-0 bottom-[calc(62px+max(18px,env(safe-area-inset-bottom)))] z-10 flex gap-2.5 border-t border-border bg-panel px-4 py-3 md:static md:justify-end md:border-0 md:bg-transparent md:p-0">
+        <div className="fixed inset-x-0 bottom-[var(--tabs-h,80px)] z-10 flex gap-2.5 border-t border-border bg-panel px-4 py-3 md:static md:justify-end md:border-0 md:bg-transparent md:p-0">
           {saveState.ok && <span className="hidden self-center text-[13px] text-ok md:inline">{saveState.ok}</span>}
           <Button type="submit" variant="primary" className="flex-1 md:flex-none" disabled={saving}>
             {saving ? 'Сохраняю…' : 'Сохранить'}
@@ -127,7 +120,7 @@ export function PrototypeCard({ data }: { data: CardData }) {
           {data.versions.map((v) => (
             <div key={v.version} className="flex items-center gap-3 border-b border-divider px-3.5 py-2.5 text-[13px] last:border-b-0">
               <span className="w-10 font-mono">v{v.version}</span>
-              <span className="flex-1 text-subtle">
+              <span className="min-w-0 flex-1 truncate text-subtle">
                 {v.ago} · {v.size}
               </span>
               <a href={`${data.previewUrl.split('?')[0]}?v=${v.version}`} target="_blank" rel="noreferrer" className="no-underline">
@@ -147,7 +140,7 @@ export function PrototypeCard({ data }: { data: CardData }) {
             </div>
           ))}
         </div>
-        <form action={upload} className="flex flex-wrap items-center gap-2">
+        <form action={upload} className="hidden flex-wrap items-center gap-2 md:flex">
           <input type="hidden" name="id" value={data.id} />
           <input name="file" type="file" accept=".html,.htm,text/html" required className="min-w-0 flex-1 text-[13px] text-muted-foreground file:mr-3 file:cursor-pointer file:rounded-sm file:border file:border-border file:bg-secondary file:px-3 file:py-1.5 file:text-foreground" />
           <Button type="submit" size="sm" disabled={uploading}>

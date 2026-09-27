@@ -181,7 +181,7 @@ export function ConnectorForm(props: Props) {
         }}
       />
 
-      <div className="fixed inset-x-0 bottom-[calc(62px+max(18px,env(safe-area-inset-bottom)))] z-10 flex gap-2.5 border-t border-border bg-panel px-4 py-3 md:static md:justify-end md:border-0 md:bg-transparent md:p-0">
+      <div className="fixed inset-x-0 bottom-[var(--tabs-h,80px)] z-10 flex gap-2.5 border-t border-border bg-panel px-4 py-3 md:static md:justify-end md:border-0 md:bg-transparent md:p-0">
         {saved && <span className="hidden self-center text-[13px] text-ok md:inline">Сохранено</span>}
         <Link href={props.backHref} className="flex-1 md:flex-none">
           <Button className="w-full">Отмена</Button>

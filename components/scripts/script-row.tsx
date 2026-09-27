@@ -31,9 +31,27 @@ export function ScriptRow({ s }: { s: ScriptView }) {
   const [enabled, setEnabled] = useState(s.enabled)
   const [result, setResult] = useState<{ ok: boolean; text: string; output?: string } | null>(null)
 
+  const actions = (
+    <>
+      <Button
+        size="sm"
+        disabled={pending || !s.approved}
+        onClick={() =>
+          start(async () => {
+            const r = await runNowAction(s.id)
+            setResult(r.error ? { ok: false, text: r.error, output: r.output } : { ok: true, text: r.ok ?? '', output: r.output })
+          })
+        }
+      >
+        Запустить
+      </Button>
+      <ConfirmButton action={deleteScriptAction} fields={{ id: s.id }} label="Удалить" confirmLabel="Точно удалить" />
+    </>
+  )
+
   return (
     <div className="flex flex-col gap-2 border-b border-divider py-3.5 last:border-b-0">
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex items-start gap-3">
         <Switch
           checked={enabled}
           disabled={pending || !s.approved}
@@ -50,30 +68,22 @@ export function ScriptRow({ s }: { s: ScriptView }) {
           }
         />
         <div className="flex min-w-0 flex-1 flex-col">
-          <span className="font-medium">
+          <span className="font-medium break-words">
             {s.name} <span className="font-mono text-xs text-subtle">{s.id}</span>
           </span>
-          <span className="text-xs text-subtle">
+          <span className="text-xs break-words text-subtle">
             <span className="font-mono">{s.schedule}</span>
             {s.next && ` · следующий ${s.next}`}
             {s.last && ` · последний ${s.last}`}
           </span>
         </div>
-        <Pill tone={s.tone}>{s.statusLabel}</Pill>
-        <Button
-          size="sm"
-          disabled={pending || !s.approved}
-          onClick={() =>
-            start(async () => {
-              const r = await runNowAction(s.id)
-              setResult(r.error ? { ok: false, text: r.error, output: r.output } : { ok: true, text: r.ok ?? '', output: r.output })
-            })
-          }
-        >
-          Запустить
-        </Button>
-        <ConfirmButton action={deleteScriptAction} fields={{ id: s.id }} label="Удалить" confirmLabel="Точно удалить" />
+        <span className="shrink-0">
+          <Pill tone={s.tone}>{s.statusLabel}</Pill>
+        </span>
+        <div className="hidden shrink-0 gap-2 lg:flex">{actions}</div>
       </div>
+      {/* Phone: the buttons get their own row so the name keeps the width. */}
+      <div className="flex gap-2 pl-[52px] lg:hidden">{actions}</div>
       {s.description && <p className="text-[13px] text-muted-foreground">{s.description}</p>}
       {s.rejectReason && <p className="text-[13px] text-err">Отклонён: {s.rejectReason}</p>}
       {result && (
