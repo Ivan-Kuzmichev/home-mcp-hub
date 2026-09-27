@@ -57,6 +57,13 @@
       "when": 1790434151940,
       "tag": "0007_scripts",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1790519489066,
+      "tag": "0008_connector_instructions",
+      "breakpoints": true
     }
   ]
 }

@@ -102,3 +102,9 @@ export function recordCheck(id: string, result: TestResult): void {
     .where(eq(connectorTable.id, id))
     .run()
 }
+
+export type InstructionsMode = 'append' | 'replace'
+
+export function setInstructions(id: string, mode: InstructionsMode, text: string | null): void {
+  getDb().update(connectorTable).set({ instructionsMode: mode, instructionsText: text, updatedAt: new Date() }).where(eq(connectorTable.id, id)).run()
+}

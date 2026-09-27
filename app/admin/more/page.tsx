@@ -8,7 +8,7 @@ import { connectorStates } from '@/lib/connectors/active'
 import { href } from '@/lib/prefix'
 
 // Phone-only «Ещё» tab: sections that do not fit into the bottom bar.
-const MORE_ITEMS = ['/admin/scripts', '/admin/activity', '/admin/settings']
+const MORE_ITEMS = ['/admin/scripts', '/admin/activity', '/admin/diagnostics', '/admin/settings']
 
 export const dynamic = 'force-dynamic'
 

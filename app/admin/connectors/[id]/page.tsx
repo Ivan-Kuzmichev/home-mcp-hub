@@ -6,6 +6,7 @@ import { ConnectorForm } from '@/components/connectors/connector-form'
 import { ConnectorList } from '@/components/connectors/connector-list'
 import { EnabledSwitch } from '@/components/connectors/enabled-switch'
 import { describeFields, describeTools, hubNetworks } from '@/lib/connectors/form'
+import { describeInstructions } from '@/lib/connectors/instructions'
 import { getConnector } from '@/lib/connectors/registry'
 import { getConnectorRow } from '@/lib/connectors/store'
 import { connectorSummaries } from '@/lib/connectors/summary'
@@ -50,6 +51,7 @@ export default async function ConnectorPage({ params }: { params: Promise<{ id: 
           fields={describeFields(c, row)}
           tools={describeTools(c)}
           disabledTools={row?.disabledTools ?? []}
+          instructions={describeInstructions(c, row)}
           configured={!!row}
           lastCheck={row?.lastCheckAt ? { ok: !!row.lastCheckOk, note: row.lastCheckNote ?? '', ago: formatAgo(row.lastCheckAt) } : null}
           hubNetworks={hubNetworks()}

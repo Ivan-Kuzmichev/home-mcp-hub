@@ -20,6 +20,9 @@ export const connector = sqliteTable('connector', {
   enabled: integer('enabled', { mode: 'boolean' }).notNull().default(true),
   /** JSON array of tool names switched off in the admin panel */
   disabledTools: text('disabled_tools', { mode: 'json' }).$type<string[]>().notNull().default([]),
+  /** Assistant instructions: 'append' adds instructionsText to the connector's default, 'replace' uses it alone */
+  instructionsMode: text('instructions_mode').$type<'append' | 'replace'>().notNull().default('append'),
+  instructionsText: text('instructions_text'),
   lastCheckAt: integer('last_check_at', { mode: 'timestamp_ms' }),
   lastCheckOk: integer('last_check_ok', { mode: 'boolean' }),
   lastCheckNote: text('last_check_note'),

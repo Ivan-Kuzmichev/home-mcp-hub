@@ -59,7 +59,8 @@
 ## Структура
 
 Дерево проекта — в `docs/SPEC.md`, раздел «Стек и структура проекта». Коннектор = папка в `lib/connectors/<name>/`, экспортирующая объект
-`Connector` (`id`, `name`, `configSchema`, `test`, `tools`) и одна строка в `lib/connectors/registry.ts`. Админка рисует форму по `configSchema`,
+`Connector` (`id`, `name`, `configSchema`, `test`, `tools`, необязательный `instructions(config, { tools })` — строка для
+instructions сервера, должна пропускать выключенные инструменты; админ может дополнить или заменить её в форме) и одна строка в `lib/connectors/registry.ts`. Админка рисует форму по `configSchema`,
 поля с маркером `secret()` шифруются.
 
 ## Команды

@@ -67,7 +67,13 @@ export const prototypes = defineConnector<Config>({
   builtin: true,
   configSchema,
 
-  instructions: () => `Прототипы: ${CHUNK_HINT} Один большой вызов с целым HTML может оборваться.`,
+  instructions(_c, { tools }) {
+    if (!['prototype_publish', 'prototype_update'].some((t) => tools.includes(t))) return null
+    // The chunk hint names prototype_append: without it, big pages cannot be sent at all.
+    return tools.includes('prototype_append')
+      ? `Прототипы: ${CHUNK_HINT} Один большой вызов с целым HTML может оборваться.`
+      : 'Прототипы: HTML больше ~5 КБ одним вызовом может оборваться, а дописывание частями выключено — предупреди пользователя.'
+  },
 
   async test() {
     const list = listPrototypes()

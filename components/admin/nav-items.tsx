@@ -1,4 +1,4 @@
-import { Blocks, KeyRound, LayoutGrid, List, MoreHorizontal, PanelsTopLeft, SlidersHorizontal, SquareTerminal, type LucideIcon } from 'lucide-react'
+import { Blocks, Stethoscope, KeyRound, LayoutGrid, List, MoreHorizontal, PanelsTopLeft, SlidersHorizontal, SquareTerminal, type LucideIcon } from 'lucide-react'
 
 export type NavItem = { path: string; label: string; short?: string; icon: LucideIcon }
 
@@ -9,14 +9,15 @@ export const NAV_ITEMS: NavItem[] = [
   { path: '/admin/scripts', label: 'Скрипты', icon: SquareTerminal },
   { path: '/admin/access', label: 'MCP доступ', short: 'MCP', icon: KeyRound },
   { path: '/admin/activity', label: 'Журнал', icon: List },
+  { path: '/admin/diagnostics', label: 'Диагностика', icon: Stethoscope },
   { path: '/admin/settings', label: 'Настройки', icon: SlidersHorizontal },
 ]
 
-// Bottom tabs on the phone; scripts, journal and settings live under «Ещё».
+// Bottom tabs on the phone; scripts, journal, diagnostics and settings live under «Ещё».
 const TAB_PATHS = ['/admin', '/admin/connectors', '/admin/prototypes', '/admin/access']
 export const MOBILE_TABS: NavItem[] = [
   ...NAV_ITEMS.filter((i) => TAB_PATHS.includes(i.path)),
   { path: '/admin/more', label: 'Ещё', icon: MoreHorizontal },
 ]
 
-export const MORE_PATHS = ['/admin/more', '/admin/scripts', '/admin/activity', '/admin/settings']
+export const MORE_PATHS = ['/admin/more', '/admin/scripts', '/admin/activity', '/admin/diagnostics', '/admin/settings']

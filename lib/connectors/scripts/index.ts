@@ -57,8 +57,14 @@ export const scripts = defineConnector<Config>({
   builtin: true,
   configSchema,
 
-  instructions: () =>
-    'Cron-скрипты: cron_create/cron_update отправляют код на одобрение пользователю; одобренный скрипт включается сам, запускать можно только одобренный. Секреты — только заглушками {{secret:ИМЯ}} (список — cron_secrets), значения тебе недоступны.',
+  instructions(_c, { tools }) {
+    const writes = ['cron_create', 'cron_update'].filter((t) => tools.includes(t))
+    if (writes.length === 0) return tools.some((t) => t.startsWith('cron_')) ? 'Cron-скрипты: можно смотреть и запускать существующие; создавать и менять код нельзя.' : null
+    return [
+      `Cron-скрипты: ${writes.join('/')} ${writes.length > 1 ? 'отправляют' : 'отправляет'} код на одобрение пользователю; одобренный скрипт включается сам, запускать можно только одобренный.`,
+      tools.includes('cron_secrets') ? 'Секреты — только заглушками {{secret:ИМЯ}} (список — cron_secrets), значения тебе недоступны.' : 'Секреты — только заглушками {{secret:ИМЯ}}, значения тебе недоступны.',
+    ].join(' ')
+  },
 
   async test() {
     const list = listScripts()

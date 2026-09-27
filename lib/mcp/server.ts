@@ -2,6 +2,7 @@ import type { McpServer } from '@modelcontextprotocol/server'
 import { createMcpHandler } from 'mcp-handler'
 import { z } from 'zod'
 import { activeConfig, connectorStates } from '../connectors/active'
+import { connectorInstructions, visibleTools } from '../connectors/instructions'
 import { scrub } from '../connectors/http'
 import { resolveResult, type JackettLinkAccess } from '../connectors/resolve'
 import { checkConnector } from '../connectors/health'
@@ -14,16 +15,17 @@ import { HUB_VERSION } from '../version'
 
 /**
  * Server instructions, built from the connectors that are on right now: the model does not read
- * about services the hub does not have, and connector-specific lines (e.g. Paperless labeling
- * rules, TorrServe notes) come straight from their settings.
+ * about services the hub does not have or tools that are switched off. Paperless labeling rules
+ * are not here — they come with the Paperless read tools.
  */
 export function buildInstructions(): string {
-  const active = connectorStates().filter((s) => s.status === 'active')
-  const tools = ['hub_status', ...active.flatMap((s) => s.connector.tools.filter((t) => !s.row.disabledTools.includes(t.name)).map((t) => t.name))]
+  const states = connectorStates()
+  const tools = visibleTools(states)
+  const active = states.filter((s) => s.status === 'active')
   const services = active.map((s) => `${s.connector.name} — ${s.connector.description.toLowerCase()}`).join('; ')
   const lines = [
     services ? `Home Hub — домашний хаб пользователя. Подключено: ${services}.` : 'Home Hub — домашний хаб пользователя. Сервисы пока не подключены.',
-    ...active.map((s) => s.connector.instructions?.(s.config, { tools }) ?? null),
+    ...active.map((s) => connectorInstructions(s.connector, s.row, s.config, tools).text),
     'Перед удалением вместе с файлами и перед другими необратимыми действиями переспроси пользователя.',
     'Если что-то не работает, вызови hub_status: он покажет, какие сервисы подключены и отвечают.',
     'Отвечай коротко: пользователь читает ответы на телефоне.',

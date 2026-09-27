@@ -21,6 +21,7 @@ type Props = {
   fields: FieldDescriptor[]
   tools: ToolDescriptor[]
   disabledTools: string[]
+  instructions: { standard: string | null; mode: 'append' | 'replace'; text: string }
   configured: boolean
   lastCheck: { ok: boolean; note: string; ago: string } | null
   hubNetworks: { address: string; cidr: string }[]
@@ -33,6 +34,8 @@ export function ConnectorForm(props: Props) {
   const { id, fields, tools } = props
   const [values, setValues] = useState<FormValues>(() => Object.fromEntries(fields.map((f) => [f.name, f.value])))
   const [off, setOff] = useState<Set<string>>(() => new Set(props.disabledTools))
+  const [mode, setMode] = useState(props.instructions.mode)
+  const [ownText, setOwnText] = useState(props.instructions.text)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [check, setCheck] = useState<CheckState>(null)
   const [saved, setSaved] = useState(false)
@@ -58,7 +61,7 @@ export function ConnectorForm(props: Props) {
 
   const onSave = () =>
     startSave(async () => {
-      const r = await saveConnectorAction(id, values, [...off])
+      const r = await saveConnectorAction(id, values, [...off], { mode, text: ownText })
       if (!r.ok) return setErrors(r.errors)
       setCheck({ result: r.test, at: 'now' })
       setSaved(true)
@@ -154,6 +157,30 @@ export function ConnectorForm(props: Props) {
         </div>
       </div>
 
+      <InstructionsBlock
+        standard={props.instructions.standard}
+        mode={mode}
+        text={ownText}
+        toolsChanged={[...off].sort().join() !== [...props.disabledTools].sort().join()}
+        error={errors._instructions}
+        onMode={(m) => {
+          setMode(m)
+          // «Replace» starts from the built-in text, so the admin edits it rather than a blank field.
+          if (m === 'replace' && !ownText.trim()) setOwnText(props.instructions.standard ?? '')
+          if (m === 'append' && ownText.trim() === (props.instructions.standard ?? '').trim()) setOwnText('')
+          setSaved(false)
+        }}
+        onText={(t) => {
+          setOwnText(t)
+          setSaved(false)
+        }}
+        onReset={() => {
+          setMode('append')
+          setOwnText('')
+          setSaved(false)
+        }}
+      />
+
       <div className="fixed inset-x-0 bottom-[calc(62px+max(18px,env(safe-area-inset-bottom)))] z-10 flex gap-2.5 border-t border-border bg-panel px-4 py-3 md:static md:justify-end md:border-0 md:bg-transparent md:p-0">
         {saved && <span className="hidden self-center text-[13px] text-ok md:inline">Сохранено</span>}
         <Link href={props.backHref} className="flex-1 md:flex-none">
@@ -164,6 +191,77 @@ export function ConnectorForm(props: Props) {
         </Button>
       </div>
     </Card>
+  )
+}
+
+const TEXTAREA =
+  'min-h-28 w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-[13px] leading-5 text-foreground placeholder:text-faint focus-visible:border-primary focus-visible:outline-none'
+
+function InstructionsBlock(p: {
+  standard: string | null
+  mode: 'append' | 'replace'
+  text: string
+  toolsChanged: boolean
+  error?: string
+  onMode: (m: 'append' | 'replace') => void
+  onText: (t: string) => void
+  onReset: () => void
+}) {
+  const modes = [
+    { value: 'append', label: 'Дополнить' },
+    { value: 'replace', label: 'Заменить' },
+  ] as const
+  const pristine = p.mode === 'append' && !p.text.trim()
+  return (
+    <div className="flex flex-col gap-2.5">
+      <div className="flex items-center justify-between gap-3">
+        <span className="font-medium">Инструкция для ассистента</span>
+        <Button size="sm" onClick={p.onReset} disabled={pristine}>
+          Сбросить
+        </Button>
+      </div>
+      <span className="text-xs text-subtle">
+        Попадает в инструкции сервера, пока коннектор включён: ассистент читает её в начале каждого чата.
+      </span>
+      <div role="radiogroup" aria-label="Режим инструкции" className="grid auto-cols-fr grid-flow-col gap-1 rounded-md border border-border bg-background p-1">
+        {modes.map((m) => (
+          <button
+            key={m.value}
+            type="button"
+            role="radio"
+            aria-checked={p.mode === m.value}
+            onClick={() => p.onMode(m.value)}
+            className={cn(
+              'cursor-pointer rounded-sm px-2 py-1.5 text-[13px] font-medium text-muted-foreground hover:text-foreground',
+              p.mode === m.value && 'bg-secondary text-foreground',
+            )}
+          >
+            {m.label}
+          </button>
+        ))}
+      </div>
+      {p.mode === 'append' && (
+        <div className="flex flex-col gap-1">
+          <span className="text-xs text-subtle">Стандартная инструкция</span>
+          <div className="rounded-md bg-secondary/60 px-3 py-2 font-mono text-xs leading-5 whitespace-pre-wrap text-muted-foreground">
+            {p.standard ?? 'Нет — для включённых инструментов она не нужна.'}
+          </div>
+          {p.toolsChanged && <span className="text-xs text-subtle">Набор инструментов изменён — стандартный текст обновится после сохранения.</span>}
+        </div>
+      )}
+      <textarea
+        aria-label={p.mode === 'append' ? 'Своя инструкция' : 'Инструкция'}
+        rows={p.mode === 'replace' ? 6 : 3}
+        className={TEXTAREA}
+        placeholder={p.mode === 'append' ? 'Своё дополнение, например: «Перед загрузкой найди постер на TMDB»' : 'Пусто — у коннектора не будет инструкции'}
+        value={p.text}
+        onChange={(e) => p.onText(e.target.value)}
+      />
+      {p.mode === 'replace' && (
+        <span className="text-xs text-subtle">Стандартный текст не добавляется и не следит за выключенными инструментами — поправь вручную, если выключишь инструмент.</span>
+      )}
+      {p.error && <span className="text-xs text-err">{p.error}</span>}
+    </div>
   )
 }
 
@@ -246,7 +344,7 @@ function FieldControl({
           id={id}
           rows={6}
           spellCheck={false}
-          className="min-h-28 w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-[13px] leading-5 text-foreground placeholder:text-faint focus-visible:border-primary focus-visible:outline-none"
+          className={TEXTAREA}
           placeholder={f.placeholder}
           value={typeof value === 'string' ? value : ''}
           onChange={(e) => onChange(f.name, e.target.value)}

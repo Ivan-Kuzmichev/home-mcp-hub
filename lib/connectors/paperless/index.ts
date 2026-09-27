@@ -145,13 +145,28 @@ export const paperless = defineConnector<Config>({
   docsUrl: 'https://docs.paperless-ngx.com/api/',
   configSchema,
 
-  instructions: (c) =>
-    [
-      'Paperless: для разметки — paperless_review (там примеры прошлой разметки), затем paperless_update списком изменений. Используй существующие теги и корреспондентов из paperless_taxonomy. Для массовой правки сначала покажи план (dry_run), если пользователь не попросил применять сразу. Пересылаемую ссылку (shareable) — только по прямой просьбе.',
-      c.rules ? `Правила разметки Paperless от пользователя — соблюдай при любой правке документов:\n${c.rules}` : null,
-    ]
-      .filter(Boolean)
-      .join('\n'),
+  instructions(c, { tools }) {
+    const has = (t: string) => tools.includes(t)
+    if (!tools.some((t) => t.startsWith('paperless_'))) return null
+    const lines: string[] = []
+    if (has('paperless_update')) {
+      lines.push(
+        [
+          `Paperless: для разметки — ${has('paperless_review') ? 'paperless_review (там примеры прошлой разметки), затем ' : ''}paperless_update списком изменений.`,
+          has('paperless_taxonomy') ? 'Используй существующие теги и корреспондентов из paperless_taxonomy.' : null,
+          'Для массовой правки сначала покажи план (dry_run), если пользователь не попросил применять сразу.',
+          // The rules themselves stay out of the always-loaded text: they arrive with the reads.
+          c.rules ? 'У пользователя есть правила разметки — они приходят в ответах paperless_review, paperless_get и paperless_taxonomy; прочитай их перед любой правкой.' : null,
+        ]
+          .filter(Boolean)
+          .join(' '),
+      )
+    } else {
+      lines.push('Paperless: документы можно искать и читать; менять метаданные нельзя.')
+    }
+    if (has('paperless_link')) lines.push('Пересылаемую ссылку на документ (shareable) — только по прямой просьбе.')
+    return lines.join('\n')
+  },
 
   async test(c) {
     const started = Date.now()
@@ -258,6 +273,7 @@ export const paperless = defineConnector<Config>({
         const part = text.slice(offset, offset + max_chars)
         const rest = text.length - offset - part.length
         return [
+          config.rules ? rulesBlock(config) : null,
           `#${doc.id} · добавлен ${day(doc.added)}${doc.original_file_name ? ` · файл ${doc.original_file_name}` : ''}`,
           metaLine(doc, index),
           suggestionLine(sug, index),
