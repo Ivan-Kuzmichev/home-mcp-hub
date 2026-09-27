@@ -12,6 +12,15 @@ const MAX_SUMMARY = 160
 
 const SECRET_KEYS = /^(password|pass|api_?key|apikey|token|secret|access_token|refresh_token|code_verifier)$/i
 
+/** One array element: batches like paperless_update changes read as «#118: title, tags». */
+function describeItem(v: unknown): string {
+  if (v === null || typeof v !== 'object') return String(v).slice(0, 40)
+  const { id, ...rest } = v as Record<string, unknown>
+  const fields = Object.keys(rest).filter((k) => !SECRET_KEYS.test(k) && k !== 'html')
+  if (id !== undefined) return `#${String(id)}: ${fields.join(', ') || '—'}`
+  return JSON.stringify(Object.fromEntries(fields.map((k) => [k, rest[k]]))).slice(0, 80)
+}
+
 function describeValue(key: string, value: unknown): string | null {
   if (SECRET_KEYS.test(key)) return null
   if (key === 'pin') return value ? 'задан' : 'нет'
@@ -19,7 +28,7 @@ function describeValue(key: string, value: unknown): string | null {
   if (key === 'html' && typeof value === 'string') return `HTML ${Math.max(1, Math.round(Buffer.byteLength(value) / 1024))} КБ`
   if (value === null || value === undefined) return null
   if (typeof value === 'string') return key === 'query' || key === 'title' ? `«${value.slice(0, 120)}»` : value.slice(0, 120)
-  if (Array.isArray(value)) return value.map((v) => String(v).slice(0, 40)).join(', ')
+  if (Array.isArray(value)) return value.map(describeItem).join('; ')
   if (typeof value === 'object') return JSON.stringify(value).slice(0, 120)
   return String(value)
 }

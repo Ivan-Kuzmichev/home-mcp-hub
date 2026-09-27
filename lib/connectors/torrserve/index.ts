@@ -33,6 +33,13 @@ const configSchema = z
     }),
     username: field(z.string().trim().optional(), { label: 'Логин', section: 'connection', showWhen: { field: 'authMode', equals: ['basic'] } }),
     password: secret({ label: 'Пароль', section: 'connection', showWhen: { field: 'authMode', equals: ['basic'] } }),
+    instructions: field(z.string().trim().max(2000).optional(), {
+      label: 'Инструкции для ассистента',
+      help: 'Свободный текст: ассистент получает его при подключении, пока TorrServe включён',
+      placeholder: 'Перед torrserve_add найди постер фильма на TMDB (image.tmdb.org, размер w500) и передай его в poster.',
+      widget: 'textarea',
+      section: 'defaults',
+    }),
     saveToDb: field(z.boolean().default(true), {
       label: 'Сохранять в базу TorrServe',
       help: 'Торрент останется в списке после перезапуска',
@@ -81,6 +88,11 @@ export const torrserve = defineConnector<Config>({
   description: 'Стриминг торрентов',
   docsUrl: 'https://github.com/YouROK/TorrServer',
   configSchema,
+
+  instructions: (c) =>
+    ['TorrServe: смотреть без скачивания — torrserve_add, ссылки для плеера — torrserve_links.', c.instructions ? `Инструкции пользователя для TorrServe:\n${c.instructions}` : null]
+      .filter(Boolean)
+      .join('\n'),
 
   async test(c) {
     const started = Date.now()

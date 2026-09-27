@@ -115,6 +115,11 @@ export type Connector<C> = {
   docsUrl?: string
   configSchema: z.ZodType<C> & { shape: Record<string, z.ZodType> }
   test: (config: C) => Promise<TestResult>
+  /**
+   * Lines for the MCP server `instructions` while this connector is on. `tools` lists every tool
+   * the hub exposes right now, so a line can mention only what is actually available.
+   */
+  instructions?: (config: C, ctx: InstructionsContext) => string | null
   // Tools are a static list (not a factory of config) so the admin panel can list
   // them before the connector is configured; the config arrives in ToolContext.
   tools: ConnectorTool<C, z.ZodObject>[]
@@ -122,6 +127,8 @@ export type Connector<C> = {
 
 // ---------------------------------------------------------------------------
 // Type-erased form used by the registry, admin panel and MCP server.
+
+export type InstructionsContext = { tools: string[] }
 
 export type ErasedTool = {
   name: string
@@ -141,6 +148,7 @@ export type RegisteredConnector = {
   shape: Record<string, z.ZodType>
   parseConfig: (raw: unknown) => { ok: true; config: unknown } | { ok: false; errors: Record<string, string> }
   test: (config: unknown) => Promise<TestResult>
+  instructions?: (config: unknown, ctx: InstructionsContext) => string | null
   tools: ErasedTool[]
 }
 
@@ -165,6 +173,7 @@ export function defineConnector<C>(c: Connector<C>): RegisteredConnector {
       return { ok: false, errors }
     },
     test: (config) => c.test(asConfig(config)),
+    instructions: c.instructions ? (config, ctx) => c.instructions!(asConfig(config), ctx) : undefined,
     tools: c.tools.map((t) => ({
       name: t.name,
       title: t.title,

@@ -145,6 +145,14 @@ export const paperless = defineConnector<Config>({
   docsUrl: 'https://docs.paperless-ngx.com/api/',
   configSchema,
 
+  instructions: (c) =>
+    [
+      'Paperless: для разметки — paperless_review (там примеры прошлой разметки), затем paperless_update списком изменений. Используй существующие теги и корреспондентов из paperless_taxonomy. Для массовой правки сначала покажи план (dry_run), если пользователь не попросил применять сразу. Пересылаемую ссылку (shareable) — только по прямой просьбе.',
+      c.rules ? `Правила разметки Paperless от пользователя — соблюдай при любой правке документов:\n${c.rules}` : null,
+    ]
+      .filter(Boolean)
+      .join('\n'),
+
   async test(c) {
     const started = Date.now()
     try {

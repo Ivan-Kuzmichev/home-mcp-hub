@@ -19,6 +19,12 @@ describe('argument redaction', () => {
     expect(text).not.toContain('hunter2')
   })
 
+  it('shows batches of objects instead of [object Object]', () => {
+    const text = journal.redactArgs({ changes: [{ id: 118, title: 'x', tags: ['a'] }, { id: 119, add_tags: ['b'], password: 'p' }], dry_run: false })
+    expect(text).toBe('changes: #118: title, tags; #119: add_tags, dry_run: false')
+    expect(journal.redactArgs({ items: [{ name: 'a' }] })).toBe('items: {"name":"a"}')
+  })
+
   it('scrubs keys inside URLs and cuts to 500 characters', () => {
     expect(journal.redactArgs({ url: 'http://jackett/dl/?jackett_apikey=abc&x=1' })).toBe('url: http://jackett/dl/?jackett_apikey=***&x=1')
     expect(journal.redactArgs({ a: 'y'.repeat(120), b: 'y'.repeat(120), c: 'y'.repeat(120), d: 'y'.repeat(120), e: 'y'.repeat(120) }).length).toBe(500)

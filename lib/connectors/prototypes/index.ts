@@ -67,6 +67,8 @@ export const prototypes = defineConnector<Config>({
   builtin: true,
   configSchema,
 
+  instructions: () => `Прототипы: ${CHUNK_HINT} Один большой вызов с целым HTML может оборваться.`,
+
   async test() {
     const list = listPrototypes()
     return {

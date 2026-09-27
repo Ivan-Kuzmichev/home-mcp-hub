@@ -2,7 +2,10 @@ import { afterAll, describe, expect, it } from 'vitest'
 import { setupTempDb } from './helpers'
 
 const cleanup = await setupTempDb()
-const { getMcpHandler } = await import('@/lib/mcp/server')
+const { getMcpHandler, buildInstructions } = await import('@/lib/mcp/server')
+const { saveConfig } = await import('@/lib/connectors/store')
+const { getConnector } = await import('@/lib/connectors/registry')
+saveConfig(getConnector('prototypes')!, {})
 
 afterAll(cleanup)
 
@@ -27,5 +30,23 @@ describe('MCP server', () => {
     expect(info.icons[0]).toMatchObject({ mimeType: 'image/svg+xml' })
     expect(Buffer.from(info.icons[0]!.src.split(',')[1]!, 'base64').toString()).toContain('<svg')
     expect(result.instructions).toContain('prototype_append')
+  })
+
+  it('builds instructions only from connectors that are on, with user notes', () => {
+    const before = buildInstructions()
+    expect(before).toContain('Подключено: Прототипы')
+    expect(before).not.toContain('transmission_add')
+    expect(before).not.toContain('Paperless')
+    expect(before).not.toContain('search_torrents')
+
+    saveConfig(getConnector('jackett')!, { baseUrl: 'http://jackett:9117', apiKey: 'k', minSeeders: 1 })
+    saveConfig(getConnector('torrserve')!, { baseUrl: 'http://torrserve:8090', authMode: 'none', saveToDb: true, instructions: 'Постер бери с TMDB' })
+    saveConfig(getConnector('paperless')!, { baseUrl: 'http://paperless:8000', apiToken: 't', excludeTag: 'private', removeInbox: true, rules: '- тег «жкх» для квитанций' })
+    const after = buildInstructions()
+    expect(after).toContain('потом torrserve_add (TorrServe — смотреть без скачивания) с result_id')
+    expect(after).not.toContain('torrent_add (qBittorrent)')
+    expect(after).not.toContain('transmission_add')
+    expect(after).toContain('Инструкции пользователя для TorrServe:\nПостер бери с TMDB')
+    expect(after).toContain('Правила разметки Paperless от пользователя — соблюдай при любой правке документов:\n- тег «жкх» для квитанций')
   })
 })

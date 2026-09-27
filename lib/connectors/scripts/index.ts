@@ -57,6 +57,9 @@ export const scripts = defineConnector<Config>({
   builtin: true,
   configSchema,
 
+  instructions: () =>
+    'Cron-скрипты: cron_create/cron_update отправляют код на одобрение пользователю; одобренный скрипт включается сам, запускать можно только одобренный. Секреты — только заглушками {{secret:ИМЯ}} (список — cron_secrets), значения тебе недоступны.',
+
   async test() {
     const list = listScripts()
     const active = list.filter((s) => statusOf(s) === 'active').length

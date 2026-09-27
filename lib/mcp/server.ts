@@ -5,7 +5,6 @@ import { activeConfig, connectorStates } from '../connectors/active'
 import { scrub } from '../connectors/http'
 import { resolveResult, type JackettLinkAccess } from '../connectors/resolve'
 import { checkConnector } from '../connectors/health'
-import { CHUNK_HINT } from '../connectors/prototypes'
 import { outputText, ToolError, type ErasedTool, type ToolOutput } from '../connectors/types'
 import { logToolCall } from '../journal'
 import { logger } from '../logger'
@@ -13,17 +12,24 @@ import { mcpContext } from './context'
 import { LOGO_DATA_URI } from '../brand'
 import { HUB_VERSION } from '../version'
 
-export const MCP_INSTRUCTIONS = [
-  'Home Hub управляет домашними сервисами пользователя: поиск торрентов (Jackett), закачки (qBittorrent), стриминг (TorrServe) и публикация HTML-прототипов.',
-  'Чтобы скачать фильм или сериал: сначала search_torrents, потом torrent_add (qBittorrent), transmission_add (Transmission) или torrserve_add с result_id из результатов поиска. Магнеты и ссылки не перепечатывай.',
-  'При прочих равных выбирай релизы с русской озвучкой и сидами больше 10; если подходящих несколько и они заметно отличаются, спроси пользователя.',
-  'Перед удалением торрента вместе с файлами и перед удалением прототипа переспроси пользователя.',
-  `Прототипы: ${CHUNK_HINT} Один большой вызов с целым HTML может оборваться.`,
-  'Cron-скрипты: cron_create/cron_update отправляют код на одобрение пользователю; одобренный скрипт включается сам, запускать можно только одобренный. Секреты — только заглушками {{secret:ИМЯ}} (список — cron_secrets), значения тебе недоступны.',
-  'Paperless: для разметки — paperless_review (там правила пользователя и примеры прошлой разметки), затем paperless_update списком изменений. Используй существующие теги и корреспондентов из paperless_taxonomy. Для массовой правки сначала покажи план (dry_run), если пользователь не попросил применять сразу. Пересылаемую ссылку (shareable) — только по прямой просьбе.',
-  'Если что-то не работает, вызови hub_status: он покажет, какие сервисы подключены и отвечают.',
-  'Отвечай коротко: пользователь читает ответы на телефоне.',
-].join('\n')
+/**
+ * Server instructions, built from the connectors that are on right now: the model does not read
+ * about services the hub does not have, and connector-specific lines (e.g. Paperless labeling
+ * rules, TorrServe notes) come straight from their settings.
+ */
+export function buildInstructions(): string {
+  const active = connectorStates().filter((s) => s.status === 'active')
+  const tools = ['hub_status', ...active.flatMap((s) => s.connector.tools.filter((t) => !s.row.disabledTools.includes(t.name)).map((t) => t.name))]
+  const services = active.map((s) => `${s.connector.name} — ${s.connector.description.toLowerCase()}`).join('; ')
+  const lines = [
+    services ? `Home Hub — домашний хаб пользователя. Подключено: ${services}.` : 'Home Hub — домашний хаб пользователя. Сервисы пока не подключены.',
+    ...active.map((s) => s.connector.instructions?.(s.config, { tools }) ?? null),
+    'Перед удалением вместе с файлами и перед другими необратимыми действиями переспроси пользователя.',
+    'Если что-то не работает, вызови hub_status: он покажет, какие сервисы подключены и отвечают.',
+    'Отвечай коротко: пользователь читает ответы на телефоне.',
+  ]
+  return lines.filter((l): l is string => !!l).join('\n')
+}
 
 const startedAt = Date.now()
 const STATUS_CHECK_TIMEOUT_MS = 8_000
@@ -139,14 +145,15 @@ function initializeServer(server: McpServer): void {
   }
 }
 
-const globalForMcp = globalThis as unknown as { __hubMcp?: (req: Request) => Promise<Response> }
+const globalForMcp = globalThis as unknown as { __hubMcp?: { instructions: string; handler: (req: Request) => Promise<Response> } }
 
+/** The handler is rebuilt only when the instructions change (a connector or its notes changed). */
 export function getMcpHandler(): (req: Request) => Promise<Response> {
-  // title and icons (MCP Implementation) let clients show the hub's name and logo.
-  const serverInfo = { name: 'home-mcp-hub', title: 'Home Hub', version: HUB_VERSION, icons: [{ src: LOGO_DATA_URI, mimeType: 'image/svg+xml', sizes: ['any'] }] }
-  globalForMcp.__hubMcp ??= createMcpHandler(initializeServer, {
-    serverInfo,
-    instructions: MCP_INSTRUCTIONS,
-  })
-  return globalForMcp.__hubMcp
+  const instructions = buildInstructions()
+  if (globalForMcp.__hubMcp?.instructions !== instructions) {
+    // title and icons (MCP Implementation) let clients show the hub's name and logo.
+    const serverInfo = { name: 'home-mcp-hub', title: 'Home Hub', version: HUB_VERSION, icons: [{ src: LOGO_DATA_URI, mimeType: 'image/svg+xml', sizes: ['any'] }] }
+    globalForMcp.__hubMcp = { instructions, handler: createMcpHandler(initializeServer, { serverInfo, instructions }) }
+  }
+  return globalForMcp.__hubMcp.handler
 }
