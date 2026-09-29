@@ -2,7 +2,7 @@ import { afterAll, describe, expect, it } from 'vitest'
 import { setupTempDb } from './helpers'
 
 const cleanup = await setupTempDb()
-const { buildInstructions } = await import('@/lib/mcp/server')
+const { buildInstructions, INSTRUCTIONS_HEAD } = await import('@/lib/mcp/server')
 const { saveConfig, setDisabledTools, setInstructions } = await import('@/lib/connectors/store')
 const { rpc, inspectMcp } = await import('@/lib/mcp/inspect')
 const { getConnector } = await import('@/lib/connectors/registry')
@@ -22,7 +22,8 @@ describe('MCP server', () => {
 
   it('builds instructions only from connectors that are on, with user notes', () => {
     const before = buildInstructions()
-    expect(before).toContain('Подключено: Прототипы')
+    expect(before.startsWith('Home Hub — домашний хаб пользователя. Отвечай коротко')).toBe(true)
+    expect(before).toContain('Прототипы:')
     expect(before).not.toContain('transmission_add')
     expect(before).not.toContain('Paperless')
     expect(before).not.toContain('search_torrents')
@@ -32,7 +33,8 @@ describe('MCP server', () => {
     setInstructions('torrserve', 'append', 'Постер бери с TMDB')
     saveConfig(getConnector('paperless')!, { baseUrl: 'http://paperless:8000', apiToken: 't', excludeTag: 'private', removeInbox: true, rules: '- тег «жкх» для квитанций' })
     const after = buildInstructions()
-    expect(after).toContain('потом torrserve_add (TorrServe — смотреть без скачивания) с result_id')
+    expect(after).toContain('затем torrserve_add (TorrServe — смотреть без скачивания) с result_id')
+    expect(after.indexOf('сидов больше 10')).toBeLessThan(INSTRUCTIONS_HEAD - 60)
     expect(after).not.toContain('torrent_add (qBittorrent)')
     expect(after).not.toContain('transmission_add')
     expect(after).toContain('TorrServe: смотреть без скачивания — torrserve_add, ссылки для плеера — torrserve_links.\nПостер бери с TMDB')

@@ -2,6 +2,7 @@ import { PageHeader } from '@/components/admin/page-header'
 import { Card } from '@/components/ui/card'
 import { Pill } from '@/components/ui/pill'
 import { approxTokens, inspectMcp, type InspectedTool } from '@/lib/mcp/inspect'
+import { INSTRUCTIONS_HEAD } from '@/lib/mcp/server'
 
 export const dynamic = 'force-dynamic'
 
@@ -22,6 +23,14 @@ function Stat({ label, value, hint }: { label: string; value: string; hint?: str
   )
 }
 
+/** Where a connector's part falls against the ChatGPT boundary. */
+function Reach({ at, length }: { at: number; length: number }) {
+  if (at < 0) return null
+  if (at + length <= INSTRUCTIONS_HEAD) return <span className="text-ok"> · в первых {INSTRUCTIONS_HEAD}</span>
+  if (at < INSTRUCTIONS_HEAD) return <span className="text-warn"> · обрезается на границе</span>
+  return <span className="text-warn"> · за границей {INSTRUCTIONS_HEAD}</span>
+}
+
 function Hints({ tool }: { tool: InspectedTool }) {
   const a = tool.annotations ?? {}
   return (
@@ -38,6 +47,8 @@ export default async function DiagnosticsPage() {
   const snap = await inspectMcp()
   const toolsJson = JSON.stringify(snap.tools)
   const total = snap.instructions.length + toolsJson.length
+  const head = snap.instructions.slice(0, INSTRUCTIONS_HEAD)
+  const tail = snap.instructions.slice(INSTRUCTIONS_HEAD)
   const n = (x: number) => x.toLocaleString('ru-RU')
   return (
     <>
@@ -49,14 +60,31 @@ export default async function DiagnosticsPage() {
       <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4 md:gap-3.5">
         <Stat label="Сервер" value={snap.serverInfo.title ?? snap.serverInfo.name} hint={`v${snap.serverInfo.version} · MCP ${snap.protocolVersion}`} />
         <Stat label="Инструменты" value={n(snap.tools.length)} hint={`${n(toolsJson.length)} символов`} />
-        <Stat label="Инструкции" value={`${n(snap.instructions.length)} симв.`} hint={`≈ ${n(approxTokens(snap.instructions.length))} токенов`} />
+        <Stat
+          label="Инструкции"
+          value={`${n(snap.instructions.length)} симв.`}
+          hint={tail ? `${n(tail.length)} за границей ${INSTRUCTIONS_HEAD} для ChatGPT` : `целиком в ${INSTRUCTIONS_HEAD} символах · ≈ ${n(approxTokens(snap.instructions.length))} токенов`}
+        />
         <Stat label="Всего в контексте" value={`≈ ${n(approxTokens(total))} ток.`} hint="грубая оценка, ~3 символа на токен" />
       </div>
 
       <Card className="flex flex-col gap-3 p-3.5 md:p-[18px]">
         <h2 className="text-sm md:text-[15px]">Инструкции сервера</h2>
-        <span className="text-xs text-subtle">Клиент получает их при подключении, модель читает в начале каждого чата. Меняются в настройках коннекторов.</span>
-        <pre className="overflow-x-auto rounded-md bg-secondary/60 px-3 py-2.5 font-mono text-xs leading-5 whitespace-pre-wrap text-foreground">{snap.instructions}</pre>
+        <span className="text-xs text-subtle">
+          Клиент получает их при подключении, модель читает в начале каждого чата. Claude берёт текст целиком, ChatGPT надёжно — только первые {INSTRUCTIONS_HEAD}{' '}
+          символов. Меняются в настройках коннекторов.
+        </span>
+        <pre className="overflow-x-auto rounded-md bg-secondary/60 px-3 py-2.5 font-mono text-xs leading-5 whitespace-pre-wrap text-foreground">
+          {head}
+          {tail && (
+            <>
+              <span className="my-1.5 block border-t border-dashed border-warn/60 pt-1 font-sans text-[11px] text-warn">
+                граница {INSTRUCTIONS_HEAD} символов — дальше ChatGPT может не прочитать
+              </span>
+              <span className="text-subtle">{tail}</span>
+            </>
+          )}
+        </pre>
         {snap.parts.length > 0 && (
           <div className="flex flex-col">
             {snap.parts.map((p) => (
@@ -64,6 +92,7 @@ export default async function DiagnosticsPage() {
                 <span className="w-32 shrink-0 font-medium">{p.connector}</span>
                 <span className="text-muted-foreground">
                   {p.text ? `${source(p)} · ${n(p.text.length)} симв.` : 'без инструкции'}
+                  {p.text && <Reach at={snap.instructions.indexOf(p.text)} length={p.text.length} />}
                 </span>
               </div>
             ))}

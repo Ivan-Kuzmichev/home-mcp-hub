@@ -48,10 +48,12 @@ export const jackett = defineConnector<Config>({
       ['transmission_add', 'Transmission'],
       ['torrserve_add', 'TorrServe — смотреть без скачивания'],
     ].filter(([t]) => tools.includes(t!))
+    // The choice rule goes first: it exists only here, the flow is also in the tool descriptions.
+    const choose = 'Раздачи: при прочих равных — русская озвучка и сидов больше 10; если подходящих несколько и они заметно отличаются, спроси.'
     const flow = add.length
-      ? `Чтобы скачать фильм или сериал: сначала search_torrents, потом ${add.map(([t, what]) => `${t} (${what})`).join(' или ')} с result_id из результатов поиска. Магнеты и ссылки не перепечатывай.`
+      ? `Скачать: search_torrents, затем ${add.map(([t, what]) => `${t} (${what})`).join(' или ')} с result_id. Магнеты и ссылки не перепечатывай.`
       : 'search_torrents ищет релизы; клиентов закачки сейчас нет — только показать найденное.'
-    return [flow, 'При прочих равных выбирай релизы с русской озвучкой и сидами больше 10; если подходящих несколько и они заметно отличаются, спроси пользователя.'].join('\n')
+    return [choose, flow].join('\n')
   },
 
   async test(c) {

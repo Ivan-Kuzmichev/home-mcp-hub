@@ -17,22 +17,26 @@ import { MCP_SCOPE } from '../auth'
 import { LOGO_DATA_URI } from '../brand'
 import { HUB_VERSION } from '../version'
 
+/** OpenAI hosts reliably use only the start of the server instructions. */
+export const INSTRUCTIONS_HEAD = 512
+
 /**
  * Server instructions, built from the connectors that are on right now: the model does not read
  * about services the hub does not have or tools that are switched off. Paperless labeling rules
  * are not here — they come with the Paperless read tools.
+ *
+ * Order matters: ChatGPT keeps roughly the first 512 characters, so the short rules for every
+ * tool come first and the connector parts follow. The list of services is left out — the model
+ * sees it in the tools anyway.
  */
 export function buildInstructions(): string {
   const states = connectorStates()
   const tools = visibleTools(states)
   const active = states.filter((s) => s.status === 'active')
-  const services = active.map((s) => `${s.connector.name} — ${s.connector.description.toLowerCase()}`).join('; ')
   const lines = [
-    services ? `Home Hub — домашний хаб пользователя. Подключено: ${services}.` : 'Home Hub — домашний хаб пользователя. Сервисы пока не подключены.',
+    'Home Hub — домашний хаб пользователя. Отвечай коротко: он читает с телефона.',
+    'Перед удалением с файлами и другими необратимыми действиями переспроси. Если что-то не работает — hub_status.',
     ...active.map((s) => connectorInstructions(s.connector, s.row, s.config, tools).text),
-    'Перед удалением вместе с файлами и перед другими необратимыми действиями переспроси пользователя.',
-    'Если что-то не работает, вызови hub_status: он покажет, какие сервисы подключены и отвечают.',
-    'Отвечай коротко: пользователь читает ответы на телефоне.',
   ]
   return lines.filter((l): l is string => !!l).join('\n')
 }
