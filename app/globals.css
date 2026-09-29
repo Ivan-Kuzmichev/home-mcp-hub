@@ -1,6 +1,6 @@
 @import 'tailwindcss';
 
-/* Design tokens from docs/design/README.md, exposed under shadcn/ui variable names. */
+/* Design tokens, exposed under shadcn/ui variable names. */
 :root {
   --background: #0e1014;
   --foreground: #e9ebf0;

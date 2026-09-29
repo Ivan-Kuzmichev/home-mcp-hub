@@ -1,4 +1,4 @@
-# better-auth and the MCP SDK move fast: keep them fresh (SPEC.md → «Безопасность»).
+# better-auth and the MCP SDK move fast: keep them fresh.
 version: 2
 updates:
   - package-ecosystem: npm

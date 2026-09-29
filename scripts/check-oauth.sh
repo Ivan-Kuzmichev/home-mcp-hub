@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Smoke checks from docs/SPEC.md → «План работ», stage 2.
+# Smoke checks of the OAuth discovery chain from outside: prefix, metadata, 401 challenge.
 # Usage: scripts/check-oauth.sh https://hub.example.com <secret>
 set -uo pipefail
 
