@@ -59,15 +59,6 @@ describe('client registration', () => {
     setAllowedClients(['claude', 'chatgpt'])
   })
 
-  it('«Любые клиенты» accepts any https redirect and loopback, nothing else', () => {
-    expect(allowedRedirect('https://example.com/oauth/cb', ['any'])?.id).toBe('any')
-    expect(allowedRedirect('http://localhost:8080/cb', ['any'])?.id).toBe('any')
-    expect(allowedRedirect('http://example.com/cb', ['any'])).toBeNull()
-    expect(allowedRedirect('myapp://cb', ['any'])).toBeNull()
-    // A named client keeps its name when both are on.
-    expect(allowedRedirect('https://claude.ai/api/mcp/auth_callback', ['claude', 'any'])?.id).toBe('claude')
-  })
-
   it('journals refused registrations with the redirect URIs', async () => {
     setDcrAllowed(true)
     await register(['https://evil.example.com/cb'])

@@ -78,6 +78,13 @@
       "when": 1790533559715,
       "tag": "0010_fix_script_review_ok",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "6",
+      "when": 1790677249388,
+      "tag": "0011_drop_mcp_refused",
+      "breakpoints": true
     }
   ]
 }
