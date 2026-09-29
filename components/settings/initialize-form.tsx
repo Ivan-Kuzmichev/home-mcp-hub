@@ -47,12 +47,13 @@ export function InitializeForm(props: Props) {
         }}
         className="w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-[13px] leading-5 text-foreground placeholder:text-faint focus-visible:border-primary focus-visible:outline-none disabled:opacity-50"
       />
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <span className={cn('text-xs', over ? 'text-warn' : 'text-subtle')}>
-          {text.trim().length} симв.{over ? ` — больше ${props.head}, ChatGPT может не дочитать` : ` · укладывается в ${props.head} для ChatGPT`}
-        </span>
-        <div className="flex items-center gap-2">
-          {(state.ok || state.error) && <span className={state.error ? 'text-[13px] text-err' : 'text-[13px] text-ok'}>{state.error ?? state.ok}</span>}
+      <span className={cn('text-xs', over ? 'text-warn' : 'text-subtle')}>
+        {text.trim().length} симв.{over && ` — больше ${props.head}, ChatGPT может не дочитать`}
+      </span>
+      {/* Phone: the message gets its own line above the buttons; wide screens: left of them. */}
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        {(state.ok || state.error) && <span className={cn('text-[13px] sm:flex-1', state.error ? 'text-err' : 'text-ok')}>{state.error ?? state.ok}</span>}
+        <div className="flex gap-2 sm:ml-auto">
           <Button size="sm" disabled={!enabled || pending} onClick={() => setText(props.template)}>
             Шаблон
           </Button>
