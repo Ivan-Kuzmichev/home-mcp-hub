@@ -5,7 +5,7 @@ import { getSetting, setSetting } from './settings'
  * Registration also needs the allow_dcr switch, and tokens still need the admin's
  * login, 2FA and consent.
  */
-export type ClientKind = 'claude' | 'chatgpt' | 'loopback'
+export type ClientKind = 'claude' | 'chatgpt' | 'loopback' | 'any'
 
 export type ClientPreset = {
   id: ClientKind
@@ -16,6 +16,7 @@ export type ClientPreset = {
 }
 
 const exact = (list: string[]) => (u: URL) => list.includes(u.toString())
+const isLoopback = (u: URL) => u.hostname === 'localhost' || u.hostname === '127.0.0.1' || u.hostname === '[::1]'
 
 export const CLIENT_PRESETS: ClientPreset[] = [
   {
@@ -42,7 +43,15 @@ export const CLIENT_PRESETS: ClientPreset[] = [
     name: 'Claude Code и локальные клиенты',
     hint: 'redirect на localhost (RFC 8252): код уходит только на машину, где запущен клиент',
     examples: ['http://localhost:{port}/callback', 'http://127.0.0.1:{port}/callback'],
-    matches: (u) => u.protocol === 'http:' && (u.hostname === 'localhost' || u.hostname === '127.0.0.1' || u.hostname === '[::1]'),
+    matches: (u) => u.protocol === 'http:' && isLoopback(u),
+  },
+  {
+    // Last: a URI that fits a named preset is reported under that name.
+    id: 'any',
+    name: 'Любые клиенты',
+    hint: 'любой https-адрес возврата и localhost. Регистрация всё равно только при включённом переключателе выше, а доступ — после твоего входа, 2FA и «Разрешить»; адрес возврата виден на экране согласия',
+    examples: ['https://{любой хост}/…', 'http://localhost:{port}/…'],
+    matches: (u) => u.protocol === 'https:' || (u.protocol === 'http:' && isLoopback(u)),
   },
 ]
 
