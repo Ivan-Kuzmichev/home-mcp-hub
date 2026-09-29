@@ -14,7 +14,7 @@ import { inputSchemaOf } from '../scripts/tool-spec'
 import { logger } from '../logger'
 import { mcpContext } from './context'
 import { MCP_SCOPE } from '../auth'
-import { LOGO_DATA_URI } from '../brand'
+import { LOGO_DATA_URI, LOGO_PNG_DATA_URI } from '../brand'
 import { getCustomInstructions } from '../settings'
 import { HUB_VERSION } from '../version'
 
@@ -234,7 +234,12 @@ export function getMcpHandler(): (req: Request) => Promise<Response> {
   const instructions = buildInstructions()
   if (globalForMcp.__hubMcp?.instructions !== instructions) {
     // title and icons (MCP Implementation) let clients show the hub's name and logo.
-    const serverInfo = { name: 'home-mcp-hub', title: 'Home Hub', version: HUB_VERSION, icons: [{ src: LOGO_DATA_URI, mimeType: 'image/svg+xml', sizes: ['any'] }] }
+    const serverInfo = { name: 'home-mcp-hub', title: 'Home Hub', version: HUB_VERSION, icons: [
+        // PNG first: clients take the first icon they can draw, and ChatGPT draws PNG only.
+        { src: LOGO_PNG_DATA_URI, mimeType: 'image/png', sizes: ['256x256'] },
+        { src: LOGO_DATA_URI, mimeType: 'image/svg+xml', sizes: ['any'] },
+      ],
+    }
     globalForMcp.__hubMcp = { instructions, handler: createMcpHandler(initializeServer, { serverInfo, instructions }) }
   }
   return globalForMcp.__hubMcp.handler

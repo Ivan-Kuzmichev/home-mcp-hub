@@ -13,10 +13,12 @@ afterAll(cleanup)
 describe('MCP server', () => {
   it('reports its title, version and logo on initialize', async () => {
     const result = await rpc('initialize', { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 'test', version: '1' } })
-    const info = result.serverInfo as { name: string; title: string; icons: { src: string; mimeType: string }[] }
+    const info = result.serverInfo as { name: string; title: string; icons: { src: string; mimeType: string; sizes?: string[] }[] }
     expect(info).toMatchObject({ name: 'home-mcp-hub', title: 'Home Hub' })
-    expect(info.icons[0]).toMatchObject({ mimeType: 'image/svg+xml' })
-    expect(Buffer.from(info.icons[0]!.src.split(',')[1]!, 'base64').toString()).toContain('<svg')
+    expect(info.icons[0]).toMatchObject({ mimeType: 'image/png', sizes: ['256x256'] })
+    expect(Buffer.from(info.icons[0]!.src.split(',')[1]!, 'base64').subarray(1, 4).toString()).toBe('PNG')
+    expect(info.icons[1]).toMatchObject({ mimeType: 'image/svg+xml' })
+    expect(Buffer.from(info.icons[1]!.src.split(',')[1]!, 'base64').toString()).toContain('<svg')
     expect(result.instructions).toContain('prototype_append')
   })
 
