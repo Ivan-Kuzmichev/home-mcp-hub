@@ -35,18 +35,17 @@ const TABS: Tab[] = [
     steps: [
       <>Включи <Ui>регистрацию новых клиентов</Ui> ниже.</>,
       <>
-        ChatGPT в браузере → <Ui>Settings</Ui> → <Ui>Apps &amp; Connectors</Ui> → <Ui>Advanced settings</Ui> → включи <Ui>Developer mode</Ui>.
+        ChatGPT → <Ui>Settings</Ui> → <Ui>Plugins</Ui> → установи <Ui>Plugin Creator</Ui>.
       </>,
       <>
-        Вернись в <Ui>Apps &amp; Connectors</Ui> → <Ui>Create</Ui>: имя — например <Mono>Home Hub</Mono>, <Ui>MCP Server URL</Ui> — адрес выше,
-        Authentication — <Ui>OAuth</Ui>; подтверди, что доверяешь приложению → <Ui>Create</Ui>.
+        В новом чате вызови <Ui>Plugin Creator</Ui> и попроси: <Mono>подключи этот MCP</Mono> и вставь <Ui>MCP server URL</Ui> выше. Он
+        создаст приватный плагин.
       </>,
       <>
-        Откроется страница хаба — войди, введи код 2FA, нажми <Ui>«Разрешить»</Ui>.
+        Открой созданный плагин и нажми <Ui>Connect</Ui>: откроется страница хаба — войди, введи код 2FA, нажми <Ui>«Разрешить»</Ui>.
       </>,
       <>
-        Регистрация клиентов выключится сама. В новом чате включи коннектор (<Ui>+</Ui> → Developer mode → Home Hub) и попроси:{' '}
-        <Mono>вызови hub_status</Mono>.
+        Регистрация клиентов выключится сама. В новом чате с плагином попроси: <Mono>вызови hub_status</Mono>.
       </>,
     ],
     note: 'ChatGPT должен быть разрешён в «Разрешённых клиентах» ниже (по умолчанию включён).',

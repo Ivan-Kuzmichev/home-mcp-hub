@@ -59,6 +59,7 @@ describe('middleware', () => {
     ['root well-known', '/.well-known/oauth-authorization-server'],
     ['root protected resource', '/.well-known/oauth-protected-resource'],
     ['well-known with wrong secret', '/.well-known/oauth-authorization-server/nope'],
+    ['PRM path-insert with wrong secret', '/.well-known/oauth-protected-resource/nope/api/mcp'],
     ['prototypes under the prefix', `/${PREFIX}/p/abc`],
     ['download links under the prefix', `/${PREFIX}/f/abc`],
     ['next internals other than static', '/_next/image?url=x'],
@@ -77,6 +78,7 @@ describe('middleware', () => {
     ['AS metadata, RFC 8414 path-insert', `/.well-known/oauth-authorization-server/${PREFIX}`],
     ['AS metadata, OIDC path-insert', `/.well-known/openid-configuration/${PREFIX}`],
     ['PRM under the prefix', `/${PREFIX}/.well-known/oauth-protected-resource`],
+    ['PRM, RFC 9728 path-insert', `/.well-known/oauth-protected-resource/${PREFIX}/api/mcp`],
     ['OIDC path-append', `/${PREFIX}/.well-known/openid-configuration`],
   ])('passes %s through unchanged', async (_name, pathname) => {
     const res = run(pathname)

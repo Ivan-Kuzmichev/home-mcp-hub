@@ -101,3 +101,14 @@ export async function POST(request: Request): Promise<Response> {
   }
   return response
 }
+
+/**
+ * The hub has no SSE stream, so GET is not served — but an unauthenticated probe gets the OAuth
+ * challenge first: clients (ChatGPT's plugin setup among them) discover the authorization server
+ * from it rather than giving up on a bare 405.
+ */
+export async function GET(request: Request): Promise<Response> {
+  if (!isMcpAvailable()) return new Response('MCP requires an https BASE_URL', { status: 503 })
+  if (!request.headers.has('authorization')) return unauthorized(hubUrls().resourceMetadata)
+  return new Response(null, { status: 405, headers: { Allow: 'POST' } })
+}

@@ -95,6 +95,10 @@ export function decideRoute(pathname: string, prefix: string | null, opts: { dev
     if (WELL_KNOWN_WITH_SUFFIX.includes(name) && segments.length === 4 && prefixMatches(rest, prefix)) {
       return { type: 'pass' }
     }
+    // RFC 9728 path-insert for the MCP resource: /.well-known/oauth-protected-resource/{secret}/api/mcp
+    if (name === 'oauth-protected-resource' && segments.length === 6 && segments[4] === 'api' && segments[5] === 'mcp' && prefixMatches(rest, prefix)) {
+      return { type: 'pass' }
+    }
     return { type: 'notFound' }
   }
 

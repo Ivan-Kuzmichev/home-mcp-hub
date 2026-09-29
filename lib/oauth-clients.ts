@@ -28,7 +28,7 @@ export const CLIENT_PRESETS: ClientPreset[] = [
   {
     id: 'chatgpt',
     name: 'ChatGPT',
-    hint: 'коннекторы ChatGPT (developer mode)',
+    hint: 'плагины и коннекторы ChatGPT',
     examples: ['https://chatgpt.com/connector_platform_oauth_redirect', 'https://chatgpt.com/connector/oauth/{id}'],
     // Stable URI when the server returns `iss` (the hub does); the per-connector one otherwise.
     matches: (u) =>

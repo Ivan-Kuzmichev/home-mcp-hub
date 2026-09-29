@@ -81,3 +81,11 @@ describe('custom MCP tools', () => {
     expect(called.content[0]!.text).toBe('привет, Ваня')
   })
 })
+
+describe('ChatGPT account linking', () => {
+  it('every tool declares the oauth2 security scheme', async () => {
+    const { tools } = await rpc<{ tools: { name: string; _meta?: { securitySchemes?: unknown } }[] }>('tools/list')
+    expect(tools.length).toBeGreaterThan(1)
+    for (const t of tools) expect(t._meta?.securitySchemes, t.name).toEqual([{ type: 'oauth2', scopes: ['hub'] }])
+  })
+})

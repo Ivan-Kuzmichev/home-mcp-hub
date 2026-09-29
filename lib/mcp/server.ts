@@ -13,6 +13,7 @@ import { listScripts, statusOf } from '../scripts/store'
 import { inputSchemaOf } from '../scripts/tool-spec'
 import { logger } from '../logger'
 import { mcpContext } from './context'
+import { MCP_SCOPE } from '../auth'
 import { LOGO_DATA_URI } from '../brand'
 import { HUB_VERSION } from '../version'
 
@@ -46,6 +47,12 @@ function formatUptime(ms: number): string {
   if (h < 48) return `${h} ч ${min % 60} мин`
   return `${Math.floor(h / 24)} дн`
 }
+
+/**
+ * Every tool needs the OAuth token (OpenAI Apps SDK `securitySchemes`): ChatGPT offers to link
+ * the account only for tools that declare it. The SDK passes `_meta` through as is.
+ */
+const AUTH_META = { securitySchemes: [{ type: 'oauth2', scopes: [MCP_SCOPE] }] }
 
 function text(value: string, isError = false) {
   return { content: [{ type: 'text' as const, text: value }], ...(isError ? { isError: true } : {}) }
@@ -92,7 +99,7 @@ async function runLogged(name: string, connectorId: string, args: unknown, fn: (
 function registerConnectorTool(server: McpServer, connectorId: string, tool: ErasedTool, config: unknown): void {
   server.registerTool(
     tool.name,
-    { title: tool.title, description: tool.description, inputSchema: tool.inputSchema, annotations: tool.annotations },
+    { title: tool.title, description: tool.description, inputSchema: tool.inputSchema, annotations: tool.annotations, _meta: AUTH_META },
     async (args: unknown) =>
       runLogged(tool.name, connectorId, args, () => tool.run(args, { config, resolveResult: (id) => resolveResult(id, jackettAccess()) })),
   )
@@ -130,6 +137,7 @@ function initializeServer(server: McpServer): void {
       description: 'Версия хаба и состояние сервисов: какие подключены, отвечают ли, версии. Первый инструмент для отладки.',
       inputSchema: z.object({}),
       annotations: { readOnlyHint: true, openWorldHint: false },
+      _meta: AUTH_META,
     },
     async (args: unknown) => runLogged('hub_status', 'hub', args, hubStatus),
   )
@@ -169,6 +177,7 @@ function registerCustomTools(server: McpServer, registered: Set<string>): void {
         description: s.description,
         inputSchema: inputSchemaOf(spec),
         annotations: spec.readOnly ? { readOnlyHint: true, openWorldHint: true } : { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
+        _meta: AUTH_META,
       },
       async (args: unknown) =>
         runLogged(s.name, 'scripts', args, async () => {

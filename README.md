@@ -139,7 +139,8 @@ ADMIN_PASSWORD=
 
 7. **Claude / ChatGPT.** Админка → «MCP доступ»: скопировать MCP URL, включить регистрацию клиентов.
    - Claude → Settings → Connectors → Add custom connector → URL, OAuth-поля пустые.
-   - ChatGPT → Settings → Apps & Connectors → Advanced → Developer mode → Create → URL, аутентификация OAuth.
+   - ChatGPT → Settings → Plugins → установить Plugin Creator; в новом чате вызвать его и попросить «подключи этот MCP <URL>»,
+     затем открыть созданный плагин → Connect.
 
    Дальше вход, код, «Разрешить» — регистрация клиентов выключится сама. В новом чате попросить `hub_status`.
    Какие клиенты вообще могут регистрироваться — карточка «Разрешённые клиенты» на том же экране.
