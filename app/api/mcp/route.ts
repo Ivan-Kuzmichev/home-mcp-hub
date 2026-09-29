@@ -8,6 +8,7 @@ import { BodyError, decodeRequestBody, logUnparsableBody } from '@/lib/mcp/body'
 import { mcpContext } from '@/lib/mcp/context'
 import { getMcpHandler } from '@/lib/mcp/server'
 import { clientIp, ipInCidr } from '@/lib/net'
+import { logAuthEvent } from '@/lib/journal'
 import { logger } from '@/lib/logger'
 import { SlidingWindow } from '@/lib/rate-limit'
 import { getAllowedCidrs } from '@/lib/settings'
@@ -31,6 +32,29 @@ function unauthorized(resourceMetadata: string): Response {
     { jsonrpc: '2.0', error: { code: -32000, message: 'Unauthorized' }, id: null },
     { status: 401, headers: { 'WWW-Authenticate': `Bearer resource_metadata="${resourceMetadata}", scope="${MCP_SCOPE}"` } },
   )
+}
+
+const REASON_TEXT: Record<string, string> = {
+  no_token: 'без токена',
+  invalid_token: 'токен недействителен',
+  insufficient_scope: 'нет доступа hub',
+}
+
+// One journal line per client and reason a minute: a client retrying in a loop must not flood it.
+const refusalSeen = ((globalThis as unknown as { __hubMcpRefusals?: Map<string, number> }).__hubMcpRefusals ??= new Map())
+
+/**
+ * Refused MCP requests go to the journal with the client's User-Agent: the URL carries the
+ * secret prefix, so these are real clients (e.g. a ChatGPT plugin probing before OAuth).
+ */
+function journalRefusal(request: Request, status: number, reason: string, ip: string): void {
+  const agent = request.headers.get('user-agent')?.slice(0, 80) ?? 'без User-Agent'
+  const key = `${ip}|${agent}|${reason}`
+  const now = Date.now()
+  if ((refusalSeen.get(key) ?? 0) > now - 60_000) return
+  refusalSeen.set(key, now)
+  if (refusalSeen.size > 500) refusalSeen.clear()
+  logAuthEvent({ event: 'auth.mcp_refused', ok: false, detail: `${request.method} · ${agent} · ${ip}`, error: `${status}: ${REASON_TEXT[reason] ?? reason}`, ip })
 }
 
 const MCP_CALLS_PER_MINUTE = 60
@@ -89,6 +113,7 @@ export async function POST(request: Request): Promise<Response> {
     const reason = /error="([^"]+)"/.exec(challenge)?.[1] ?? (request.headers.has('authorization') ? 'invalid_token' : 'no_token')
     const level = response.status === 403 || reason !== 'no_token' ? 'warn' : 'debug'
     logger[level]({ status: response.status, reason, ip, userAgent: request.headers.get('user-agent')?.slice(0, 80) }, `mcp ${response.status}: ${reason}`)
+    journalRefusal(request, response.status, reason, ip)
   }
 
   // The library points resource_metadata at the RFC 9728 path-insert address under the
@@ -109,6 +134,9 @@ export async function POST(request: Request): Promise<Response> {
  */
 export async function GET(request: Request): Promise<Response> {
   if (!isMcpAvailable()) return new Response('MCP requires an https BASE_URL', { status: 503 })
-  if (!request.headers.has('authorization')) return unauthorized(hubUrls().resourceMetadata)
+  if (!request.headers.has('authorization')) {
+    journalRefusal(request, 401, 'no_token', clientIp(request.headers))
+    return unauthorized(hubUrls().resourceMetadata)
+  }
   return new Response(null, { status: 405, headers: { Allow: 'POST' } })
 }

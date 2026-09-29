@@ -86,7 +86,7 @@ export function logToolCall(e: {
   logger.info({ tool: e.tool, ok: e.ok, ms: e.durationMs }, 'tool call')
 }
 
-export type AuthEvent = 'auth.password' | 'auth.second_factor' | 'auth.consent' | 'auth.register' | 'auth.script_review'
+export type AuthEvent = 'auth.password' | 'auth.second_factor' | 'auth.consent' | 'auth.register' | 'auth.script_review' | 'auth.mcp_refused'
 
 export const AUTH_EVENT_LABELS: Record<AuthEvent, string> = {
   'auth.password': 'вход: пароль',
@@ -94,6 +94,7 @@ export const AUTH_EVENT_LABELS: Record<AuthEvent, string> = {
   'auth.consent': 'доступ для клиента',
   'auth.register': 'регистрация клиента',
   'auth.script_review': 'проверка скрипта',
+  'auth.mcp_refused': 'MCP без доступа',
 }
 
 export function logAuthEvent(e: { event: AuthEvent; ok: boolean; detail: string; error?: string; ip?: string | null }): void {
