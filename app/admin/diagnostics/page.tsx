@@ -72,7 +72,7 @@ export default async function DiagnosticsPage() {
         <h2 className="text-sm md:text-[15px]">Инструкции сервера</h2>
         <span className="text-xs text-subtle">
           Клиент получает их при подключении, модель читает в начале каждого чата. Claude берёт текст целиком, ChatGPT надёжно — только первые {INSTRUCTIONS_HEAD}{' '}
-          символов. Меняются в настройках коннекторов.
+          символов. {snap.custom ? 'Сейчас отдаётся своя инструкция из «Настроек» → «Свой initialize».' : 'Меняются в настройках коннекторов.'}
         </span>
         <pre className="overflow-x-auto rounded-md bg-secondary/60 px-3 py-2.5 font-mono text-xs leading-5 whitespace-pre-wrap text-foreground">
           {head}
@@ -85,6 +85,14 @@ export default async function DiagnosticsPage() {
             </>
           )}
         </pre>
+        {snap.custom && (
+          <details className="text-[13px]">
+            <summary className="cursor-pointer text-muted-foreground">
+              Полные правила — отдаёт <span className="font-mono">hub_guide</span> · {n(snap.guide.length)} симв.
+            </summary>
+            <pre className="mt-2 overflow-x-auto rounded-md bg-secondary/60 px-3 py-2.5 font-mono text-xs leading-5 whitespace-pre-wrap text-foreground">{snap.guide}</pre>
+          </details>
+        )}
         {snap.parts.length > 0 && (
           <div className="flex flex-col">
             {snap.parts.map((p) => (
@@ -92,7 +100,7 @@ export default async function DiagnosticsPage() {
                 <span className="w-32 shrink-0 font-medium">{p.connector}</span>
                 <span className="text-muted-foreground">
                   {p.text ? `${source(p)} · ${n(p.text.length)} симв.` : 'без инструкции'}
-                  {p.text && <Reach at={snap.instructions.indexOf(p.text)} length={p.text.length} />}
+                  {p.text && (snap.custom ? <span className="text-subtle"> · в hub_guide</span> : <Reach at={snap.instructions.indexOf(p.text)} length={p.text.length} />)}
                 </span>
               </div>
             ))}

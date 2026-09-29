@@ -2,6 +2,7 @@ import { and, desc, eq, gt } from 'drizzle-orm'
 import { PrefixForm } from '@/components/access/prefix-form'
 import { PageHeader } from '@/components/admin/page-header'
 import { BackupCodesRow, PasswordRow, SessionsRow, SettingsRow } from '@/components/settings/account'
+import { InitializeForm } from '@/components/settings/initialize-form'
 import { Card } from '@/components/ui/card'
 import { Pill } from '@/components/ui/pill'
 import { StatusDot } from '@/components/ui/pill'
@@ -12,7 +13,9 @@ import { env } from '@/lib/env'
 import { formatAgo, formatWhen } from '@/lib/format'
 import { JOURNAL_RETENTION_DAYS } from '@/lib/journal'
 import { fingerprint, jwksStatus, secretsStatus } from '@/lib/keys'
+import { defaultCustomInstructions, INSTRUCTIONS_HEAD } from '@/lib/mcp/server'
 import { getPrefix } from '@/lib/prefix'
+import { getCustomInstructions } from '@/lib/settings'
 import { requireAdmin } from '@/lib/session'
 import { HUB_VERSION, hubBuild } from '@/lib/version'
 import pkg from '@/package.json'
@@ -48,6 +51,7 @@ export default async function SettingsPage() {
   const host = new URL(e.BASE_URL).host
   const secrets = secretsStatus()
   const keys = jwksStatus()
+  const custom = getCustomInstructions()
 
   return (
     <>
@@ -65,6 +69,17 @@ export default async function SettingsPage() {
           <UrlRow label="Прототипы и ссылки на файлы — без префикса" value={`${host}/p/…, ${host}/f/…`} />
           <div className="pt-1 text-xs text-subtle">Всё остальное отвечает пустым 404. Префикс прячет хаб от сканеров, но не заменяет OAuth и 2FA.</div>
         </dl>
+      </Card>
+
+      <Card className="flex flex-col gap-3 p-4 md:p-5">
+        <div className="flex flex-col gap-0.5">
+          <h2 className="text-[15px]">Свой initialize</h2>
+          <span className="text-xs text-subtle">
+            Текст, который MCP-клиент получает при подключении. ChatGPT надёжно читает только первые {INSTRUCTIONS_HEAD} символов, поэтому можно отдать короткую
+            версию со ссылкой на <span className="font-mono">hub_guide</span>. Что уходит сейчас — в «Диагностике».
+          </span>
+        </div>
+        <InitializeForm enabled={custom.enabled} text={custom.text} template={defaultCustomInstructions()} head={INSTRUCTIONS_HEAD} />
       </Card>
 
       <div className="grid gap-3.5 lg:grid-cols-2">

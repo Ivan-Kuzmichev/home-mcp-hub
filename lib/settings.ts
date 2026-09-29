@@ -34,3 +34,15 @@ export function getAllowedCidrs(): string[] {
 export function setAllowedCidrs(cidrs: string[]): void {
   setSetting('allowed_cidrs', JSON.stringify(cidrs))
 }
+
+/** «Свой initialize»: a hand-written text replaces the server instructions; the full ones go to hub_guide. */
+export type CustomInstructions = { enabled: boolean; text: string }
+
+export function getCustomInstructions(): CustomInstructions {
+  return { enabled: getSetting('custom_instructions_enabled') === '1', text: getSetting('custom_instructions') ?? '' }
+}
+
+export function setCustomInstructions(value: CustomInstructions): void {
+  setSetting('custom_instructions_enabled', value.enabled ? '1' : '0')
+  setSetting('custom_instructions', value.text)
+}

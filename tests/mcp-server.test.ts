@@ -91,3 +91,24 @@ describe('ChatGPT account linking', () => {
     for (const t of tools) expect(t._meta?.securitySchemes, t.name).toEqual([{ type: 'oauth2', scopes: ['hub'] }])
   })
 })
+
+describe('«Свой initialize»', () => {
+  it('sends the admin text and moves the full rules to hub_guide', async () => {
+    const { setCustomInstructions } = await import('@/lib/settings')
+    const { buildGuide, defaultCustomInstructions } = await import('@/lib/mcp/server')
+    const names = async () => (await rpc<{ tools: { name: string }[] }>('tools/list')).tools.map((t) => t.name)
+    expect(await names()).not.toContain('hub_guide')
+    expect(defaultCustomInstructions()).toContain('hub_guide')
+
+    setCustomInstructions({ enabled: true, text: 'Коротко. Правила — hub_guide.' })
+    const init = await rpc<{ instructions: string }>('initialize', { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 't', version: '1' } })
+    expect(init.instructions).toBe('Коротко. Правила — hub_guide.')
+    expect(await names()).toContain('hub_guide')
+    const guide = await rpc<{ content: { text: string }[] }>('tools/call', { name: 'hub_guide', arguments: {} })
+    expect(guide.content[0]!.text).toBe(buildGuide())
+    expect(guide.content[0]!.text).toContain('Home Hub — домашний хаб пользователя. Отвечай коротко')
+
+    setCustomInstructions({ enabled: false, text: 'Коротко. Правила — hub_guide.' })
+    expect(buildInstructions()).toBe(buildGuide())
+  })
+})

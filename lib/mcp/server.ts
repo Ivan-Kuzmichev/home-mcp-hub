@@ -15,6 +15,7 @@ import { logger } from '../logger'
 import { mcpContext } from './context'
 import { MCP_SCOPE } from '../auth'
 import { LOGO_DATA_URI } from '../brand'
+import { getCustomInstructions } from '../settings'
 import { HUB_VERSION } from '../version'
 
 /** OpenAI hosts reliably use only the start of the server instructions. */
@@ -29,7 +30,7 @@ export const INSTRUCTIONS_HEAD = 512
  * tool come first and the connector parts follow. The list of services is left out — the model
  * sees it in the tools anyway.
  */
-export function buildInstructions(): string {
+export function buildGuide(): string {
   const states = connectorStates()
   const tools = visibleTools(states)
   const active = states.filter((s) => s.status === 'active')
@@ -39,6 +40,24 @@ export function buildInstructions(): string {
     ...active.map((s) => connectorInstructions(s.connector, s.row, s.config, tools).text),
   ]
   return lines.filter((l): l is string => !!l).join('\n')
+}
+
+/** Text sent in `initialize`: the admin's own when «Свой initialize» is on, the full guide otherwise. */
+export function buildInstructions(): string {
+  const custom = getCustomInstructions()
+  return custom.enabled && custom.text.trim() ? custom.text.trim() : buildGuide()
+}
+
+/** Starting text for «Свой initialize»: what the hub has, and where the full rules are. */
+export function defaultCustomInstructions(): string {
+  const names = connectorStates()
+    .filter((s) => s.status === 'active')
+    .map((s) => s.connector.name)
+  return [
+    `Home Hub — домашний хаб пользователя${names.length ? `: ${names.join(', ')}` : ''}.`,
+    'Полные правила работы с хабом — вызови hub_guide перед первым действием с ним в этом чате.',
+    'Отвечай коротко: пользователь читает с телефона. Перед удалением и другими необратимыми действиями переспроси.',
+  ].join('\n')
 }
 
 const startedAt = Date.now()
@@ -146,8 +165,23 @@ function initializeServer(server: McpServer): void {
     async (args: unknown) => runLogged('hub_status', 'hub', args, hubStatus),
   )
 
+  // Only with «Свой initialize»: then the full rules are no longer in the instructions.
+  if (getCustomInstructions().enabled) {
+    server.registerTool(
+      'hub_guide',
+      {
+        title: 'Правила хаба',
+        description: 'Полные правила работы с Home Hub: как искать и качать, что выбирать, Paperless, прототипы, скрипты и заметки пользователя. Вызови перед первым действием с хабом в чате.',
+        inputSchema: z.object({}),
+        annotations: { readOnlyHint: true, openWorldHint: false },
+        _meta: AUTH_META,
+      },
+      async (args: unknown) => runLogged('hub_guide', 'hub', args, async () => buildGuide()),
+    )
+  }
+
   // Tool names are global in MCP: a clash would make registerTool throw and break every call.
-  const registered = new Set(['hub_status'])
+  const registered = new Set(['hub_status', 'hub_guide'])
   for (const state of connectorStates()) {
     if (state.status !== 'active') continue
     for (const tool of state.connector.tools) {

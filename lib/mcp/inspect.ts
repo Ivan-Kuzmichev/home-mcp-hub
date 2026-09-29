@@ -1,6 +1,7 @@
 import { connectorStates } from '../connectors/active'
 import { connectorInstructions, visibleTools } from '../connectors/instructions'
-import { getMcpHandler } from './server'
+import { getCustomInstructions } from '../settings'
+import { buildGuide, getMcpHandler } from './server'
 
 export type InspectedTool = {
   name: string
@@ -15,7 +16,10 @@ export type McpSnapshot = {
   protocolVersion: string
   instructions: string
   tools: InspectedTool[]
-  /** Which connector contributed which part of the instructions. */
+  /** «Свой initialize» is on: `instructions` is the admin's text, the connector rules are in `guide` (hub_guide) */
+  custom: boolean
+  guide: string
+  /** Which connector contributed which part of the guide. */
   parts: { connector: string; mode: 'append' | 'replace'; standard: string | null; own: string | null; text: string | null }[]
 }
 
@@ -49,7 +53,15 @@ export async function inspectMcp(): Promise<McpSnapshot> {
   const parts = states.flatMap((s) =>
     s.status === 'active' ? [{ connector: s.connector.name, mode: s.row.instructionsMode, ...connectorInstructions(s.connector, s.row, s.config, names) }] : [],
   )
-  return { serverInfo: init.serverInfo, protocolVersion: init.protocolVersion, instructions: init.instructions ?? '', tools, parts }
+  return {
+    serverInfo: init.serverInfo,
+    protocolVersion: init.protocolVersion,
+    instructions: init.instructions ?? '',
+    tools,
+    parts,
+    custom: getCustomInstructions().enabled,
+    guide: buildGuide(),
+  }
 }
 
 /** Rough token count: Russian text runs at about 3 characters per token, JSON a bit more. */
