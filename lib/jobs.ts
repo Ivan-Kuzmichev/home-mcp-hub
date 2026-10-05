@@ -1,6 +1,7 @@
 import cron from 'node-cron'
 import { checkAllConnectors } from './connectors/health'
-import { purgeExpiredLinks, purgeOldChanges } from './connectors/paperless/logic'
+import { purgeOldChanges } from './connectors/paperless/logic'
+import { purgeExpiredLinks } from './download-links'
 import { purgeJournal } from './journal'
 import { syncSchedules } from './scripts/scheduler'
 import { purgeOldRuns } from './scripts/store'

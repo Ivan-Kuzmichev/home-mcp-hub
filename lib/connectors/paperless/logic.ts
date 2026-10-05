@@ -1,7 +1,8 @@
-import { randomBytes, randomInt } from 'node:crypto'
+import { randomInt } from 'node:crypto'
 import { and, eq, isNull, lt } from 'drizzle-orm'
 import { getDb } from '../../db'
-import { downloadLink, paperlessChange } from '../../db/schema'
+import { paperlessChange } from '../../db/schema'
+import { createLink as createDownloadLink } from '../../download-links'
 import { truncate } from '../format'
 import { ToolError } from '../types'
 import type { PlClient, PlDocument, PlKind, PlNamed, PlSuggestions, Taxonomy } from './client'
@@ -325,35 +326,8 @@ export function purgeOldChanges(days = 30): number {
 }
 
 // ---------------------------------------------------------------------------
-// Download links (/f/{token}, outside the secret prefix like /p/)
-
-export const PERSONAL_LINK_TTL_MS = 24 * 60 * 60 * 1000
-export const SHAREABLE_LINK_TTL_MS = 15 * 60 * 1000
+// Download links: storage is shared with the Files connector (lib/download-links.ts).
 
 export function createLink(documentId: number, opts: { original: boolean; shareable: boolean }): { token: string; expiresAt: Date } {
-  const token = randomBytes(24).toString('base64url')
-  const now = Date.now()
-  const expiresAt = new Date(now + (opts.shareable ? SHAREABLE_LINK_TTL_MS : PERSONAL_LINK_TTL_MS))
-  getDb()
-    .insert(downloadLink)
-    .values({ token, connectorId: 'paperless', documentId, original: opts.original, shareable: opts.shareable, expiresAt, createdAt: new Date(now) })
-    .run()
-  return { token, expiresAt }
-}
-
-export function getLink(token: string) {
-  return getDb().select().from(downloadLink).where(eq(downloadLink.token, token)).get()
-}
-
-/** One-time links: mark used atomically, so two parallel opens cannot both succeed. */
-export function claimLink(token: string): boolean {
-  return getDb().update(downloadLink).set({ usedAt: new Date() }).where(and(eq(downloadLink.token, token), isNull(downloadLink.usedAt))).run().changes === 1
-}
-
-export function purgeExpiredLinks(): number {
-  return getDb().delete(downloadLink).where(lt(downloadLink.expiresAt, new Date())).run().changes
-}
-
-export function linkUrl(token: string): string {
-  return `${(process.env.BASE_URL ?? '').replace(/\/+$/, '')}/f/${token}`
+  return createDownloadLink({ connectorId: 'paperless', documentId, original: opts.original }, { shareable: opts.shareable })
 }

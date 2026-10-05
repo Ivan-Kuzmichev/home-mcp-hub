@@ -7,6 +7,7 @@
 | Transmission | `transmission_status`, `transmission_add`, `transmission_stop`, `transmission_start`, `transmission_delete`, `transmission_files`, `transmission_info` | ⚠️ только автотесты |
 | Paperless (ngx) | `paperless_search`, `paperless_review`, `paperless_get`, `paperless_thumbnail`, `paperless_taxonomy`, `paperless_update`, `paperless_undo`, `paperless_link` | ⚠️ только автотесты |
 | TorrServe | `torrserve_add`, `torrserve_list`, `torrserve_links`, `torrserve_remove` | ✅ |
+| Файлы | `files_list`, `files_read`, `files_search`, `files_write`, `files_edit`, `files_mkdir`, `files_move`, `files_copy`, `files_delete`, `files_link` | ⚠️ только автотесты |
 | Скрипты (встроенный) | `cron_create`, `cron_update`, `tool_create`, `tool_update`, `cron_enable`, `cron_run`, `cron_logs`, `cron_list`, `cron_get`, `cron_delete`, `script_secrets`, свои `my_*` | ✅ |
 | Прототипы (встроенный) | `prototype_publish`, `prototype_append`, `prototype_update`, `prototype_list`, `prototype_delete` | ✅ |
 | Хаб | `hub_status`, `hub_guide` (при своём initialize) | ✅ |
@@ -37,6 +38,39 @@
 
 Ссылки на файлы — `/f/{токен}` без секретного префикса: личные (24 ч, только с входом в админку) и пересылаемые по прямой просьбе
 (один раз, 15 минут). Загрузки файлов через ассистента пока нет.
+
+## Файлы
+
+Доступ ассистента к папкам на диске. Папку монтируют в контейнер хаба и перечисляют в настройках коннектора —
+по строке на папку, `имя | путь в контейнере | режим`:
+
+```yaml
+    volumes:
+      - ./data:/data
+      - /volume1/docs:/files/docs
+      - /volume1/photo:/files/photos:ro   # :ro — защита на уровне Docker в дополнение к режиму
+```
+
+```
+Документы | /files/docs | edit
+Фото | /files/photos | read
+```
+
+| Режим | Что можно |
+| --- | --- |
+| `read` | смотреть, читать, искать (по умолчанию) |
+| `add` | ещё создавать новые файлы и папки, копировать в папку; существующее не меняется |
+| `edit` | ещё перезаписывать и править файлы, переименовывать и переносить |
+| `full` | ещё удалять (с `confirm: true`) |
+
+Ассистент видит пути вида `Документы/2026/счёт.txt` — без путей контейнера. `..` и символьные ссылки за пределы папки
+не пропускаются, саму папку из настроек удалить или перенести нельзя. Перенос между папками требует `edit` в исходной и `add`
+в целевой. Текст читается по строкам, картинки (png, jpg, gif, webp до 3 МБ) — как картинки; большой текст ассистент пишет частями
+(`files_write` с `mode: "append"`). Файлы создаются от пользователя контейнера — `PUID`/`PGID`, если нужен свой владелец.
+
+`files_link` даёт ссылку `/f/{токен}` — такую же, как у Paperless: личную (24 ч, только с входом в админку) или пересылаемую
+(по прямой просьбе, один раз, 15 минут). PDF, картинки, видео и простой текст открываются в браузере, остальное (в том числе HTML)
+скачивается. Путь проверяется при каждом открытии: если файл перенесли или папку убрали из настроек, ссылка перестаёт работать.
 
 ## Прототипы
 

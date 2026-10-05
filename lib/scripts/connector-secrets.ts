@@ -53,7 +53,8 @@ function apiHost(config: Record<string, unknown>): string | null {
 export function describeConnectorSharing() {
   const shared = new Set(sharedConnectorIds())
   return connectorStates()
-    .filter((s) => !s.connector.builtin && s.status !== 'unconfigured')
+    // Nothing to share (Files: only the folder list) — no toggle.
+    .filter((s) => !s.connector.builtin && s.status !== 'unconfigured' && sharedFields(s.connector).length > 0)
     .map((s) => {
       const config = s.status === 'active' ? (s.config as Record<string, unknown>) : {}
       return {

@@ -1,0 +1,1 @@
+ALTER TABLE `download_link` ADD `path` text;

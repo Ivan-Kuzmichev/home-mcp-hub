@@ -56,6 +56,10 @@ Self-hosted MCP-хаб для домашних сервисов (Jackett, qBitto
 - **Свои MCP-инструменты** — строки `script` с `kind = 'tool'`: имя `my_*`, `spec` (параметры + read-only) входит в хэш версии,
   `approvedSpec` хранит одобренную. Регистрируются в `initializeServer` только одобренные и включённые, пока включён коннектор scripts;
   лимит вызова 25 с. Новые инструменты клиент видит в новом чате (сервер stateless, `listChanged` не шлём).
+- **Файлы:** папки — строки `имя | /путь | режим` в textarea (`lib/connectors/files/folders.ts`), режимы `read` < `add` < `edit` < `full`.
+  Каждый путь проходит `resolveTarget`: без `..`, realpath (символьные ссылки) внутри папки, проверка режима. Модели — только `папка/…`,
+  без путей контейнера. В `add` дописывать можно лишь файлы, созданные хабом за последний час (запись частями).
+  Ссылки `/f/{token}` общие с Paperless (`lib/download-links.ts`, колонка `path`); у одноразовых ссылок `Range` игнорируется.
 - **Прототипы** отдаются с `Content-Security-Policy: sandbox allow-scripts allow-forms allow-modals allow-popups` (без `allow-same-origin`)
   и `X-Robots-Tag: noindex`. Пин — argon2-хэш, cookie на 24 ч, 5 попыток за 10 мин.
 - **Разрушающие tools** (`torrent_delete` с файлами, `prototype_delete`) требуют `confirm: true` и помечены `destructiveHint`.

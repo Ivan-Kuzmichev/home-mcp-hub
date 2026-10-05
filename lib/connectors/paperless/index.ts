@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { plural, truncate } from '../format'
 import { baseUrl, defineConnector, field, secret, toolFor, ToolError } from '../types'
+import { LINK_KIND_TEXT, linkUrl } from '../../download-links'
 import { PlClient, type PlDocument } from './client'
 import {
   assertVisible,
@@ -13,7 +14,6 @@ import {
   filterParams,
   KIND_LABELS,
   lastBatchId,
-  linkUrl,
   markUndone,
   metaLine,
   newBatchId,
@@ -419,7 +419,7 @@ export const paperless = defineConnector<Config>({
         return [
           `«${truncate(doc.title, 70)}» — ${what}:`,
           linkUrl(token),
-          shareable ? 'Пересылаемая: откроется один раз у любого, у кого ссылка, в течение 15 минут.' : 'Личная: 24 часа, открывается только в браузере, где выполнен вход в админку хаба.',
+          shareable ? LINK_KIND_TEXT.shareable : LINK_KIND_TEXT.personal,
         ].join('\n')
       },
     }),

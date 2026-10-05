@@ -90,6 +90,8 @@ export const downloadLink = sqliteTable('download_link', {
   token: text('token').primaryKey(),
   connectorId: text('connector_id').notNull(),
   documentId: integer('document_id').notNull(),
+  /** Files connector: «folder/sub/file», checked against the folder settings on every open */
+  path: text('path'),
   original: integer('original', { mode: 'boolean' }).notNull().default(false),
   shareable: integer('shareable', { mode: 'boolean' }).notNull().default(false),
   expiresAt: integer('expires_at', { mode: 'timestamp_ms' }).notNull(),
