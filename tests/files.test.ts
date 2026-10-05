@@ -67,6 +67,8 @@ describe('folder list', () => {
     expect(text).toContain('Архив — только чтение')
     expect(text).toContain('Входящие — чтение и добавление')
     expect(text).toContain('files_edit')
+    // The connector form renders instructions before anything is saved.
+    expect(files.instructions!({}, { tools: ['files_list'] })).toBeNull()
   })
 })
 

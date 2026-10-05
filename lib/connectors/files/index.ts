@@ -132,7 +132,8 @@ export const files = defineConnector<Config>({
   instructions(c, { tools }) {
     const own = tools.filter((t) => t.startsWith('files_'))
     if (own.length === 0) return null
-    const r = parseFolders(c.folders)
+    // The admin form asks for the text before the connector is configured: config is {} then.
+    const r = parseFolders(c.folders ?? '')
     if (!r.ok) return null
     const list = r.folders.map((f) => `${f.name} — ${ACCESS_LABEL[f.access]}`).join('; ')
     const parts = [`Файлы: пути вида «папка/подпапка/файл». Папки: ${list}.`]
