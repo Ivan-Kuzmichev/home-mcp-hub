@@ -9,7 +9,7 @@
 | TorrServe | `torrserve_add`, `torrserve_list`, `torrserve_links`, `torrserve_remove` | ✅ |
 | Файлы | `files_list`, `files_read`, `files_search`, `files_write`, `files_edit`, `files_mkdir`, `files_move`, `files_copy`, `files_delete`, `files_link` | ⚠️ только автотесты |
 | Скрипты (встроенный) | `cron_create`, `cron_update`, `tool_create`, `tool_update`, `cron_enable`, `cron_run`, `cron_logs`, `cron_list`, `cron_get`, `cron_delete`, `script_secrets`, свои `my_*` | ✅ |
-| Прототипы (встроенный) | `prototype_publish`, `prototype_append`, `prototype_update`, `prototype_list`, `prototype_delete` | ✅ |
+| Прототипы (встроенный) | `prototype_publish`, `prototype_append`, `prototype_update`, `prototype_list`, `prototype_data`, `prototype_delete` | ✅ |
 | Хаб | `hub_status`, `hub_guide` (при своём initialize) | ✅ |
 
 Коннекторы включаются и настраиваются в админке → «Коннекторы». Инструменты выключенного коннектора ассистент не видит,
@@ -77,6 +77,21 @@
 `prototype_publish` публикует HTML по адресу `/p/{slug}` — вне секретного префикса, чтобы ссылкой можно было делиться.
 Большие страницы ассистент отправляет частями (`prototype_append`). Опционально пин (4–8 цифр) и срок жизни, до трёх версий с откатом.
 Страница отдаётся в CSP-песочнице без доступа к cookie админки.
+
+У каждого прототипа есть своё хранилище — один JSON-документ до 50 МБ, общий для всех, кто открыл страницу (`localStorage`
+в песочнице не работает). Хаб вставляет в начало страницы скрипт с `window.hub.db`:
+
+```js
+const data = await hub.db.get()            // {} пока ничего не сохраняли
+await hub.db.set({ items: [] })            // перезаписать целиком
+await hub.db.update((d) => { d.items.push('новое'); return d })  // без потери чужих правок, повторяет при конфликте
+```
+
+Скрипт ходит в `/p/{slug}/db` с токеном, который вшит в отданную страницу: он живёт 24 часа и перестаёт действовать после
+смены пина — тогда страницу нужно обновить. Данные открытого прототипа может читать и менять любой, у кого есть ссылка.
+Документ читается и пишется целиком, поэтому он для текста и списков, а не для картинок в base64.
+Данные не версионируются вместе с HTML: откат версии их не трогает. Посмотреть и очистить их можно в карточке прототипа
+или попросить ассистента (`prototype_data`); при удалении прототипа данные удаляются вместе с ним.
 
 ## Cron-скрипты
 

@@ -7,8 +7,10 @@ import {
   clientIp,
   recordFailedAttempt,
   signAccess,
+  signDataToken,
   verifyAccess,
 } from '@/lib/prototypes/access'
+import { injectDataScript } from '@/lib/prototypes/data'
 import { PROTOTYPE_CSP, PUBLIC_HEADERS, SLUG_PATTERN, simplePage } from '@/lib/prototypes/http'
 import { getBySlug, isExpired, readHtml, recordView, verifyPin } from '@/lib/prototypes/store'
 
@@ -43,7 +45,7 @@ export async function GET(_req: Request, { params }: Ctx): Promise<Response> {
   const html = readHtml(p)
   if (html === null) return notFound()
   recordView(p)
-  return new Response(html, {
+  return new Response(injectDataScript(html, p.slug, signDataToken(p)), {
     headers: {
       ...PUBLIC_HEADERS,
       'Content-Type': 'text/html; charset=utf-8',

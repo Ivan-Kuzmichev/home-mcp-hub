@@ -10,12 +10,15 @@ const store = await import('@/lib/prototypes/store')
 const access = await import('@/lib/prototypes/access')
 const { prototypes } = await import('@/lib/connectors/prototypes')
 const route = await import('@/app/p/[slug]/route')
+const dbRoute = await import('@/app/p/[slug]/db/route')
+const data = await import('@/lib/prototypes/data')
 
 afterAll(cleanup)
 
 const HTML = '<!doctype html><title>t</title><h1>Hello</h1>'
 const cfg = configOf(prototypes, {})
 const ctx = (slug: string) => ({ params: Promise.resolve({ slug }) })
+const stripScript = (html: string) => html.replace(/<script>.*?<\/script>/s, '')
 
 describe('prototype storage', () => {
   it('publishes with a readable random slug and keeps the last 3 versions', async () => {
@@ -97,7 +100,9 @@ describe('public route /p/{slug}', () => {
     expect(res.headers.get('content-security-policy')).toBe('sandbox allow-scripts allow-forms allow-modals allow-popups')
     expect(res.headers.get('content-security-policy')).not.toContain('allow-same-origin')
     expect(res.headers.get('x-robots-tag')).toContain('noindex')
-    expect(await res.text()).toBe(HTML)
+    const body = await res.text()
+    expect(body).toContain('window.hub=')
+    expect(body.replace(/<script>.*?<\/script>/s, '')).toBe(HTML)
     expect(store.getById(p.id)?.views).toBe(1)
   })
 
@@ -182,7 +187,7 @@ describe('chunked uploads', () => {
     expect(done).toMatch(/^Опубликовано: «Большой сайт»\nhttps:\/\/hub\.example\.com\/p\//)
 
     const res = await route.GET(new Request(`https://hub.example.com/p/${slug}`), ctx(slug))
-    expect(await res.text()).toBe(part1 + part2 + part3)
+    expect(stripScript(await res.text())).toBe(part1 + part2 + part3)
     expect(store.getBySlug(slug)?.version).toBe(1)
   })
 
@@ -190,7 +195,7 @@ describe('chunked uploads', () => {
     const p = await store.publish({ html: '<h1>v1</h1>', title: 'Живой' })
     await runTool(prototypes, 'prototype_update', cfg, { prototype: p.slug, html: '<h1>v2', more: true })
     const during = await route.GET(new Request(`https://hub.example.com/p/${p.slug}`), ctx(p.slug))
-    expect(await during.text()).toBe('<h1>v1</h1>')
+    expect(stripScript(await during.text())).toBe('<h1>v1</h1>')
     expect(await runTool(prototypes, 'prototype_append', cfg, { prototype: p.slug, html: '</h1>' })).toContain('Обновлено до v2')
     expect(store.readHtml(store.getBySlug(p.slug)!)).toBe('<h1>v2</h1>')
   })
@@ -202,5 +207,63 @@ describe('chunked uploads', () => {
     const draft = await store.publish({ html: part1, title: 'Брошенный', draft: true })
     expect(store.purgeExpired(new Date(Date.now() + 2 * 86_400_000))).toBeGreaterThan(0)
     expect(store.getById(draft.id)).toBeUndefined()
+  })
+})
+
+describe('page storage window.hub.db', () => {
+  const tokenOf = (html: string) => /token="([^"]+)"/.exec(html)![1]!
+  const call = (slug: string, method: string, opts: { token?: string; body?: unknown; ifMatch?: string } = {}) => {
+    const headers: Record<string, string> = {}
+    if (opts.token) headers.authorization = `Bearer ${opts.token}`
+    if (opts.ifMatch) headers['if-match'] = opts.ifMatch
+    const req = new Request(`https://hub.example.com/p/${slug}/db`, { method, headers, body: opts.body === undefined ? undefined : JSON.stringify(opts.body) })
+    return method === 'GET' ? dbRoute.GET(req, ctx(slug)) : dbRoute.PUT(req, ctx(slug))
+  }
+
+  it('injects the script after <head>, after the doctype, never before it', () => {
+    expect(data.injectDataScript('<!doctype html><html><head><title>t</title>', 's', 't')).toMatch(/^<!doctype html><html><head><script>/)
+    expect(data.injectDataScript('<!doctype html><header>x</header>', 's', 't')).toMatch(/^<!doctype html><script>/)
+    expect(data.injectDataScript('<h1>x</h1>', 's', 't')).toMatch(/^<script>.*<\/script><h1>x<\/h1>$/s)
+  })
+
+  it('reads {} by default, writes with a token and checks If-Match', async () => {
+    const p = await store.publish({ html: HTML, title: 'Db' })
+    const token = tokenOf(await (await route.GET(new Request(`https://hub.example.com/p/${p.slug}`), ctx(p.slug))).text())
+
+    expect((await call(p.slug, 'GET')).status).toBe(401)
+    const empty = await call(p.slug, 'GET', { token })
+    expect(await empty.json()).toEqual({})
+    expect(empty.headers.get('etag')).toBe('"0"')
+    expect(empty.headers.get('access-control-allow-origin')).toBe('*')
+
+    const put = await call(p.slug, 'PUT', { token, body: { items: [1] }, ifMatch: '"0"' })
+    expect(put.headers.get('etag')).toBe('"1"')
+    expect((await call(p.slug, 'PUT', { token, body: { items: [2] }, ifMatch: '"0"' })).status).toBe(409)
+    expect(await (await call(p.slug, 'GET', { token })).json()).toEqual({ items: [1] })
+    expect((await call(p.slug, 'PUT', { token, body: { items: [3] } })).status).toBe(200)
+
+    // A token of another prototype does not fit.
+    const other = await store.publish({ html: HTML, title: 'Other' })
+    expect((await call(other.slug, 'GET', { token })).status).toBe(401)
+  })
+
+  it('rejects oversized data and stops the old token after a pin change', async () => {
+    const p = await store.publish({ html: HTML, title: 'Pinned db', pin: '4821' })
+    const token = access.signDataToken(p)
+    expect(access.verifyAccess(token, p)).toBe(false) // not usable as an access cookie
+    expect((await call(p.slug, 'PUT', { token, body: 'x'.repeat(data.MAX_DATA_BYTES) })).status).toBe(413)
+    await store.update(p, { pin: '1111' })
+    expect((await call(p.slug, 'GET', { token })).status).toBe(401)
+  })
+
+  it('prototype_data shows the JSON and clears it only with confirm', async () => {
+    const p = await store.publish({ html: HTML, title: 'Опрос' })
+    expect(await runTool(prototypes, 'prototype_data', cfg, { prototype: p.slug })).toContain('данных пока нет')
+    data.writeData(p, { votes: { yes: 2 } })
+    expect(await runTool(prototypes, 'prototype_data', cfg, { prototype: p.slug })).toContain('"yes": 2')
+    expect(await runTool(prototypes, 'prototype_data', cfg, { prototype: p.slug, clear: true })).toContain('confirm: true')
+    expect(data.dataSize(p)).not.toBeNull()
+    expect(await runTool(prototypes, 'prototype_data', cfg, { prototype: p.slug, clear: true, confirm: true })).toBe('Данные «Опрос» стёрты.')
+    expect(data.readData(p)).toEqual({ rev: 0, data: {} })
   })
 })

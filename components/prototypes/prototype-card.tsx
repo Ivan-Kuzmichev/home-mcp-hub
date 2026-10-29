@@ -2,7 +2,7 @@
 
 import { QrCode } from 'lucide-react'
 import { useActionState, useState } from 'react'
-import { deletePrototypeAction, rollbackAction, savePrototypeAction, uploadVersionAction, type ActionState } from '@/app/admin/prototypes/actions'
+import { clearDataAction, deletePrototypeAction, rollbackAction, savePrototypeAction, uploadVersionAction, type ActionState } from '@/app/admin/prototypes/actions'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { ConfirmButton } from '@/components/ui/confirm-button'
@@ -24,6 +24,8 @@ export type CardData = {
   expired: boolean
   currentVersion: number
   versions: { version: number; ago: string; size: string }[]
+  /** window.hub.db document size, null when nothing was saved */
+  dataSize: string | null
   previewUrl: string
 }
 
@@ -149,6 +151,16 @@ export function PrototypeCard({ data }: { data: CardData }) {
           {uploadState.error && <span className="w-full text-[13px] text-err">{uploadState.error}</span>}
           {uploadState.ok && <span className="w-full text-[13px] text-ok">{uploadState.ok}</span>}
         </form>
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <Label>Данные страницы</Label>
+        <div className="flex flex-wrap items-center gap-3 rounded-md border border-border px-3.5 py-2.5 text-[13px]">
+          <span className="min-w-0 flex-1 text-subtle">
+            {data.dataSize ? `window.hub.db · ${data.dataSize}` : 'Страница ещё ничего не сохраняла в window.hub.db'}
+          </span>
+          {data.dataSize && <ConfirmButton action={clearDataAction} fields={{ id: data.id }} label="Очистить" confirmLabel="Точно очистить" />}
+        </div>
       </div>
 
       <div className="flex justify-start border-t border-divider pt-4">

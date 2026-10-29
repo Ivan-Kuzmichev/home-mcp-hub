@@ -21,20 +21,40 @@ function mac(payload: string): string {
   return createHmac('sha256', key()).update(payload).digest('base64url')
 }
 
-/** `<pinVersion>.<expiresMs>.<hmac(slug.pinVersion.expires)>` */
-export function signAccess(p: Pick<Prototype, 'slug' | 'pinVersion'>, now = Date.now()): string {
+function sign(purpose: string, p: Pick<Prototype, 'slug' | 'pinVersion'>, now: number): string {
   const exp = now + ACCESS_TTL_MS
-  return `${p.pinVersion}.${exp}.${mac(`${p.slug}.${p.pinVersion}.${exp}`)}`
+  return `${p.pinVersion}.${exp}.${mac(`${purpose}${p.slug}.${p.pinVersion}.${exp}`)}`
 }
 
-export function verifyAccess(value: string | undefined, p: Pick<Prototype, 'slug' | 'pinVersion'>, now = Date.now()): boolean {
+function verify(purpose: string, value: string | undefined, p: Pick<Prototype, 'slug' | 'pinVersion'>, now: number): boolean {
   if (!value) return false
   const [ver, exp, sig] = value.split('.')
   if (!ver || !exp || !sig) return false
   if (Number(ver) !== p.pinVersion || Number(exp) < now) return false
-  const expected = Buffer.from(mac(`${p.slug}.${ver}.${exp}`))
+  const expected = Buffer.from(mac(`${purpose}${p.slug}.${ver}.${exp}`))
   const given = Buffer.from(sig)
   return expected.length === given.length && timingSafeEqual(expected, given)
+}
+
+/** `<pinVersion>.<expiresMs>.<hmac(slug.pinVersion.expires)>` */
+export function signAccess(p: Pick<Prototype, 'slug' | 'pinVersion'>, now = Date.now()): string {
+  return sign('', p, now)
+}
+
+export function verifyAccess(value: string | undefined, p: Pick<Prototype, 'slug' | 'pinVersion'>, now = Date.now()): boolean {
+  return verify('', value, p, now)
+}
+
+/**
+ * Bearer token for /p/{slug}/db, embedded into the served HTML. Same shape as the cookie but
+ * a separate MAC domain, so a page script cannot turn it into an access cookie.
+ */
+export function signDataToken(p: Pick<Prototype, 'slug' | 'pinVersion'>, now = Date.now()): string {
+  return sign('data.', p, now)
+}
+
+export function verifyDataToken(value: string | undefined, p: Pick<Prototype, 'slug' | 'pinVersion'>, now = Date.now()): boolean {
+  return verify('data.', value, p, now)
 }
 
 // ---------------------------------------------------------------------------

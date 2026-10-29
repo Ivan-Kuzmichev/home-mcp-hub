@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { href } from '@/lib/prefix'
+import { clearData } from '@/lib/prototypes/data'
 import { getById, MAX_HTML_BYTES, PrototypeError, publish, remove, rollback, update, type Expiry } from '@/lib/prototypes/store'
 import { requireAdmin } from '@/lib/session'
 
@@ -90,4 +91,11 @@ export async function deletePrototypeAction(form: FormData): Promise<void> {
   if (p) remove(p)
   revalidatePath('/admin/prototypes', 'layout')
   redirect(href('/admin/prototypes'))
+}
+
+export async function clearDataAction(form: FormData): Promise<void> {
+  await requireAdmin()
+  const p = getById(String(form.get('id')))
+  if (p) clearData(p)
+  revalidatePath('/admin/prototypes', 'layout')
 }

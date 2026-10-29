@@ -19,6 +19,7 @@ import {
   type Expiry,
   type Prototype,
 } from '../../prototypes/store'
+import { clearData, dataSize, MAX_DATA_BYTES, readData } from '../../prototypes/data'
 import { formatSize, plural, truncate } from '../format'
 import { defineConnector, toolFor, ToolError } from '../types'
 
@@ -42,6 +43,11 @@ const moreInput = z
   .describe('true — это не последняя часть HTML: остальное допиши через prototype_append, последний кусок — с more: false')
 
 // Measured: one tool argument breaks at ~10 KB of generated HTML on Claude's side, 5–6 KB parts go through.
+export const DATA_HINT =
+  'Хранилище: в странице уже есть window.hub.db — общий для всех посетителей JSON-документ этого прототипа (до 50 МБ, по умолчанию {}; get/set передают его целиком — храни текст и списки, не картинки). ' +
+  'await hub.db.get(); await hub.db.set(obj) — перезаписать целиком; await hub.db.update(d => { d.items.push(x); return d }) — правка без потери чужих изменений. ' +
+  'localStorage в песочнице недоступен — используй hub.db.'
+
 export const CHUNK_HINT = 'HTML больше ~5 КБ отправляй частями по 4–5 КБ: первый кусок с more: true, остальные — prototype_append, последний — с more: false.'
 
 function find(ref: string): Prototype {
@@ -89,7 +95,7 @@ export const prototypes = defineConnector<Config>({
       name: 'prototype_publish',
       title: 'Опубликовать прототип',
       description:
-        `Опубликовать самодостаточный HTML (стили и скрипты внутри, картинки как data-URI, CDN можно) и получить публичную ссылку. Страница открывается без входа; с пином — только по пинкоду. ${CHUNK_HINT}`,
+        `Опубликовать самодостаточный HTML (стили и скрипты внутри, картинки как data-URI, CDN можно) и получить публичную ссылку. Страница открывается без входа; с пином — только по пинкоду. ${DATA_HINT} ${CHUNK_HINT}`,
       annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
       inputSchema: z.object({
         title: z.string().min(1).max(200).describe('Название — видно на странице пинкода и в админке'),
@@ -180,6 +186,31 @@ export const prototypes = defineConnector<Config>({
           return `• «${truncate(p.title, 60)}» — ${publicUrl(p.slug)} · ${parts.join(' · ')}`
         })
         return [`${list.length} ${plural(list.length, ['прототип', 'прототипа', 'прототипов'])}:`, ...lines].join('\n')
+      },
+    }),
+
+    tool({
+      name: 'prototype_data',
+      title: 'Данные прототипа',
+      description: 'Показать JSON из хранилища прототипа (window.hub.db) или очистить его. Очистка необратима: сначала переспроси пользователя и передай clear: true, confirm: true.',
+      annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
+      inputSchema: z.object({
+        prototype: refInput,
+        clear: z.boolean().optional().describe('true — стереть все данные'),
+        confirm: z.boolean().optional().describe('true — пользователь подтвердил очистку'),
+      }),
+      async run({ prototype: ref, clear, confirm }) {
+        const p = find(ref)
+        const size = dataSize(p)
+        if (clear) {
+          if (size === null) return `У «${p.title}» данных нет.`
+          if (confirm !== true) return `Не очищено. Переспроси пользователя и повтори с confirm: true.\nБудут стёрты данные «${p.title}» (${formatSize(size)}).`
+          clearData(p)
+          return `Данные «${p.title}» стёрты.`
+        }
+        if (size === null) return `У «${p.title}» данных пока нет.`
+        const { rev, data } = readData(p)
+        return [`«${p.title}»: ${formatSize(size)} из ${formatSize(MAX_DATA_BYTES)}, сохранений: ${rev}`, truncate(JSON.stringify(data, null, 1), 3000)].join('\n')
       },
     }),
 

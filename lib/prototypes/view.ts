@@ -4,10 +4,12 @@ import { expiryText } from '../connectors/prototypes'
 import { formatSize } from '../connectors/format'
 import { formatAgo, formatWhen } from '../format'
 import { href } from '../prefix'
+import { dataSize } from './data'
 import { isExpired, listVersions, publicUrl, type Prototype } from './store'
 
 export async function cardData(p: Prototype): Promise<CardData> {
   const url = publicUrl(p.slug)
+  const data = dataSize(p)
   return {
     id: p.id,
     title: p.title,
@@ -19,6 +21,7 @@ export async function cardData(p: Prototype): Promise<CardData> {
     expired: isExpired(p),
     currentVersion: p.version,
     versions: listVersions(p.id).map((v) => ({ version: v.version, ago: formatAgo(v.savedAt), size: formatSize(v.size) })),
+    dataSize: data === null ? null : formatSize(data),
     previewUrl: href(`/admin/prototypes/${p.id}/preview?v=${p.version}`),
   }
 }
