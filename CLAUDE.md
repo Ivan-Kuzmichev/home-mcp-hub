@@ -60,7 +60,7 @@ Self-hosted MCP-хаб для домашних сервисов (Jackett, qBitto
   Каждый путь проходит `resolveTarget`: без `..`, realpath (символьные ссылки) внутри папки, проверка режима. Модели — только `папка/…`,
   без путей контейнера. В `add` дописывать можно лишь файлы, созданные хабом за последний час (запись частями).
   Ссылки `/f/{token}` общие с Paperless (`lib/download-links.ts`, колонка `path`); у одноразовых ссылок `Range` игнорируется.
-- **Прототипы** отдаются с `Content-Security-Policy: sandbox allow-scripts allow-forms allow-modals allow-popups` (без `allow-same-origin`)
+- **Прототипы** отдаются с `Content-Security-Policy: sandbox allow-scripts allow-forms allow-modals allow-popups allow-downloads` (без `allow-same-origin`)
   и `X-Robots-Tag: noindex`. Пин — argon2-хэш, cookie на 24 ч, 5 попыток за 10 мин. В отдаваемый HTML (и превью админки)
   вставляется скрипт `window.hub.db` (`lib/prototypes/data.ts`): JSON до 50 МБ в `prototypes/{id}/data.json`, API `/p/{slug}/db`
   с CORS `*` (origin страницы — `null`) и Bearer-токеном (`signDataToken`, отдельный HMAC-домен от cookie пина), `If-Match` по `rev`.

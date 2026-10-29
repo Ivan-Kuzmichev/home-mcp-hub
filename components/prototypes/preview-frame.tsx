@@ -26,7 +26,7 @@ export function PreviewFrame({ src, title }: { src: string; title: string }) {
       <iframe
         title={title}
         src={src}
-        sandbox="allow-scripts allow-forms allow-modals allow-popups"
+        sandbox="allow-scripts allow-forms allow-modals allow-popups allow-downloads"
         className="absolute top-0 left-0 block origin-top-left border-0"
         style={{ width: VIEW_W, height: VIEW_H, transform: `scale(${scale})` }}
         loading="lazy"

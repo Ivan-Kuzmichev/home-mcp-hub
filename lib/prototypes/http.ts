@@ -1,6 +1,6 @@
 // Headers for everything under /p/*. The prototype HTML runs in an opaque origin
 // (sandbox without allow-same-origin): no access to admin cookies or storage.
-export const PROTOTYPE_CSP = 'sandbox allow-scripts allow-forms allow-modals allow-popups'
+export const PROTOTYPE_CSP = 'sandbox allow-scripts allow-forms allow-modals allow-popups allow-downloads'
 
 export const PUBLIC_HEADERS: Record<string, string> = {
   'X-Robots-Tag': 'noindex, nofollow',

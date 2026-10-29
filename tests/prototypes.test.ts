@@ -97,7 +97,7 @@ describe('public route /p/{slug}', () => {
     const p = await store.publish({ html: HTML, title: 'Open' })
     const res = await route.GET(new Request(`https://hub.example.com/p/${p.slug}`), ctx(p.slug))
     expect(res.status).toBe(200)
-    expect(res.headers.get('content-security-policy')).toBe('sandbox allow-scripts allow-forms allow-modals allow-popups')
+    expect(res.headers.get('content-security-policy')).toBe('sandbox allow-scripts allow-forms allow-modals allow-popups allow-downloads')
     expect(res.headers.get('content-security-policy')).not.toContain('allow-same-origin')
     expect(res.headers.get('x-robots-tag')).toContain('noindex')
     const body = await res.text()
