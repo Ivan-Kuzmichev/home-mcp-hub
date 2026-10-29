@@ -1,6 +1,6 @@
 {
   "name": "home-mcp-hub",
-  "version": "0.12.1",
+  "version": "0.13.0",
   "private": true,
   "license": "MIT",
   "packageManager": "pnpm@10.34.5",
