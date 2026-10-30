@@ -14,13 +14,13 @@ import { getScript, listScripts, recordRun, statusOf, type Script } from './stor
  * available: a script must not write or approve scripts.
  */
 async function callHubTool(name: string, args: unknown, allowWrite: boolean): Promise<string> {
-  const { connectorStates, activeConfig } = await import('../connectors/active')
+  const { connectorStates, activeConfig, enabledTools } = await import('../connectors/active')
   const { resolveResult } = await import('../connectors/resolve')
   const { outputText } = await import('../connectors/types')
   for (const state of connectorStates()) {
     if (state.status !== 'active') continue
-    const tool = state.connector.tools.find((t) => t.name === name)
-    if (!tool || state.row.disabledTools.includes(name)) continue
+    const tool = enabledTools(state).find((t) => t.name === name)
+    if (!tool) continue
     if (state.connector.id === 'scripts') throw new Error(`${name} недоступен из скриптов`)
     if (!tool.annotations.readOnlyHint && !allowWrite) throw new Error(`${name} меняет данные — из скриптов это можно, только когда в настройках скриптов открыта локальная сеть`)
     const jackett = activeConfig('jackett') as { baseUrl?: string; apiKey?: string } | null

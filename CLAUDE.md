@@ -1,6 +1,6 @@
 # Home MCP Hub
 
-Self-hosted MCP-хаб для домашних сервисов (Jackett, qBittorrent, Transmission, TorrServe, Paperless, HTML-прототипы, скрипты) с админкой.
+Self-hosted MCP-хаб для домашних сервисов (Jackett, qBittorrent, Transmission, TorrServe, Paperless, файлы, браузер camofox, HTML-прототипы, скрипты) с админкой.
 Один Docker-контейнер за реверс-прокси, подключается к Claude и ChatGPT как custom connector.
 
 ## Главное правило
@@ -56,6 +56,11 @@ Self-hosted MCP-хаб для домашних сервисов (Jackett, qBitto
 - **Свои MCP-инструменты** — строки `script` с `kind = 'tool'`: имя `my_*`, `spec` (параметры + read-only) входит в хэш версии,
   `approvedSpec` хранит одобренную. Регистрируются в `initializeServer` только одобренные и включённые, пока включён коннектор scripts;
   лимит вызова 25 с. Новые инструменты клиент видит в новом чате (сервер stateless, `listChanged` не шлём).
+- **Браузер (camofox):** REST `http://camofox:9377`, `Authorization: Bearer <access key>` везде кроме `/health`; версии в `/health` нет —
+  её берём из `/openapi.json`. Тела: `type` — `{ref, text, submit, clear}`, `wait` — `{selector, timeout}`, `scroll` — только up/down,
+  скриншот — бинарный PNG, субтитры YouTube — плагин `POST /youtube/transcript` (берёт первый язык). Адрес проверяет `checkUrl`
+  (`lib/connectors/browser/url.ts`) до открытия, итоговый — после (редиректы). Действия скрываются через `hiddenTools(config)`
+  коннектора — общий механизм: `enabledTools()` в `lib/connectors/active.ts` учитывает и выключенные админом, и скрытые настройками.
 - **Файлы:** папки — строки `имя | /путь | режим` в textarea (`lib/connectors/files/folders.ts`), режимы `read` < `add` < `edit` < `full`.
   Каждый путь проходит `resolveTarget`: без `..`, realpath (символьные ссылки) внутри папки, проверка режима. Модели — только `папка/…`,
   без путей контейнера. В `add` дописывать можно лишь файлы, созданные хабом за последний час (запись частями).
@@ -74,7 +79,7 @@ Self-hosted MCP-хаб для домашних сервисов (Jackett, qBitto
 `app/` — страницы и route handlers (всё под секретным префиксом через `middleware.ts`), `lib/` — логика, `lib/connectors/` — коннекторы,
 `lib/scripts/` — песочница и cron, `lib/mcp/` — MCP-сервер, `components/` — UI, `tests/` — vitest. Коннектор = папка в `lib/connectors/<name>/`, экспортирующая объект
 `Connector` (`id`, `name`, `configSchema`, `test`, `tools`, необязательный `instructions(config, { tools })` — строка для
-instructions сервера, должна пропускать выключенные инструменты; админ может дополнить или заменить её в форме) и одна строка в `lib/connectors/registry.ts`. Админка рисует форму по `configSchema`,
+instructions сервера, должна пропускать выключенные инструменты; админ может дополнить или заменить её в форме; необязательный `hiddenTools(config)` — инструменты, скрытые настройками) и одна строка в `lib/connectors/registry.ts`. Админка рисует форму по `configSchema`,
 поля с маркером `secret()` шифруются.
 
 ## Команды

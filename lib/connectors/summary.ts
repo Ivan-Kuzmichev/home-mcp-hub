@@ -1,4 +1,4 @@
-import { connectorStates } from './active'
+import { connectorStates, enabledTools } from './active'
 import { plural } from './format'
 import type { ConnectorRow } from './store'
 
@@ -26,10 +26,10 @@ export function connectorSummaries(): ConnectorSummary[] {
       return { ...base, configured: false, enabled: false, tone: 'muted', line: 'не настроен', lastCheckAt: null }
     }
     const row = s.row
-    const tools = c.tools.filter((t) => !row.disabledTools.includes(t.name)).length
-    const toolsText = `${tools} ${plural(tools, ['инструмент', 'инструмента', 'инструментов'])}`
     if (s.status === 'disabled') return { ...base, configured: true, enabled: false, tone: 'muted', line: 'выключен', lastCheckAt: row.lastCheckAt }
-    if (s.status === 'invalid') return { ...base, configured: true, enabled: true, tone: 'err', line: 'настройки неполные', lastCheckAt: row.lastCheckAt }
+    if (s.status !== 'active') return { ...base, configured: true, enabled: true, tone: 'err', line: 'настройки неполные', lastCheckAt: row.lastCheckAt }
+    const tools = enabledTools(s).length
+    const toolsText = `${tools} ${plural(tools, ['инструмент', 'инструмента', 'инструментов'])}`
     const tone = row.lastCheckOk === null ? 'muted' : row.lastCheckOk ? 'ok' : 'warn'
     const check = checkLine(row)
     return { ...base, configured: true, enabled: true, tone, line: check ? `${toolsText} · ${check}` : toolsText, lastCheckAt: row.lastCheckAt }

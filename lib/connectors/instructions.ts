@@ -1,10 +1,10 @@
-import { connectorStates, type ConnectorState } from './active'
+import { connectorStates, enabledTools, type ConnectorState } from './active'
 import { readConfig, type ConnectorRow } from './store'
 import type { RegisteredConnector } from './types'
 
 /** Tool names the model sees right now: hub_status plus enabled tools of active connectors. */
 export function visibleTools(states: ConnectorState[] = connectorStates()): string[] {
-  return ['hub_status', ...states.flatMap((s) => (s.status === 'active' ? s.connector.tools.filter((t) => !s.row.disabledTools.includes(t.name)).map((t) => t.name) : []))]
+  return ['hub_status', ...states.flatMap((s) => (s.status === 'active' ? enabledTools(s).map((t) => t.name) : []))]
 }
 
 /**

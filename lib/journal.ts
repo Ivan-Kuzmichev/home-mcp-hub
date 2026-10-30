@@ -33,12 +33,16 @@ function describeValue(key: string, value: unknown): string | null {
   return String(value)
 }
 
+/** Arguments that may hold what the user typed into a web form (a password): only the length is kept. */
+const TYPED_ARGS: Record<string, string[]> = { browser_act: ['text'] }
+
 /** «query: «Severance», type: tv, limit: 10» — secrets dropped, HTML replaced by its size. */
-export function redactArgs(args: unknown): string {
+export function redactArgs(args: unknown, tool?: string): string {
   if (!args || typeof args !== 'object' || Array.isArray(args)) return '—'
+  const typed = (tool && TYPED_ARGS[tool]) || []
   const parts = Object.entries(args as Record<string, unknown>)
     .map(([k, v]) => {
-      const d = describeValue(k, v)
+      const d = typed.includes(k) && typeof v === 'string' ? `${v.length} симв.` : describeValue(k, v)
       return d === null ? null : `${k}: ${d}`
     })
     .filter((p): p is string => !!p)
@@ -74,7 +78,7 @@ export function logToolCall(e: {
   insert({
     tool: e.tool,
     connectorId: e.connectorId,
-    argsRedacted: redactArgs(e.args),
+    argsRedacted: redactArgs(e.args, e.tool),
     ok: e.ok,
     resultSummary: e.result ? summarize(e.result) : null,
     error: e.error ? summarize(e.error) : null,

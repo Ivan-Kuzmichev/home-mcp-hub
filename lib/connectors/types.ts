@@ -120,6 +120,8 @@ export type Connector<C> = {
    * the hub exposes right now, so a line can mention only what is actually available.
    */
   instructions?: (config: C, ctx: InstructionsContext) => string | null
+  /** Tools the settings switch off (e.g. actions while «read only» is on): not registered, not counted. */
+  hiddenTools?: (config: C) => string[]
   // Tools are a static list (not a factory of config) so the admin panel can list
   // them before the connector is configured; the config arrives in ToolContext.
   tools: ConnectorTool<C, z.ZodObject>[]
@@ -149,6 +151,7 @@ export type RegisteredConnector = {
   parseConfig: (raw: unknown) => { ok: true; config: unknown } | { ok: false; errors: Record<string, string> }
   test: (config: unknown) => Promise<TestResult>
   instructions?: (config: unknown, ctx: InstructionsContext) => string | null
+  hiddenTools?: (config: unknown) => string[]
   tools: ErasedTool[]
 }
 
@@ -174,6 +177,7 @@ export function defineConnector<C>(c: Connector<C>): RegisteredConnector {
     },
     test: (config) => c.test(asConfig(config)),
     instructions: c.instructions ? (config, ctx) => c.instructions!(asConfig(config), ctx) : undefined,
+    hiddenTools: c.hiddenTools ? (config) => c.hiddenTools!(asConfig(config)) : undefined,
     tools: c.tools.map((t) => ({
       name: t.name,
       title: t.title,

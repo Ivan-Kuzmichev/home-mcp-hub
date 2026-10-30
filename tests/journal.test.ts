@@ -29,6 +29,7 @@ describe('argument redaction', () => {
     expect(journal.redactArgs({ url: 'http://jackett/dl/?jackett_apikey=abc&x=1' })).toBe('url: http://jackett/dl/?jackett_apikey=***&x=1')
     expect(journal.redactArgs({ a: 'y'.repeat(120), b: 'y'.repeat(120), c: 'y'.repeat(120), d: 'y'.repeat(120), e: 'y'.repeat(120) }).length).toBe(500)
     expect(journal.redactArgs({})).toBe('—')
+    expect(journal.redactArgs({ tab: 't1', action: 'type', text: 'hunter2' }, 'browser_act')).toBe('tab: t1, action: type, text: 7 симв.')
   })
 })
 

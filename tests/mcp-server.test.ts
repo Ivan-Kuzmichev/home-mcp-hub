@@ -114,3 +114,22 @@ describe('«Свой initialize»', () => {
     expect(buildInstructions()).toBe(buildGuide())
   })
 })
+
+describe('tools hidden by connector settings', () => {
+  it('browser actions appear only with «Разрешить действия», the cookie import only with an API key', async () => {
+    const names = async () => (await rpc<{ tools: { name: string }[] }>('tools/list')).tools.map((t) => t.name)
+    const base = { baseUrl: 'http://camofox:9377', accessKey: 'k', userId: 'hub', allowDomains: '', denyDomains: '', snapshotLimit: 24000, timeoutSec: 30 }
+    saveConfig(getConnector('browser')!, { ...base, allowActions: false })
+    const ro = await names()
+    expect(ro).toContain('browser_open')
+    expect(ro).not.toContain('browser_act')
+    expect(ro).not.toContain('browser_close')
+    expect(buildInstructions()).toContain('Браузер: browser_open открывает страницу с домашнего IP и возвращает снапшот с ref элементов, режим только чтения.')
+
+    saveConfig(getConnector('browser')!, { ...base, allowActions: true })
+    const rw = await names()
+    expect(rw).toContain('browser_act')
+    expect(rw).not.toContain('browser_import_cookies')
+    expect(buildInstructions()).toContain('Не вводи пароли')
+  })
+})

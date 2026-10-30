@@ -7,6 +7,7 @@
 | Transmission | `transmission_status`, `transmission_add`, `transmission_stop`, `transmission_start`, `transmission_delete`, `transmission_files`, `transmission_info` | ⚠️ только автотесты |
 | Paperless (ngx) | `paperless_search`, `paperless_review`, `paperless_get`, `paperless_thumbnail`, `paperless_taxonomy`, `paperless_update`, `paperless_undo`, `paperless_link` | ⚠️ только автотесты |
 | TorrServe | `torrserve_add`, `torrserve_list`, `torrserve_links`, `torrserve_remove` | ✅ |
+| Браузер (camofox) | `browser_open`, `browser_snapshot`, `browser_links`, `browser_screenshot`, `browser_extract`, `browser_tabs`, `browser_youtube_transcript`; с действиями — `browser_act`, `browser_close`, `browser_import_cookies` | ⚠️ только автотесты |
 | Файлы | `files_list`, `files_read`, `files_search`, `files_write`, `files_edit`, `files_mkdir`, `files_move`, `files_copy`, `files_delete`, `files_link` | ⚠️ только автотесты |
 | Скрипты (встроенный) | `cron_create`, `cron_update`, `tool_create`, `tool_update`, `cron_enable`, `cron_run`, `cron_logs`, `cron_list`, `cron_get`, `cron_delete`, `script_secrets`, свои `my_*` | ✅ |
 | Прототипы (встроенный) | `prototype_publish`, `prototype_append`, `prototype_update`, `prototype_list`, `prototype_data`, `prototype_delete` | ✅ |
@@ -71,6 +72,34 @@
 `files_link` даёт ссылку `/f/{токен}` — такую же, как у Paperless: личную (24 ч, только с входом в админку) или пересылаемую
 (по прямой просьбе, один раз, 15 минут). PDF, картинки, видео и простой текст открываются в браузере, остальное (в том числе HTML)
 скачивается. Путь проверяется при каждом открытии: если файл перенесли или папку убрали из настроек, ссылка перестаёт работать.
+
+## Браузер
+
+Коннектор к [camofox-browser](https://github.com/jo-inc/camofox-browser) — stealth-браузеру с REST API в соседнем контейнере
+(`http://camofox:9377`). Хаб ходит к нему с `Authorization: Bearer <CAMOFOX_ACCESS_KEY>`; сессия (cookies, профиль) одна на хаб
+и живёт под `userId` из настроек, поэтому логины сохраняются между чатами.
+
+**Режим чтения** (по умолчанию): `browser_open` открывает страницу и возвращает снапшот — текст с ref элементов (`e1`, `e2`…),
+`browser_snapshot` листает длинные страницы через `offset` (лимит символов на ответ — в настройках), `browser_links`,
+`browser_screenshot` (до 2 МБ), `browser_extract` (данные по JSON Schema с `x-ref`), `browser_tabs`,
+`browser_youtube_transcript`.
+
+**Действия** — переключатель «Разрешить действия»: `browser_act` (click, type, press, scroll, navigate, back, forward, refresh, wait —
+в ответе сразу свежий снапшот), `browser_close`, сброс сессии `browser_open(newSession: true)` и `browser_import_cookies`.
+Пока переключатель выключен, этих инструментов ассистент не видит. Импорт cookies появляется, только если задан API key: файл
+Netscape (`cookies.txt`) берётся из коннектора «Файлы», и только из подпапки `cookies/` (`папка/cookies/youtube.txt`), не больше 500 cookies и 5 МБ.
+
+Перед открытием хаб проверяет адрес: только http(s), без локальных имён (`localhost`, `*.local`, `*.internal`…), все адреса
+из DNS публичные, затем denylist и allowlist доменов (`example.com` — домен с поддоменами, `*.example.com` — только поддомены).
+camofox сам ходит по редиректам, поэтому после открытия и действий хаб проверяет итоговый адрес и закрывает вкладку, если он приватный.
+Вкладки группируются по MCP-клиенту: `browser_close(all: true)` из Claude не закрывает вкладки ChatGPT. Не больше 3 запросов к camofox
+одновременно, остальные ждут в очереди.
+
+Если вместо страницы пришла проверка Cloudflare, ассистент предложит скриншот и ссылку на noVNC из поля «Адрес VNC»: там можно
+пройти проверку или войти на сайт руками, cookies останутся в сессии. Текст, который ассистент вводит в формы, в журнал не пишется —
+только его длина.
+
+Интеграционные тесты против живого camofox: `CAMOFOX_URL=http://localhost:9377 CAMOFOX_ACCESS_KEY=… pnpm vitest run tests/browser-live.test.ts`.
 
 ## Прототипы
 

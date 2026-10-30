@@ -1,7 +1,7 @@
 import type { McpServer } from '@modelcontextprotocol/server'
 import { createMcpHandler } from 'mcp-handler'
 import { z } from 'zod'
-import { activeConfig, connectorStates } from '../connectors/active'
+import { activeConfig, connectorStates, enabledTools } from '../connectors/active'
 import { connectorInstructions, visibleTools } from '../connectors/instructions'
 import { scrub } from '../connectors/http'
 import { resolveResult, type JackettLinkAccess } from '../connectors/resolve'
@@ -142,7 +142,7 @@ async function hubStatus(): Promise<string> {
           return `• ${name}: настройки неполные — открой админку`
         case 'active': {
           const r = await checkConnector(s, STATUS_CHECK_TIMEOUT_MS)
-          const tools = s.connector.tools.filter((t) => !s.row.disabledTools.includes(t.name)).length
+          const tools = enabledTools(s).length
           return r.ok ? `• ${name}: OK · ${r.summary} · ${tools} инстр.` : `• ${name}: ошибка — ${r.summary}`
         }
       }
@@ -184,8 +184,7 @@ function initializeServer(server: McpServer): void {
   const registered = new Set(['hub_status', 'hub_guide'])
   for (const state of connectorStates()) {
     if (state.status !== 'active') continue
-    for (const tool of state.connector.tools) {
-      if (state.row.disabledTools.includes(tool.name)) continue
+    for (const tool of enabledTools(state)) {
       if (registered.has(tool.name)) {
         logger.warn({ tool: tool.name, connector: state.connector.id }, 'duplicate tool name skipped')
         continue

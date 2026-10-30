@@ -1,7 +1,7 @@
 import { logger } from '../logger'
 import { CONNECTORS } from './registry'
 import { listConnectorRows, readConfig, type ConnectorRow } from './store'
-import type { RegisteredConnector } from './types'
+import type { ErasedTool, RegisteredConnector } from './types'
 
 export type ConnectorState =
   | { connector: RegisteredConnector; status: 'unconfigured'; row?: undefined }
@@ -27,4 +27,10 @@ export function connectorStates(): ConnectorState[] {
 export function activeConfig(id: string): unknown | null {
   const state = connectorStates().find((s) => s.connector.id === id)
   return state?.status === 'active' ? state.config : null
+}
+
+/** Tools an active connector exposes: minus the ones switched off in the admin panel or hidden by its settings. */
+export function enabledTools(state: Extract<ConnectorState, { status: 'active' }>): ErasedTool[] {
+  const hidden = state.connector.hiddenTools?.(state.config) ?? []
+  return state.connector.tools.filter((t) => !state.row.disabledTools.includes(t.name) && !hidden.includes(t.name))
 }
