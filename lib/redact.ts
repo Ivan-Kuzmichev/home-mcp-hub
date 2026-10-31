@@ -5,15 +5,18 @@ const JWT_RE = /eyJ[\w-]+\.[\w-]+\.[\w-]+/g
 
 const EXACT_NAMES = new Set([
   'token', 'access_token', 'refresh_token', 'id_token', 'password', 'pass', 'passwd', 'secret', 'client_secret',
-  'api_key', 'apikey', 'session', 'sid', 'code', 'jwt', 'otp', 'pin', 'authorization',
+  'api_key', 'apikey', 'session', 'sid', 'code', 'jwt', 'otp', 'pin', 'authorization', 'key', 'accesskey', 'privatekey', 'sig',
 ])
-const SUBSTRINGS = ['token', 'secret', 'session', 'auth', 'password', 'passwd']
+const SUBSTRINGS = ['token', 'secret', 'session', 'auth', 'password', 'passwd', 'signature', 'credential']
+// accessKey, private_key, x-access-key — but not monkey or hockey.
+const KEY_SUFFIX = /(?:[a-z0-9]Key|[_-]key)$/
 
 export function isSensitiveName(name: string): boolean {
   // x-api-key -> api_key
-  const n = name.trim().toLowerCase().replace(/-/g, '_').replace(/^x_/, '')
+  const raw = name.trim()
+  const n = raw.toLowerCase().replace(/-/g, '_').replace(/^x_/, '')
   if (!n) return false
-  return EXACT_NAMES.has(n) || SUBSTRINGS.some((s) => n.includes(s))
+  return EXACT_NAMES.has(n) || SUBSTRINGS.some((s) => n.includes(s)) || KEY_SUFFIX.test(raw.replace(/^x-/i, ''))
 }
 
 export function maskValue(v: string): string {
@@ -22,6 +25,14 @@ export function maskValue(v: string): string {
 
 function maskJwts(text: string): string {
   return text.replace(JWT_RE, MASK)
+}
+
+// «Bearer <opaque>» anywhere in free text; 8+ characters so prose like «Basic plan» stays readable.
+const CREDENTIAL_RE = /\b(Bearer|Basic|Token)\s+[\w.~+/=-]{8,}/gi
+
+/** JWTs and auth-scheme credentials inside free text (header values, text bodies, JSON strings). */
+function maskText(text: string): string {
+  return maskJwts(text).replace(CREDENTIAL_RE, `$1 ${MASK}`)
 }
 
 const URL_HEADERS = new Set(['location', 'referer', 'origin', 'content-location'])
@@ -46,7 +57,7 @@ export function maskHeaders(h: [string, string][]): [string, string][] {
     if (n === 'set-cookie') return [name, maskCookiePairs(value, true)]
     if (n === 'authorization' || n === 'proxy-authorization') return [name, maskValue(value)]
     if (isSensitiveName(n)) return [name, MASK]
-    return [name, maskJwts(value)]
+    return [name, maskText(value)]
   })
 }
 
@@ -89,7 +100,7 @@ function maskAll(value: unknown): unknown {
 }
 
 function maskJson(value: unknown): unknown {
-  if (typeof value === 'string') return maskJwts(value)
+  if (typeof value === 'string') return maskText(value)
   if (Array.isArray(value)) return value.map(maskJson)
   if (value && typeof value === 'object') {
     const out: Record<string, unknown> = {}
@@ -117,15 +128,23 @@ export function maskJsonOpValue(path: string, value: unknown): unknown {
   return deep(masked)
 }
 
+function maskJsonText(text: string): string | null {
+  try {
+    return JSON.stringify(maskJson(JSON.parse(text)))
+  } catch {
+    return null
+  }
+}
+
 export function maskBody(text: string, contentType: string | undefined): string {
   const ct = (contentType ?? '').toLowerCase()
-  if (ct.includes('json')) {
-    try {
-      return JSON.stringify(maskJson(JSON.parse(text)))
-    } catch {
-      return maskJwts(text)
-    }
+  if (ct.includes('json')) return maskJsonText(text) ?? maskText(text)
+  if (ct.includes('application/x-www-form-urlencoded')) return maskText(maskPairs(text))
+  // JSON sent as text/plain or without a type.
+  const head = text.trimStart()[0]
+  if (head === '{' || head === '[') {
+    const json = maskJsonText(text)
+    if (json !== null) return json
   }
-  if (ct.includes('application/x-www-form-urlencoded')) return maskJwts(maskPairs(text))
-  return maskJwts(text)
+  return maskText(text)
 }

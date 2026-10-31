@@ -52,6 +52,29 @@ describe('redact', () => {
     ])
   })
 
+  it('masks Bearer, Basic and Token credentials in any header and in text bodies', () => {
+    expect(maskHeaders([['X-Foo', 'Bearer opaque-abc.def_123'], ['X-Upstream', 'Basic dXNlcjpwYXNzd29yZA=='], ['Accept', 'json']]))
+      .toEqual([['X-Foo', 'Bearer ***'], ['X-Upstream', 'Basic ***'], ['Accept', 'json']])
+    expect(maskBody('use Token abcdef1234567890 now', 'text/plain')).toBe('use Token *** now')
+    expect(maskBody('Authorization: bearer opaque-abc.def_123', undefined)).toBe('Authorization: bearer ***')
+    expect(JSON.parse(maskBody(JSON.stringify({ note: 'Bearer opaque-abc.def_123' }), 'application/json'))).toEqual({ note: 'Bearer ***' })
+  })
+
+  it('treats key, signature and credential names as sensitive', () => {
+    for (const n of ['key', 'accessKey', 'privateKey', 'private_key', 'secret-key', 'x-access-key', 'signature', 'X-Amz-Signature', 'sig', 'credential', 'credentials', 'X-Amz-Credential']) {
+      expect(isSensitiveName(n), n).toBe(true)
+    }
+    for (const n of ['monkey', 'hockey', 'keyboard', 'design', 'signal', 'keys_count']) expect(isSensitiveName(n), n).toBe(false)
+    expect(maskUrl('https://s3.example/o?X-Amz-Credential=AKIA&X-Amz-Signature=abc&sig=1&page=2'))
+      .toBe('https://s3.example/o?X-Amz-Credential=***&X-Amz-Signature=***&sig=***&page=2')
+  })
+
+  it('sniffs JSON bodies sent with a non-JSON content type', () => {
+    expect(JSON.parse(maskBody(' {"password":"p","name":"Ваня"}', 'text/plain'))).toEqual({ password: '***', name: 'Ваня' })
+    expect(JSON.parse(maskBody('[{"token":"t"}]', undefined))).toEqual([{ token: '***' }])
+    expect(maskBody('{not json, password=p', 'text/plain')).toBe('{not json, password=p')
+  })
+
   it('masks fragment pairs and userinfo in URLs', () => {
     expect(maskUrl('https://a.example/cb#access_token=opaque&state=x')).toBe('https://a.example/cb#access_token=***&state=x')
     expect(maskUrl('https://user:pass@host/p?a=1')).toBe('https://user:***@host/p?a=1')
