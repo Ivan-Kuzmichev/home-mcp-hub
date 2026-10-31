@@ -124,7 +124,7 @@ describe('tools hidden by connector settings', () => {
     expect(ro).toContain('browser_open')
     expect(ro).not.toContain('browser_act')
     expect(ro).not.toContain('browser_close')
-    expect(buildInstructions()).toContain('Браузер: browser_open открывает страницу с домашнего IP и возвращает снапшот с ref элементов, режим только чтения.')
+    expect(buildInstructions()).toContain('camofox: browser_open открывает страницу с домашнего IP и возвращает снапшот с ref элементов, режим только чтения.')
 
     saveConfig(getConnector('browser')!, { ...base, allowActions: true })
     const rw = await names()

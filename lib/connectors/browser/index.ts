@@ -104,7 +104,7 @@ function sessionKey(): string {
 }
 
 function requireActions(c: Config, what: string): void {
-  if (!c.allowActions) throw new ToolError(`${what} — это действие, а в настройках коннектора «Браузер» включено только чтение («Разрешить действия» выключено)`)
+  if (!c.allowActions) throw new ToolError(`${what} — это действие, а в настройках коннектора camofox включено только чтение («Разрешить действия» выключено)`)
 }
 
 function vncHint(c: Config): string {
@@ -175,7 +175,7 @@ const MACROS = ['@google_search', '@youtube_search', '@wikipedia_search', '@redd
 
 export const browser = defineConnector<Config>({
   id: 'browser',
-  name: 'Браузер',
+  name: 'camofox',
   description: 'Stealth-браузер camofox с домашнего IP',
   docsUrl: 'https://github.com/jo-inc/camofox-browser',
   configSchema,
@@ -189,7 +189,7 @@ export const browser = defineConnector<Config>({
   instructions(c, { tools }) {
     if (!tools.includes('browser_open')) return null
     const parts = [
-      'Браузер: browser_open открывает страницу с домашнего IP и возвращает снапшот с ref элементов',
+      'camofox: browser_open открывает страницу с домашнего IP и возвращает снапшот с ref элементов',
       tools.includes('browser_act') ? 'действия — browser_act по ref' : 'режим только чтения',
     ]
     return `${parts.join(', ')}. ${PAGE_IS_DATA}${tools.includes('browser_act') ? ` ${NO_SECRETS}` : ''}${c.vncUrl && tools.includes('browser_act') ? ` Ручной вход — VNC ${c.vncUrl}.` : ''}`

@@ -106,7 +106,7 @@ describe('Browser connector', () => {
     camofox({ status: (c) => (c.url.pathname === '/tabs' ? 401 : undefined) })
     expect(await browser.test(cfg())).toMatchObject({ ok: false, summary: expect.stringContaining('неверный access key (401)') })
     vi.stubGlobal('fetch', vi.fn(async () => Promise.reject(Object.assign(new TypeError('fetch failed'), { cause: { code: 'ECONNREFUSED' } }))))
-    await expect(runTool(browser, 'browser_tabs', cfg())).rejects.toThrow('Браузер недоступен (camofox недоступен: соединение отклонено) — проверь контейнер camofox')
+    await expect(runTool(browser, 'browser_tabs', cfg())).rejects.toThrow('camofox недоступен: соединение отклонено — проверь контейнер camofox и адрес в настройках')
   })
 
   it('browser_open checks the URL first and returns tab, title and the first page', async () => {

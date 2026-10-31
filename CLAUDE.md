@@ -56,7 +56,7 @@ Self-hosted MCP-хаб для домашних сервисов (Jackett, qBitto
 - **Свои MCP-инструменты** — строки `script` с `kind = 'tool'`: имя `my_*`, `spec` (параметры + read-only) входит в хэш версии,
   `approvedSpec` хранит одобренную. Регистрируются в `initializeServer` только одобренные и включённые, пока включён коннектор scripts;
   лимит вызова 25 с. Новые инструменты клиент видит в новом чате (сервер stateless, `listChanged` не шлём).
-- **Браузер (camofox):** REST `http://camofox:9377`, `Authorization: Bearer <access key>` везде кроме `/health`; версии в `/health` нет —
+- **camofox (браузер, id `browser`):** REST `http://camofox:9377`, `Authorization: Bearer <access key>` везде кроме `/health`; версии в `/health` нет —
   её берём из `/openapi.json`. Тела: `type` — `{ref, text, submit, clear}`, `wait` — `{selector, timeout}`, `scroll` — только up/down,
   скриншот — бинарный PNG, субтитры YouTube — плагин `POST /youtube/transcript` (берёт первый язык). Адрес проверяет `checkUrl`
   (`lib/connectors/browser/url.ts`) до открытия, итоговый — после (редиректы). Действия скрываются через `hiddenTools(config)`

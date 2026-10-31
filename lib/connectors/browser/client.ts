@@ -30,7 +30,7 @@ async function acquire(timeoutMs: number): Promise<void> {
     }
     const timer = setTimeout(() => {
       slots.queue.splice(slots.queue.indexOf(grant), 1)
-      reject(new ToolError(`Браузер занят: уже ${MAX_CONCURRENT} запроса выполняются, очередь не дошла за ${Math.round(timeoutMs / 1000)} с`))
+      reject(new ToolError(`camofox занят: уже ${MAX_CONCURRENT} запроса выполняются, очередь не дошла за ${Math.round(timeoutMs / 1000)} с`))
     }, timeoutMs)
     slots.queue.push(grant)
   })
@@ -67,7 +67,7 @@ export class CamofoxClient {
     try {
       res = await serviceFetch(SERVICE, url.toString(), { method, headers, body: opts.body === undefined ? undefined : JSON.stringify(opts.body), timeoutMs })
     } catch (e) {
-      if (e instanceof ToolError) throw new ToolError(`Браузер недоступен (${e.message}) — проверь контейнер camofox и адрес в настройках`)
+      if (e instanceof ToolError) throw new ToolError(`${e.message} — проверь контейнер camofox и адрес в настройках`)
       throw e
     } finally {
       release()
@@ -75,11 +75,11 @@ export class CamofoxClient {
     if (res.ok || (res.status === 404 && opts.missingOk)) return res
 
     const reason = await errorReason(res)
-    if (res.status === 401) throw new ToolError('Браузер: неверный access key (401) — проверь настройки коннектора')
-    if (res.status === 403 && opts.auth === 'api') throw new ToolError('Браузер: неверный API key (403) — импорт cookies запрещён')
+    if (res.status === 401) throw new ToolError('camofox: неверный access key (401) — проверь настройки коннектора')
+    if (res.status === 403 && opts.auth === 'api') throw new ToolError('camofox: неверный API key (403) — импорт cookies запрещён')
     if (res.status === 404 && opts.tab) throw new ToolError(TAB_GONE)
     if (res.status === 409) throw new ToolError(`Страница изменилась — сделай browser_snapshot и повтори с новыми ref (${reason || 409})`)
-    throw new ToolError(`Браузер: ошибка ${res.status}${reason ? ` (${reason})` : ''}`)
+    throw new ToolError(`camofox: ошибка ${res.status}${reason ? ` (${reason})` : ''}`)
   }
 
   private async json<T>(method: string, path: string, opts?: CallOpts): Promise<T> {
@@ -88,7 +88,7 @@ export class CamofoxClient {
 
   async health(): Promise<Health> {
     const res = await serviceFetch(SERVICE, `${this.cfg.baseUrl}/health`, { timeoutMs: this.cfg.timeoutSec * 1000 }).catch((e: unknown) => {
-      throw e instanceof ToolError ? new ToolError(`Браузер недоступен (${e.message}) — проверь контейнер camofox`) : e
+      throw e instanceof ToolError ? new ToolError(`${e.message} — проверь контейнер camofox`) : e
     })
     const body = (await res.json().catch(() => ({ ok: false }))) as Health
     return { ...body, ok: res.ok && body.ok }
