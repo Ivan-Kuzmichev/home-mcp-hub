@@ -229,6 +229,17 @@ describe('mock tools', () => {
     expect(String(puts[0]!.hub_mocks)).toContain('"isPremium"')
   })
 
+  it('never prints secret json values in the reply', async () => {
+    for (const [json, secret] of [
+      [{ path: 'user.accessToken', value: 'secretvalue' }, 'secretvalue'],
+      [{ path: 'user', value: { accessToken: 'abc' } }, 'abc'],
+      [{ path: 'auth', value: 'Bearer xyz' }, 'xyz'],
+    ] as const) {
+      const out = await runTool(mitmproxy, 'mitm_mock_patch', mockCfg(), { ...patchArgs, json: [json] })
+      expect(out).not.toContain(secret)
+    }
+  })
+
   it('an existing id updates the rule instead of duplicating it', async () => {
     await runTool(mitmproxy, 'mitm_mock_patch', mockCfg(), { ...patchArgs, id: 'm1' })
     await runTool(mitmproxy, 'mitm_mock_patch', mockCfg(), { ...patchArgs, id: 'm1', name: 'Новое имя' })

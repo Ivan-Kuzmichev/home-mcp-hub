@@ -101,6 +101,22 @@ function maskJson(value: unknown): unknown {
   return value
 }
 
+const BEARER_RE = /\b(Bearer|Basic|Token)\s+[\w.~+/=-]+/gi
+
+/** A value written into a JSON path by a mock: whole value hidden if any path segment is sensitive. */
+export function maskJsonOpValue(path: string, value: unknown): unknown {
+  const segments = path.split(/[.[\]]+/).filter((s) => s && s !== '*' && !/^\d+$/.test(s))
+  if (segments.some(isSensitiveName)) return MASK
+  const walk = (v: unknown): unknown => (typeof v === 'string' ? maskJwts(v).replace(BEARER_RE, `$1 ${MASK}`) : v)
+  const masked = maskJson(value)
+  const deep = (v: unknown): unknown => {
+    if (Array.isArray(v)) return v.map(deep)
+    if (v && typeof v === 'object') return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, deep(x)]))
+    return walk(v)
+  }
+  return deep(masked)
+}
+
 export function maskBody(text: string, contentType: string | undefined): string {
   const ct = (contentType ?? '').toLowerCase()
   if (ct.includes('json')) {

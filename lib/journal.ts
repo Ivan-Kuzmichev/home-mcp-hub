@@ -1,6 +1,6 @@
 import { and, count, desc, eq, gte, inArray, isNotNull, like, lt, or, sql, type SQL } from 'drizzle-orm'
 import { scrub } from './connectors/http'
-import { isSensitiveName, maskHeaders } from './redact'
+import { maskHeaders, maskJsonOpValue } from './redact'
 import { getDb } from './db'
 import { toolCall } from './db/schema'
 import { logger } from './logger'
@@ -51,8 +51,7 @@ const jsonOps: Sanitizer = (v) => {
     .map((op) => {
       const { path, value } = (op ?? {}) as { path?: unknown; value?: unknown }
       const p = String(path)
-      const last = p.split('.').pop()!.replace(/\[.*$/, '')
-      return `${p} = ${isSensitiveName(last) ? '***' : JSON.stringify(value)}`
+      return `${p} = ${JSON.stringify(maskJsonOpValue(p, value))}`
     })
     .join('; ')
 }

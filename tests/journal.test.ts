@@ -45,7 +45,11 @@ describe('argument redaction', () => {
     expect(patch).not.toContain('secretvalue')
     expect(patch).not.toContain('sid=abc')
     expect(patch).toContain('isPremium = true')
-    expect(patch).toContain('user.accessToken = ***')
+    expect(patch).toContain('user.accessToken = "***"')
+    for (const op of [{ path: 'user', value: { accessToken: 'abc' } }, { path: 'auth', value: 'Bearer xyz' }, { path: 'user.accessToken', value: 's' }]) {
+      const out = journal.redactArgs({ name: 'p', json: [op] }, 'mitm_mock_patch')
+      expect(out).not.toMatch(/abc|xyz|"s"/)
+    }
   })
 })
 

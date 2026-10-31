@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { maskUrl } from '../../redact'
+import { maskJsonOpValue, maskUrl } from '../../redact'
 import { formatSize, plural } from '../format'
 import { defineConnector, field, secret, toolFor, ToolError } from '../types'
 import { MitmClient } from './client'
@@ -89,7 +89,7 @@ function isJson(text: string): boolean {
 
 function describeChange(r: Omit<MockRule, 'id' | 'enabled'>): string {
   const parts: string[] = []
-  for (const op of r.json ?? []) parts.push(`${op.path} = ${JSON.stringify(op.value)}`.slice(0, 80))
+  for (const op of r.json ?? []) parts.push(`${op.path} = ${JSON.stringify(maskJsonOpValue(op.path, op.value))}`.slice(0, 80))
   if (r.kind === 'replace') parts.push(`ответ ${r.status ?? 200}, тело ${(r.body ?? '').length} симв.`)
   else if (r.status !== undefined) parts.push(`статус ${r.status}`)
   if (r.setHeaders) parts.push(`заголовки: ${Object.keys(r.setHeaders).join(', ')}`)
