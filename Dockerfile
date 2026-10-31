@@ -1,7 +1,8 @@
 # syntax=docker/dockerfile:1
 
-FROM node:22-alpine AS base
-RUN corepack enable
+FROM node:26-alpine AS base
+# Node 25+ no longer ships corepack; it reads pnpm's version from packageManager.
+RUN npm install -g corepack@latest && corepack enable
 WORKDIR /app
 
 FROM base AS deps
@@ -16,7 +17,7 @@ COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN pnpm build
 
-FROM node:22-alpine AS runner
+FROM node:26-alpine AS runner
 WORKDIR /app
 ARG HUB_GIT_SHA=dev
 ARG HUB_VERSION=dev

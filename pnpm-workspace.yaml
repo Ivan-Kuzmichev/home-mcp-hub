@@ -4,3 +4,7 @@ onlyBuiltDependencies:
   - sharp
   - '@tailwindcss/oxide'
   - unrs-resolver
+
+# Next pins an old postcss for its build-time CSS pipeline; force the patched one.
+overrides:
+  postcss: ^8.5.32
