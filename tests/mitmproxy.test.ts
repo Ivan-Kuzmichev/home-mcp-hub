@@ -37,6 +37,9 @@ const FLOWS: F[] = [
   flow('eeeeeeee-5555', 'down.example', '/x', { response: undefined, error: { msg: 'Connection refused' } }),
   flow('ffffffff-6666', 'api.mocked.example', '/m', { comment: 'mock:m1' }),
   flow('99999999-0000', 'old.example', '/', { timestamp_created: now() - 3600 }),
+  { id: 'dns00000-0000', type: 'dns', comment: '', timestamp_created: now() - 30, request: { id: 1, questions: [{ name: 'x.example' }] }, response: { code: 'NOERROR' } },
+  { id: 'tcp00000-0000', type: 'tcp', comment: '', timestamp_created: now() - 30, client_conn: {}, messages: [] },
+  flow('chunked0-0000', 'stream.example', '/live', { response: { status_code: 200, headers: [['Transfer-Encoding', 'chunked']], contentLength: null } }),
   flow('12121212-3434', 'big.example', '/video', { response: { status_code: 200, headers: [['Content-Length', '5000000']], contentLength: null } }),
 ]
 
@@ -72,11 +75,16 @@ describe('appOf', () => {
 describe('mitm_hosts', () => {
   it('groups by host and sorts by count', async () => {
     const out = await runTool(mitmproxy, 'mitm_hosts', cfg())
-    expect(out).toContain('За 15 мин: 6 доменов, 7 запросов')
+    expect(out).toContain('За 15 мин: 7 доменов, 8 запросов')
     const lines = out.split('\n')
     expect(lines[1]).toMatch(/^• api\.bank\.example — 2 запр\. · .*2xx 1 \/ 4xx 1/)
     expect(out).toContain('ошибка 1')
     expect(out).not.toContain('old.example')
+  })
+
+  it('ignores dns and tcp flows', async () => {
+    const out = await runTool(mitmproxy, 'mitm_hosts', cfg())
+    expect(out).not.toContain('undefined')
   })
 
   it('filters by app without case and by minutes', async () => {
@@ -99,7 +107,26 @@ describe('mitm_flows', () => {
   })
 })
 
+describe('non-http flows', () => {
+  it('are skipped by the list and its filters', async () => {
+    const all = await runTool(mitmproxy, 'mitm_flows', cfg(), { limit: 100 })
+    expect(all).not.toContain('undefined')
+    expect(all).not.toContain('dns00000')
+    expect(await runTool(mitmproxy, 'mitm_flows', cfg(), { host: 'x.example' })).toContain('нет')
+    expect(await runTool(mitmproxy, 'mitm_flows', cfg(), { path: '/v1' })).not.toContain('undefined')
+  })
+
+  it('mitm_flow explains instead of rendering', async () => {
+    expect(await runTool(mitmproxy, 'mitm_flow', cfg(), { id: 'dns00000' })).toContain('Это не HTTP-запрос (dns)')
+    expect(await runTool(mitmproxy, 'mitm_flow', cfg(), { id: 'tcp00000' })).toContain('Это не HTTP-запрос (tcp)')
+  })
+})
+
 describe('mitm_flow', () => {
+  it('reports a chunked streamed body as not stored', async () => {
+    expect(await runTool(mitmproxy, 'mitm_flow', cfg(), { id: 'chunked0' })).toContain('тело не сохранено (больше 1 МБ, стрим)')
+  })
+
   it('masks tokens by default and resolves a short id', async () => {
     const out = await runTool(mitmproxy, 'mitm_flow', cfg(), { id: 'aaaaaaaa' })
     expect(out).toContain('Ivan')
@@ -137,7 +164,7 @@ describe('mitm_status, test, hiddenTools', () => {
   it('status line', async () => {
     saveMock({ name: 'a', match: { host: 'a.example', path: '/*' }, kind: 'replace', status: 500, body: '' })
     expect(await runTool(mitmproxy, 'mitm_status', cfg())).toBe(
-      'mitmproxy 12.3.1 · режимы regular, socks5 · в памяти 8 запросов · аддон hub_mocks подключён · правил активно 1',
+      'mitmproxy 12.3.1 · режимы regular, socks5 · в памяти 11 запросов · аддон hub_mocks подключён · правил активно 1',
     )
   })
 

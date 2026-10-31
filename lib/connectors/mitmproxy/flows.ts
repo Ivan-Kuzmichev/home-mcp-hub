@@ -32,12 +32,17 @@ function flowBytes(f: MitmFlow): number {
 
 export type FlowFilter = { host?: string; path?: string; app?: string; sinceMs: number }
 
+/** mitmweb also returns dns/tcp/udp flows whose request has no host or path. */
+export function isHttp(f: MitmFlow): boolean {
+  return f.type === 'http' && typeof f.request?.host === 'string'
+}
+
 export function filterFlows(flows: MitmFlow[], q: FlowFilter): MitmFlow[] {
   const host = q.host?.toLowerCase()
   const path = q.path?.toLowerCase()
   const app = q.app?.toLowerCase()
   return flows.filter((f) => {
-    if (!f.request || f.timestamp_created * 1000 < q.sinceMs) return false
+    if (!f.request || !isHttp(f) || f.timestamp_created * 1000 < q.sinceMs) return false
     if (host && !f.request.host.toLowerCase().includes(host)) return false
     if (path && !f.request.path.toLowerCase().includes(path)) return false
     if (app && appOf(f).toLowerCase() !== app) return false
@@ -80,8 +85,8 @@ function bodyText(
 ): string {
   const m = part === 'request' ? f.request : f.response
   const headers = m?.headers
-  const declared = Number(header(headers, 'content-length') ?? 0)
-  if (m && m.contentLength === null && declared > 0) return 'тело не сохранено (больше 1 МБ, стрим)'
+  // In mitmweb JSON a null contentLength means the raw content was not stored (streamed past the limit).
+  if (m && m.contentLength === null) return 'тело не сохранено (больше 1 МБ, стрим)'
   if (!buf || buf.length === 0) return '(пусто)'
   const type = (header(headers, 'content-type') ?? '').split(';')[0]!.trim()
   if (BINARY_TYPE.test(type)) return `бинарное, ${buf.length} байт`

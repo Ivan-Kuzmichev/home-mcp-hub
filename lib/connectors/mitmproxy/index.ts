@@ -3,7 +3,7 @@ import { maskUrl } from '../../redact'
 import { formatSize, plural } from '../format'
 import { defineConnector, field, secret, toolFor, ToolError } from '../types'
 import { MitmClient } from './client'
-import { clockOf, filterFlows, hostSummary, mockLabel, renderFlow, sizeOf } from './flows'
+import { clockOf, filterFlows, isHttp, hostSummary, mockLabel, renderFlow, sizeOf } from './flows'
 
 const configSchema = z.object({
   baseUrl: field(
@@ -193,6 +193,7 @@ export const mitmproxy = defineConnector<Config>({
         if (matches.length === 0) throw new ToolError('Запроса уже нет в mitmproxy — он хранит только последние запросы')
         if (matches.length > 1) throw new ToolError(`Под «${id}» подходит несколько запросов — укажи больше символов id`)
         const f = matches[0]!
+        if (!isHttp(f)) return `Это не HTTP-запрос (${f.type}) — детали показываются только для HTTP.`
         const fetchBody = (part: 'request' | 'response') => {
           const m = part === 'request' ? f.request : f.response
           return m && (m.contentLength ?? 0) > 0 ? mc.content(f.id, part) : Promise.resolve(null)
