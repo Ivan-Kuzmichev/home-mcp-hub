@@ -2,8 +2,13 @@
 
 Install: put this file next to autoclear.py and add `-s /scripts/hub_mocks.py` to the
 mitmproxy `command`. The hub sets the option `hub_mocks` (via mitmweb) to
-`{"rules": [...]}`; the addon only applies these declarative rules, it never runs code
-from them and never reads files. A flow that fired a rule gets `flow.comment = "mock:<id>"`.
+`{"allowed": true, "rules": [...]}` (all rules, each with "enabled"); the addon only applies
+these declarative rules, it never runs code from them and never reads files. A flow that fired
+a rule gets `flow.comment = "mock:<id>"` and a mark in the flow list (one per rule kind).
+
+Command bar (mitmweb): `hub.mocks` lists the rules, `hub.mock.on|off|delete <n|id>` change them
+at once. Each change is also appended to the option `hub_mocks_edits`
+(`{"epoch": ..., "edits": [{"seq", "op", "id"}]}`), which the hub reads and applies to its database.
 
 The pure functions below match the TypeScript rules in lib/connectors/mitmproxy/rules.ts
 and import nothing from mitmproxy, so they are testable with plain unittest.
@@ -14,6 +19,7 @@ import copy
 import json
 import logging
 import re
+import secrets
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +28,21 @@ JSON_PATH = re.compile(
 )
 _SEGMENT = re.compile(r"([A-Za-z_$][\w$-]*)((?:\[(?:\d+|\*)\])*)")
 _INDEX = re.compile(r"\[(\d+|\*)\]")
+
+# Flow-list marks (valid keys of mitmproxy.utils.emoji in mitmproxy 12.x).
+MARKS = {"replace": ":large_blue_circle:", "patch": ":large_orange_diamond:"}
+MAX_EDITS = 100
+NOT_ALLOWED = "Моки выключены в хабе"
+
+
+def _command(name):
+    """Same marker as mitmproxy's @command.command, without importing mitmproxy here."""
+
+    def decorator(func):
+        func.command_name = name
+        return func
+
+    return decorator
 
 
 def _normalize_host(host):
@@ -57,12 +78,14 @@ def rule_matches(rule, method, host, path):
 
 
 def select_rule(rules, method, host, path, kind=None):
-    """First matching rule of `kind` (any kind if None) in list order; malformed rules are skipped.
+    """First enabled matching rule of `kind` (any kind if None) in list order; malformed rules are skipped.
 
     The hub sends rules ordered by creation time, so overlapping rules resolve predictably.
     """
     for rule in rules:
         try:
+            if rule.get("enabled") is False:
+                continue
             if kind is not None and rule.get("kind") != kind:
                 continue
             if rule_matches(rule, method, host, path):
@@ -129,39 +152,171 @@ def apply_json_ops(doc, ops):
     return True
 
 
-def parse_rules(raw):
-    """Parse the option value; any problem gives an empty list and a warning."""
+def parse_payload(raw):
+    """Parse the option value into (allowed, rules); any problem gives (False, []) and a warning.
+
+    A payload without "allowed" (older hub) counts as allowed.
+    """
     if not raw:
-        return []
+        return False, []
     try:
         data = json.loads(raw)
         rules = data["rules"]
         if not isinstance(rules, list):
             raise TypeError("rules is not a list")
-        return [r for r in rules if isinstance(r, dict)]
-    except (ValueError, KeyError, TypeError) as exc:
+        return data.get("allowed", True) is not False, [r for r in rules if isinstance(r, dict)]
+    except (ValueError, KeyError, TypeError, AttributeError) as exc:
         logger.warning("hub_mocks: cannot parse rules: %s", exc)
-        return []
+        return False, []
+
+
+def parse_rules(raw):
+    return parse_payload(raw)[1]
+
+
+def _dumps(value):
+    # Same text as JSON.stringify, so an unchanged payload compares equal on the hub side.
+    return json.dumps(value, ensure_ascii=False, separators=(",", ":"))
+
+
+def _times(n):
+    if n % 10 in (2, 3, 4) and n % 100 not in (12, 13, 14):
+        return "раза"
+    return "раз"
+
+
+def _hits(flows, rule_id):
+    """(fired, json skipped) among flows whose comment is `mock:<id>` or `mock:<id> (...)`."""
+    tag = f"mock:{rule_id}"
+    n = skipped = 0
+    for f in flows or []:
+        comment = str(getattr(f, "comment", "") or "")
+        if comment == tag or comment.startswith(tag + " "):
+            n += 1
+            if comment.endswith("(json пропущен)"):
+                skipped += 1
+    return n, skipped
+
+
+def format_mocks(rules, flows):
+    if not rules:
+        return "Моков нет."
+    lines = []
+    for i, r in enumerate(rules, 1):
+        match = r.get("match") or {}
+        method = match.get("method")
+        target = f"{method.upper() + ' ' if method else ''}{match.get('host', '?')}{match.get('path', '')}"
+        n, skipped = _hits(flows, r.get("id"))
+        fired = f"сработал {n} {_times(n)}" + (f", из них json пропущен {skipped}" if skipped else "")
+        mark = "✗" if r.get("enabled") is False else "✓"
+        lines.append(f"{i}. {mark} {r.get('name') or r.get('id')} — {r.get('kind')} {target} · {fired}")
+    return "\n".join(lines)
 
 
 class HubMocks:
     def __init__(self):
         self._raw = None
+        self._allowed = False
         self._rules = []
+        # A new epoch per addon start tells the hub that edit numbering restarted.
+        self._epoch = secrets.token_hex(8)
+        self._seq = 0
+        self._edits = []
 
     def load(self, loader):
         loader.add_option(
             "hub_mocks", str, "", "Mock rules from Home MCP Hub (JSON)"
         )
+        loader.add_option(
+            "hub_mocks_edits", str, "", "Mock changes made in mitmproxy, read by Home MCP Hub (JSON)"
+        )
 
-    def _current_rules(self):
+    def _refresh(self):
         from mitmproxy import ctx
 
         raw = ctx.options.hub_mocks
         if raw != self._raw:
             self._raw = raw
-            self._rules = parse_rules(raw)
+            self._allowed, self._rules = parse_payload(raw)
+
+    def _current_rules(self):
+        self._refresh()
         return self._rules
+
+    # --- command bar ---
+
+    def _view(self):
+        from mitmproxy import ctx
+
+        try:
+            return ctx.master.addons.get("view")
+        except AttributeError:
+            return None
+
+    @_command("hub.mocks")
+    def mocks(self) -> str:
+        """List Home MCP Hub mock rules with their numbers."""
+        try:
+            self._refresh()
+            if not self._allowed:
+                return NOT_ALLOWED
+            return format_mocks(self._rules, self._view())
+        except Exception as exc:
+            logger.warning("hub_mocks: list failed: %s", exc)
+            return f"Ошибка: {exc}"
+
+    def _edit(self, target, op):
+        from mitmproxy import ctx
+
+        try:
+            self._refresh()
+            if not self._allowed:
+                return NOT_ALLOWED
+            target = str(target).strip()
+            index = next((i for i, r in enumerate(self._rules) if r.get("id") == target), None)
+            if index is None and target.isdigit() and 1 <= int(target) <= len(self._rules):
+                index = int(target) - 1
+            if index is None:
+                return f"Нет мока «{target}» — см. hub.mocks"
+            rules = [dict(r) for r in self._rules]
+            rule = rules[index]
+            if op == "delete":
+                del rules[index]
+                done = "удалён"
+            else:
+                rule["enabled"] = op == "enable"
+                done = "включён" if op == "enable" else "выключен"
+            self._seq += 1
+            self._edits = (self._edits + [{"seq": self._seq, "op": op, "id": rule.get("id")}])[-MAX_EDITS:]
+            data = json.loads(self._raw)
+            data["rules"] = rules
+            raw = _dumps(data)
+            ctx.options.update(
+                hub_mocks=raw,
+                hub_mocks_edits=_dumps({"epoch": self._epoch, "edits": self._edits}),
+            )
+            self._raw, self._rules = raw, rules
+            return f"Мок «{rule.get('name') or rule.get('id')}» {done}."
+        except Exception as exc:
+            logger.warning("hub_mocks: %s failed: %s", op, exc)
+            return f"Ошибка: {exc}"
+
+    @_command("hub.mock.on")
+    def mock_on(self, target: str) -> str:
+        """Enable a mock rule by its number in hub.mocks or its id."""
+        return self._edit(target, "enable")
+
+    @_command("hub.mock.off")
+    def mock_off(self, target: str) -> str:
+        """Disable a mock rule by its number in hub.mocks or its id."""
+        return self._edit(target, "disable")
+
+    @_command("hub.mock.delete")
+    def mock_delete(self, target: str) -> str:
+        """Delete a mock rule by its number in hub.mocks or its id."""
+        return self._edit(target, "delete")
+
+    # --- hooks ---
 
     def _find(self, flow, kind):
         req = flow.request
@@ -189,6 +344,7 @@ class HubMocks:
                 rule.get("status", 200), (body or "").encode("utf-8"), headers
             )
             flow.comment = f"mock:{rule.get('id')}"
+            flow.marked = MARKS["replace"]
         except Exception as exc:  # a broken rule must never break the proxy
             logger.warning("hub_mocks: replace failed: %s", exc)
 
@@ -231,6 +387,7 @@ class HubMocks:
                 else:
                     comment += " (json пропущен)"
             flow.comment = comment
+            flow.marked = MARKS["patch"]
         except Exception as exc:
             logger.warning("hub_mocks: patch failed: %s", exc)
 

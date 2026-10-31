@@ -6,7 +6,9 @@ import unittest
 from unittest import mock
 
 from hub_mocks import (
+    MARKS,
     HubMocks,
+    parse_payload,
     parse_rules,
     apply_json_ops,
     host_matches,
@@ -136,14 +138,30 @@ class _Req:
 
 
 class _Flow:
-    def __init__(self, response=None):
+    def __init__(self, response=None, comment=""):
         self.request = _Req()
         self.response = response
-        self.comment = ""
+        self.comment = comment
+        self.marked = ""
 
 
-def _stub_modules(raw):
-    ctx = types.SimpleNamespace(options=types.SimpleNamespace(hub_mocks=raw))
+class _Options:
+    def __init__(self, hub_mocks, hub_mocks_edits=""):
+        self.hub_mocks = hub_mocks
+        self.hub_mocks_edits = hub_mocks_edits
+        self.updates = []
+
+    def update(self, **kwargs):
+        self.updates.append(kwargs)
+        for k, v in kwargs.items():
+            setattr(self, k, v)
+
+
+def _stub_modules(raw, view=None):
+    ctx = types.SimpleNamespace(
+        options=_Options(raw),
+        master=types.SimpleNamespace(addons=types.SimpleNamespace(get=lambda name: view if name == "view" else None)),
+    )
     http = types.SimpleNamespace(
         Response=types.SimpleNamespace(
             make=staticmethod(lambda status=200, content=b"", headers=None: _Resp(status, content, headers))
@@ -156,7 +174,7 @@ def _stub_modules(raw):
 
 
 def _rules(*rules):
-    return json.dumps({"rules": list(rules)})
+    return json.dumps({"allowed": True, "rules": list(rules)})
 
 
 MATCH = {"host": "api.example.com", "path": "/v1/profile"}
@@ -255,6 +273,145 @@ class HookTests(unittest.TestCase):
         for hook in ("request", "responseheaders", "response"):
             self.run_hook(_rules(rule), hook, flow)
         self.assertEqual((resp.status_code, resp.stream, flow.comment), (200, True, ""))
+
+    def test_disabled_rule_not_applied(self):
+        off = {"id": "r0", "kind": "replace", "match": MATCH, "enabled": False, "body": "off"}
+        on = {"id": "r1", "kind": "replace", "match": MATCH, "enabled": True, "body": "on"}
+        flow = _Flow()
+        self.run_hook(_rules(off, on), "request", flow)
+        self.assertEqual(flow.comment, "mock:r1")
+        flow = _Flow(_Resp(200, b"{}"))
+        patch = {"id": "p0", "kind": "patch", "match": MATCH, "enabled": False, "status": 500}
+        for hook in ("request", "responseheaders", "response"):
+            self.run_hook(_rules(patch), hook, flow)
+        self.assertEqual((flow.response.status_code, flow.comment), (200, ""))
+
+    def test_marks_by_kind(self):
+        self.assertNotEqual(MARKS["replace"], MARKS["patch"])
+        replace = {"id": "r1", "kind": "replace", "match": MATCH, "body": ""}
+        flow = _Flow()
+        self.run_hook(_rules(replace), "request", flow)
+        self.assertEqual(flow.marked, MARKS["replace"])
+        patch = {"id": "p1", "kind": "patch", "match": MATCH, "json": [{"path": "a", "value": 1}]}
+        for content in (b"{}", b"<html>"):
+            flow = _Flow(_Resp(200, content))
+            self.run_hook(_rules(patch), "response", flow)
+            self.assertEqual(flow.marked, MARKS["patch"])
+
+    def test_marks_are_valid_mitmproxy_markers(self):
+        # Values from mitmproxy.utils.emoji (checked against mitmproxy 12.3.1).
+        self.assertEqual(MARKS, {"replace": ":large_blue_circle:", "patch": ":large_orange_diamond:"})
+
+
+PREMIUM = {
+    "id": "p1", "name": "Премиум", "enabled": True, "kind": "patch",
+    "match": {"host": "api.example.com", "path": "/v1/profile", "method": "GET"},
+    "json": [{"path": "a", "value": 1}],
+}
+DOWN = {"id": "r2", "name": "Лежит", "enabled": False, "kind": "replace", "match": {"host": "*.example.com", "path": "/*"}, "body": ""}
+
+
+class CommandTests(unittest.TestCase):
+    def setUp(self):
+        self.view = [
+            _Flow(comment="mock:p1"),
+            _Flow(comment="mock:p1 (json пропущен)"),
+            _Flow(comment="mock:p10"),
+            _Flow(comment=""),
+        ]
+        self.addon = HubMocks()
+
+    def run_cmd(self, raw, name, *args):
+        modules = _stub_modules(raw, self.view)
+        self.ctx = modules["mitmproxy"].ctx
+        with mock.patch.dict(sys.modules, modules):
+            return getattr(self.addon, name)(*args)
+
+    def call(self, name, *args):
+        """Further calls on the same ctx (options keep what the addon wrote)."""
+        with mock.patch.dict(sys.modules, {"mitmproxy": types.SimpleNamespace(ctx=self.ctx)}):
+            return getattr(self.addon, name)(*args)
+
+    def edits(self):
+        return json.loads(self.ctx.options.hub_mocks_edits)
+
+    def test_commands_are_registered_with_mitmproxy_names(self):
+        names = {getattr(getattr(self.addon, a), "command_name", None) for a in dir(self.addon)}
+        self.assertTrue({"hub.mocks", "hub.mock.on", "hub.mock.off", "hub.mock.delete"} <= names)
+
+    def test_list(self):
+        out = self.run_cmd(_rules(PREMIUM, DOWN), "mocks")
+        self.assertEqual(
+            out,
+            "1. ✓ Премиум — patch GET api.example.com/v1/profile · сработал 2 раза, из них json пропущен 1\n"
+            "2. ✗ Лежит — replace *.example.com/* · сработал 0 раз",
+        )
+
+    def test_list_without_view(self):
+        self.view = None
+        self.assertIn("сработал 0 раз", self.run_cmd(_rules(PREMIUM), "mocks"))
+
+    def test_list_empty_and_not_allowed(self):
+        self.assertEqual(self.run_cmd(_rules(), "mocks"), "Моков нет.")
+        for raw in (json.dumps({"allowed": False, "rules": []}), "", "garbage"):
+            self.assertEqual(self.run_cmd(raw, "mocks"), "Моки выключены в хабе")
+
+    def test_off_on_delete_by_number_and_id(self):
+        self.assertEqual(self.run_cmd(_rules(PREMIUM, DOWN), "mock_off", "1"), "Мок «Премиум» выключен.")
+        self.assertFalse(parse_payload(self.ctx.options.hub_mocks)[1][0]["enabled"])
+        # takes effect immediately: the rule no longer fires
+        flow = _Flow(_Resp(200, b"{}"))
+        with mock.patch.dict(sys.modules, {"mitmproxy": types.SimpleNamespace(ctx=self.ctx)}):
+            asyncio.run(self.addon.response(flow))
+        self.assertEqual(flow.comment, "")
+        self.assertEqual(self.call("mock_on", "r2"), "Мок «Лежит» включён.")
+        self.assertEqual(self.call("mock_delete", "p1"), "Мок «Премиум» удалён.")
+        allowed, rules = parse_payload(self.ctx.options.hub_mocks)
+        self.assertTrue(allowed)
+        self.assertEqual([(r["id"], r["enabled"]) for r in rules], [("r2", True)])
+        journal = self.edits()
+        self.assertTrue(journal["epoch"])
+        self.assertEqual(
+            journal["edits"],
+            [
+                {"seq": 1, "op": "disable", "id": "p1"},
+                {"seq": 2, "op": "enable", "id": "r2"},
+                {"seq": 3, "op": "delete", "id": "p1"},
+            ],
+        )
+        self.assertIn("1. ✓ Лежит", self.call("mocks"))
+
+    def test_hub_payload_replaces_local_state(self):
+        self.run_cmd(_rules(PREMIUM), "mock_off", "1")
+        self.ctx.options.hub_mocks = _rules(PREMIUM)
+        self.assertIn("1. ✓ Премиум", self.call("mocks"))
+
+    def test_edits_capped_at_100(self):
+        self.run_cmd(_rules(PREMIUM), "mock_off", "1")
+        for i in range(120):
+            self.call("mock_on" if i % 2 else "mock_off", "p1")
+        edits = self.edits()["edits"]
+        self.assertEqual(len(edits), 100)
+        self.assertEqual((edits[0]["seq"], edits[-1]["seq"]), (22, 121))
+
+    def test_epoch_differs_per_addon(self):
+        self.run_cmd(_rules(PREMIUM), "mock_off", "1")
+        first = self.edits()["epoch"]
+        self.addon = HubMocks()
+        self.run_cmd(_rules(PREMIUM), "mock_off", "1")
+        self.assertNotEqual(self.edits()["epoch"], first)
+
+    def test_unknown_target(self):
+        for target in ("0", "3", "nope", ""):
+            out = self.run_cmd(_rules(PREMIUM, DOWN), "mock_on", target)
+            self.assertTrue(out.startswith("Нет мока"), out)
+        self.assertEqual(self.ctx.options.updates, [])
+
+    def test_not_allowed(self):
+        raw = json.dumps({"allowed": False, "rules": []})
+        for name in ("mock_on", "mock_off", "mock_delete"):
+            self.assertEqual(self.run_cmd(raw, name, "1"), "Моки выключены в хабе")
+            self.assertEqual(self.ctx.options.updates, [])
 
 
 if __name__ == "__main__":
