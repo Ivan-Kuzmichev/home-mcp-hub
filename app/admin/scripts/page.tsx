@@ -13,6 +13,7 @@ import { describeConnectorSharing } from '@/lib/scripts/connector-secrets'
 import { listSecrets } from '@/lib/scripts/secrets'
 import { listRuns, listScripts, nextRun, STATUS_LABELS, statusOf, type Script } from '@/lib/scripts/store'
 import { describeParams } from '@/lib/scripts/tool-spec'
+import { requireAdmin } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
 
@@ -20,7 +21,9 @@ const secretsIn = (code: string) => [...new Set([...code.matchAll(/\{\{secret:([
 const hostsIn = (code: string) => [...new Set([...code.matchAll(/https?:\/\/([a-z0-9.-]+)/gi)].map((m) => m[1]!.toLowerCase()))]
 const TONES = { pending: 'warn', rejected: 'err', approved: 'muted', active: 'ok' } as const
 
-export default function ScriptsPage() {
+export default async function ScriptsPage() {
+  // Pages render in parallel with the layout: each one checks the session itself.
+  await requireAdmin()
   const all = listScripts()
   const pending = all.filter((s) => statusOf(s) === 'pending')
   const secrets = listSecrets()

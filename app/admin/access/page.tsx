@@ -18,10 +18,13 @@ import { lastCallByClient, lastToolCall } from '@/lib/journal'
 import { getPrefix } from '@/lib/prefix'
 import { getAllowedCidrs, isDcrAllowed } from '@/lib/settings'
 import { revokeClientAction, revokeTokenAction } from './actions'
+import { requireAdmin } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
 
-export default function AccessPage() {
+export default async function AccessPage() {
+  // Pages render in parallel with the layout: each one checks the session itself.
+  await requireAdmin()
   const prefix = getPrefix()
   const urls = hubUrls(prefix)
   const clients = listClients()

@@ -2,10 +2,13 @@ import { PageHeader } from '@/components/admin/page-header'
 import { ConnectorList } from '@/components/connectors/connector-list'
 import { Card } from '@/components/ui/card'
 import { connectorSummaries } from '@/lib/connectors/summary'
+import { requireAdmin } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
 
-export default function ConnectorsPage() {
+export default async function ConnectorsPage() {
+  // Pages render in parallel with the layout: each one checks the session itself.
+  await requireAdmin()
   return (
     <>
       <PageHeader title="Коннекторы" subtitle="Сервисы, к которым ИИ-ассистент получает доступ через хаб. Секреты хранятся зашифрованными." />

@@ -10,6 +10,7 @@ import { countJournal, queryJournal, type JournalRow } from '@/lib/journal'
 import { connectorTag, filterFrom, formatDuration, JOURNAL_CONNECTOR_OPTIONS, PERIODS, resultText, toolLabel, type JournalSearch } from '@/lib/journal-view'
 import { href } from '@/lib/prefix'
 import { cn } from '@/lib/utils'
+import { requireAdmin } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
 
@@ -36,6 +37,8 @@ function Tool({ row }: { row: JournalRow }) {
 }
 
 export default async function ActivityPage({ searchParams }: { searchParams: Promise<JournalSearch> }) {
+  // Pages render in parallel with the layout: each one checks the session itself.
+  await requireAdmin()
   const sp = await searchParams
   const filter = filterFrom(sp)
   const limit = Math.min(1000, Math.max(PAGE, Number(sp.limit) || PAGE))

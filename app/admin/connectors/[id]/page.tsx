@@ -12,10 +12,13 @@ import { getConnectorRow } from '@/lib/connectors/store'
 import { connectorSummaries } from '@/lib/connectors/summary'
 import { formatAgo } from '@/lib/format'
 import { href } from '@/lib/prefix'
+import { requireAdmin } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
 
 export default async function ConnectorPage({ params }: { params: Promise<{ id: string }> }) {
+  // Pages render in parallel with the layout: each one checks the session itself.
+  await requireAdmin()
   const { id } = await params
   const c = getConnector(id)
   if (!c) notFound()

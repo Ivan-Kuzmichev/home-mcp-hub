@@ -3,6 +3,7 @@ import { Card } from '@/components/ui/card'
 import { Pill } from '@/components/ui/pill'
 import { approxTokens, inspectMcp, type InspectedTool } from '@/lib/mcp/inspect'
 import { INSTRUCTIONS_HEAD } from '@/lib/mcp/server'
+import { requireAdmin } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
 
@@ -44,6 +45,8 @@ function Hints({ tool }: { tool: InspectedTool }) {
 }
 
 export default async function DiagnosticsPage() {
+  // Pages render in parallel with the layout: each one checks the session itself.
+  await requireAdmin()
   const snap = await inspectMcp()
   const toolsJson = JSON.stringify(snap.tools)
   const total = snap.instructions.length + toolsJson.length

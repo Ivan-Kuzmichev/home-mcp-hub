@@ -76,6 +76,9 @@ Self-hosted MCP-хаб для домашних сервисов (Jackett, qBitto
   и `X-Robots-Tag: noindex`. Пин — argon2-хэш, cookie на 24 ч, 5 попыток за 10 мин. В отдаваемый HTML (и превью админки)
   вставляется скрипт `window.hub.db` (`lib/prototypes/data.ts`): JSON до 50 МБ в `prototypes/{id}/data.json`, API `/p/{slug}/db`
   с CORS `*` (origin страницы — `null`) и Bearer-токеном (`signDataToken`, отдельный HMAC-домен от cookie пина), `If-Match` по `rev`.
+- **Админка за двумя замками.** `middleware.ts` не пускает к `/admin/*` без сессии с 2FA (`hasAdminSession`), и каждая
+  `page.tsx` сама вызывает `requireAdmin()`. Одной проверки в `layout.tsx` мало: layout и страница рендерятся параллельно,
+  и данные страницы уходят в тело редиректа. Новую страницу админки — только с `await requireAdmin()` в начале.
 - **Разрушающие tools** (`torrent_delete` с файлами, `prototype_delete`) требуют `confirm: true` и помечены `destructiveHint`.
   Read-only tools — `readOnlyHint`. Сервер отдаёт `instructions` при инициализации (текст — в спеке, «Что учесть при реализации»).
 - **Claude требует:** PKCE S256, `code_challenge_methods_supported: ["S256"]`, `/token` принимает `application/x-www-form-urlencoded`,

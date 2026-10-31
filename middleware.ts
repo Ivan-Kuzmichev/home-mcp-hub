@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { decideRoute, readPrefix } from '@/lib/prefix'
+import { decideRoute, readPrefix, withPrefix } from '@/lib/prefix'
+import { hasAdminSession } from '@/lib/session'
 
 export const config = {
   // Node runtime: the prefix lives in SQLite and is compared with node:crypto.
@@ -49,7 +50,16 @@ function emptyNotFound(): NextResponse {
   return new NextResponse(null, { status: 404, headers: baseHeaders() })
 }
 
-export function middleware(request: NextRequest): NextResponse {
+/**
+ * Admin pages are gated here, before anything renders. A redirect() in the admin layout is not enough:
+ * Next renders the layout and the page in parallel, so the page's data was streamed into the body of
+ * the 307 response to anyone who knew the prefix. Route handlers under /admin check the session themselves.
+ */
+export function isAdminPath(internalPath: string): boolean {
+  return internalPath === '/admin' || internalPath.startsWith('/admin/')
+}
+
+export async function middleware(request: NextRequest): Promise<NextResponse> {
   let prefix: string | null
   try {
     prefix = readPrefix()
@@ -63,6 +73,13 @@ export function middleware(request: NextRequest): NextResponse {
   if (decision.type === 'notFound') return emptyNotFound()
 
   const internalPath = decision.type === 'rewrite' ? decision.pathname : pathname
+  if (prefix && decision.type === 'rewrite' && isAdminPath(internalPath) && !(await hasAdminSession(request.headers))) {
+    // Next requires an absolute Location from middleware.
+    const res = NextResponse.redirect(new URL(withPrefix(prefix, '/login'), request.nextUrl), 307)
+    for (const [k, v] of Object.entries(baseHeaders())) res.headers.set(k, v)
+    res.headers.set('Cache-Control', 'no-store')
+    return res
+  }
   const page = !pathname.startsWith('/_next/') && isPagePath(internalPath)
 
   // Pages: hand the nonce to Next.js through the request CSP header.

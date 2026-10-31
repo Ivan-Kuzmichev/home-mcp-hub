@@ -6,13 +6,16 @@ import { SignOutButton } from '@/components/admin/sign-out-button'
 import { Card } from '@/components/ui/card'
 import { connectorStates } from '@/lib/connectors/active'
 import { href } from '@/lib/prefix'
+import { requireAdmin } from '@/lib/session'
 
 // Phone-only «Ещё» tab: sections that do not fit into the bottom bar.
 const MORE_ITEMS = ['/admin/scripts', '/admin/activity', '/admin/diagnostics', '/admin/settings']
 
 export const dynamic = 'force-dynamic'
 
-export default function MorePage() {
+export default async function MorePage() {
+  // Pages render in parallel with the layout: each one checks the session itself.
+  await requireAdmin()
   const scriptsOn = connectorStates().find((c) => c.connector.id === 'scripts')?.status === 'active'
   const MORE = NAV_ITEMS.filter((i) => MORE_ITEMS.includes(i.path) && (scriptsOn || i.path !== '/admin/scripts'))
   return (

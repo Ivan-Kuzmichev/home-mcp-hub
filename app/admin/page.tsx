@@ -10,6 +10,7 @@ import { failedSignIns, lastToolCall, recentToolCalls } from '@/lib/journal'
 import { resultText } from '@/lib/journal-view'
 import { href } from '@/lib/prefix'
 import { HUB_VERSION } from '@/lib/version'
+import { requireAdmin } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
 
@@ -20,7 +21,9 @@ function formatToday(): string {
   return s.charAt(0).toUpperCase() + s.slice(1)
 }
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  // Pages render in parallel with the layout: each one checks the session itself.
+  await requireAdmin()
   const connected = isMcpConnected()
   // Only connectors in use get a card; the rest are on the connectors screen.
   const summaries = connectorSummaries()

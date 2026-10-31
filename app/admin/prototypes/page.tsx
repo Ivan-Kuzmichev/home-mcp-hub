@@ -3,10 +3,13 @@ import { PrototypeList } from '@/components/prototypes/prototype-list'
 import { UploadButton } from '@/components/prototypes/upload-form'
 import { formatSize, plural } from '@/lib/connectors/format'
 import { listPrototypes, totalSize } from '@/lib/prototypes/store'
+import { requireAdmin } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
 
-export default function PrototypesPage() {
+export default async function PrototypesPage() {
+  // Pages render in parallel with the layout: each one checks the session itself.
+  await requireAdmin()
   const items = listPrototypes()
   return (
     <>

@@ -8,10 +8,13 @@ import { UploadButton } from '@/components/prototypes/upload-form'
 import { href } from '@/lib/prefix'
 import { getById, listPrototypes } from '@/lib/prototypes/store'
 import { cardData } from '@/lib/prototypes/view'
+import { requireAdmin } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
 
 export default async function PrototypePage({ params }: { params: Promise<{ id: string }> }) {
+  // Pages render in parallel with the layout: each one checks the session itself.
+  await requireAdmin()
   const { id } = await params
   const p = getById(id)
   if (!p) notFound()
