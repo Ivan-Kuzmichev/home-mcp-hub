@@ -28,4 +28,32 @@ describe('redact', () => {
     for (const n of ['page', 'name', 'accept', 'login']) expect(isSensitiveName(n)).toBe(false)
     expect(maskValue('abc')).toBe('*** (3 симв.)')
   })
+
+  it('masks whole subtrees under sensitive JSON keys', () => {
+    const out = JSON.parse(maskBody(JSON.stringify({
+      tokens: ['opaque1', 'opaque2'], session: { id: 'abc', n: 5 }, auth: { value: 'x' }, pin: 1234, otp: null, name: 'Ваня',
+    }), 'application/json'))
+    expect(out).toEqual({
+      tokens: ['***', '***'], session: { id: '***', n: '***' }, auth: { value: '***' }, pin: '***', otp: '***', name: 'Ваня',
+    })
+  })
+
+  it('masks URL-bearing headers', () => {
+    expect(maskHeaders([
+      ['Location', 'https://app/cb?code=abc&access_token=opaque'],
+      ['Referer', 'https://app/x?token=t&page=1'],
+      ['Origin', 'https://app'],
+      ['Content-Location', '/a?sid=1'],
+    ])).toEqual([
+      ['Location', 'https://app/cb?code=***&access_token=***'],
+      ['Referer', 'https://app/x?token=***&page=1'],
+      ['Origin', 'https://app'],
+      ['Content-Location', '/a?sid=***'],
+    ])
+  })
+
+  it('masks fragment pairs and userinfo in URLs', () => {
+    expect(maskUrl('https://a.example/cb#access_token=opaque&state=x')).toBe('https://a.example/cb#access_token=***&state=x')
+    expect(maskUrl('https://user:pass@host/p?a=1')).toBe('https://user:***@host/p?a=1')
+  })
 })

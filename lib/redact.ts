@@ -24,6 +24,8 @@ function maskJwts(text: string): string {
   return text.replace(JWT_RE, MASK)
 }
 
+const URL_HEADERS = new Set(['location', 'referer', 'origin', 'content-location'])
+
 function maskCookiePairs(value: string, firstOnly: boolean): string {
   return value
     .split(';')
@@ -39,6 +41,7 @@ function maskCookiePairs(value: string, firstOnly: boolean): string {
 export function maskHeaders(h: [string, string][]): [string, string][] {
   return h.map(([name, value]): [string, string] => {
     const n = name.toLowerCase()
+    if (URL_HEADERS.has(n)) return [name, maskUrl(value)]
     if (n === 'cookie') return [name, maskCookiePairs(value, false)]
     if (n === 'set-cookie') return [name, maskCookiePairs(value, true)]
     if (n === 'authorization' || n === 'proxy-authorization') return [name, maskValue(value)]
@@ -69,11 +72,20 @@ function maskPairs(query: string): string {
 export function maskUrl(url: string): string {
   const hash = url.indexOf('#')
   const base = hash < 0 ? url : url.slice(0, hash)
-  const frag = hash < 0 ? '' : url.slice(hash)
+  const rawFrag = hash < 0 ? '' : url.slice(hash + 1)
+  const frag = hash < 0 ? '' : `#${rawFrag.includes('=') ? maskPairs(rawFrag) : rawFrag}`
   const q = base.indexOf('?')
-  const path = q < 0 ? base : base.slice(0, q)
+  const path = (q < 0 ? base : base.slice(0, q)).replace(/^([a-z][a-z0-9+.-]*:\/\/[^/?#@:]*):[^/?#@]*@/i, '$1:***@')
   const query = q < 0 ? '' : `?${maskPairs(base.slice(q + 1))}`
   return maskJwts(path + query) + maskJwts(frag)
+}
+
+function maskAll(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(maskAll)
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, maskAll(v)]))
+  }
+  return MASK
 }
 
 function maskJson(value: unknown): unknown {
@@ -82,8 +94,7 @@ function maskJson(value: unknown): unknown {
   if (value && typeof value === 'object') {
     const out: Record<string, unknown> = {}
     for (const [k, v] of Object.entries(value)) {
-      const primitive = v === null || typeof v !== 'object'
-      out[k] = isSensitiveName(k) && primitive ? MASK : maskJson(v)
+      out[k] = isSensitiveName(k) ? maskAll(v) : maskJson(v)
     }
     return out
   }
