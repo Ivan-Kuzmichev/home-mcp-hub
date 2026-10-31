@@ -36,7 +36,10 @@ NOT_ALLOWED = "Моки выключены в хабе"
 
 
 def _command(name):
-    """Same marker as mitmproxy's @command.command, without importing mitmproxy here."""
+    """Same marker as mitmproxy's @command.command, without importing mitmproxy here.
+
+    collect_commands() only looks for a str `command_name`; verified with mitmproxy 12.3.1.
+    """
 
     def decorator(func):
         func.command_name = name

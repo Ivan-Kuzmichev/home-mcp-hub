@@ -106,8 +106,7 @@ async function applyRule(config: Config, input: Omit<MockRule, 'id' | 'enabled'>
   const parsed = mockRuleSchema.safeParse(body)
   if (!parsed.success) throw new ToolError(parsed.error.issues.map((i) => i.message).join('; '))
   const m = await store()
-  const rule = m.saveMock({ ...parsed.data, ...(id ? { id } : {}) })
-  const failure = await pushMocks(m)
+  const { value: rule, failure } = await m.mutateMocks(() => m.saveMock({ ...parsed.data, ...(id ? { id } : {}) }))
   if (failure) return `Мок «${rule.name}» (${rule.id}) сохранён, но пока не работает: ${failure}`
   const hits = (await client(config).flows().catch(() => [])).filter(
     (f) => isHttp(f) && ruleMatches(rule, { method: f.request!.method, host: hostOf(f), path: f.request!.path }),
@@ -322,6 +321,7 @@ export const mitmproxy = defineConnector<Config>({
       name: 'mitm_mocks',
       title: 'Список моков',
       description: 'Все правила моков: id, имя, включено ли, шаблон и сколько раз сработало среди перехваченных запросов.',
+      // Read-only for the user: the sync before listing only reconciles edits already made in mitmweb.
       annotations: { readOnlyHint: true, openWorldHint: false },
       inputSchema: z.object({}),
       async run(_args, { config }) {
@@ -360,8 +360,7 @@ export const mitmproxy = defineConnector<Config>({
       inputSchema: z.object({ id: z.string().min(1), enabled: z.boolean() }),
       async run({ id, enabled }) {
         const m = await store()
-        const rule = m.setMockEnabled(id, enabled)
-        const failure = await pushMocks(m)
+        const { value: rule, failure } = await m.mutateMocks(() => m.setMockEnabled(id, enabled))
         const state = enabled ? 'включён' : 'выключен'
         return failure ? `Мок «${rule.name}» ${state}, но пока не применён: ${failure}` : `Мок «${rule.name}» ${state}.`
       },
@@ -382,15 +381,16 @@ export const mitmproxy = defineConnector<Config>({
         if (all) {
           const n = m.listMocks().length
           if (confirm !== true) return `Не удалено. Переспроси пользователя и повтори с confirm: true.\nБудет удалено правил: ${n}`
-          m.deleteAllMocks()
-          const failure = await pushMocks(m)
-          return `Удалено правил: ${n}.${failure ? ` Не применено в прокси: ${failure}` : ''}`
+          const { value: deleted, failure } = await m.mutateMocks(() => m.deleteAllMocks())
+          return `Удалено правил: ${deleted}.${failure ? ` Не применено в прокси: ${failure}` : ''}`
         }
         if (!id) throw new ToolError('Укажи id правила или all: true')
-        const rule = m.listMocks().find((r) => r.id === id)
-        if (!rule) throw new ToolError(`Правила ${id} нет`)
-        m.deleteMock(id)
-        const failure = await pushMocks(m)
+        const { value: rule, failure } = await m.mutateMocks(() => {
+          const found = m.listMocks().find((r) => r.id === id)
+          if (!found) throw new ToolError(`Правила ${id} нет — посмотри mitm_mocks`)
+          m.deleteMock(id)
+          return found
+        })
         return `Мок «${rule.name}» удалён.${failure ? ` Не применено в прокси: ${failure}` : ''}`
       },
     }),

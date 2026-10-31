@@ -23,7 +23,7 @@ function toRule(row: Row): MockRule {
 
 function getRow(id: string): Row {
   const row = getDb().select().from(mitmMock).where(eq(mitmMock.id, id)).get()
-  if (!row) throw new ToolError(`Правила ${id} нет`)
+  if (!row) throw new ToolError(`Правила ${id} нет — посмотри mitm_mocks`)
   return row
 }
 
@@ -141,22 +141,57 @@ export function syncMocks(opts: { strict?: boolean } = {}): Promise<SyncResult> 
   return run
 }
 
-async function syncOnce(opts: { strict?: boolean }): Promise<SyncResult> {
+/**
+ * A hub-side change to the rules, made inside the sync queue after pending mitmweb edits are applied, so an
+ * older mitmweb edit never lands on top of it (and a rule deleted in mitmweb is not resurrected). Errors from
+ * `mutate` propagate and nothing is pushed; a failed push after a successful change comes back as `failure`.
+ */
+export function mutateMocks<T>(mutate: () => T): Promise<{ value: T; failure: string | null }> {
+  const run = queue.then(async () => {
+    // Widened on purpose: TS cannot see the assignment inside the callback.
+    let done = undefined as { value: T } | undefined
+    let failure: string | null = null
+    try {
+      await syncOnce({ strict: true }, () => {
+        done = { value: mutate() }
+      })
+    } catch (e) {
+      if (!done || !(e instanceof ToolError)) throw e
+      failure = e.message
+    }
+    return { value: done!.value, failure }
+  })
+  queue = run.catch(() => undefined)
+  return run
+}
+
+async function syncOnce(opts: { strict?: boolean }, mutate?: () => void): Promise<SyncResult> {
   const connector = getConnector('mitmproxy')
   const row = getConnectorRow('mitmproxy')
-  if (!connector || !row) return 'skipped'
-  const parsed = connector.parseConfig(readConfig(connector, row))
-  if (!parsed.ok) return 'skipped'
+  const parsed = connector && row ? connector.parseConfig(readConfig(connector, row)) : null
+  if (!row || !parsed?.ok) {
+    mutate?.()
+    return 'skipped'
+  }
   const config = parsed.config as { baseUrl: string; password?: string; timeoutSec: number; allowMocks: boolean }
 
   const allowed = row.enabled && config.allowMocks
   const client = new MitmClient({ baseUrl: config.baseUrl, password: config.password, timeoutSec: config.timeoutSec })
+  let options: Record<string, { value: unknown }> | null = null
+  let failed: unknown = null
   try {
-    const options = await client.options()
+    options = await client.options()
     reachable = true
-    const current = options.hub_mocks
-    if (!current) throw new AddonMissingError(ADDON_MISSING)
     applyEdits(options.hub_mocks_edits?.value, allowed)
+  } catch (e) {
+    failed = e
+  }
+  // The hub change is stored even when the proxy is down; its own errors are not sync errors.
+  mutate?.()
+  try {
+    if (failed) throw failed
+    const current = options?.hub_mocks
+    if (!current) throw new AddonMissingError(ADDON_MISSING)
     const desired = payloadFor(allowed ? listMocks() : [], allowed)
     if (current.value === desired) return 'in-sync'
     await client.setOptions({ hub_mocks: desired })

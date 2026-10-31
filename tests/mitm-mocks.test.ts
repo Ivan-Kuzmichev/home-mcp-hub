@@ -8,6 +8,7 @@ const { getDb } = await import('@/lib/db')
 const { mitmMock, connector: connectorTable } = await import('@/lib/db/schema')
 const { eq } = await import('drizzle-orm')
 const { getSetting } = await import('@/lib/settings')
+const { mutateMocks } = await import('@/lib/connectors/mitmproxy/mocks')
 const { AddonMissingError, deleteAllMocks, deleteMock, listMocks, saveMock, setMockEnabled, syncMocks } = await import('@/lib/connectors/mitmproxy/mocks')
 
 afterAll(cleanup)
@@ -223,5 +224,28 @@ describe('edits from mitmweb', () => {
     journal('e5', [{ seq: 1, op: 'disable', id: a.id }])
     await syncMocks()
     expect(puts.every((p) => !('hub_mocks_edits' in (p as object)))).toBe(true)
+  })
+})
+
+describe('mutateMocks', () => {
+  it('applies pending mitmweb edits first, then the change, then pushes once', async () => {
+    const a = saveMock(rule)
+    options = { ...options, hub_mocks_edits: { value: JSON.stringify({ epoch: 'mut1', edits: [{ seq: 1, op: 'disable', id: a.id }] }) } }
+    const res = await mutateMocks(() => setMockEnabled(a.id, true))
+    expect(res).toMatchObject({ value: { id: a.id, enabled: true }, failure: null })
+    expect(puts).toHaveLength(1)
+    expect(listMocks()[0]!.enabled).toBe(true)
+  })
+
+  it('a failing change propagates and pushes nothing', async () => {
+    await expect(mutateMocks(() => setMockEnabled('nope', true))).rejects.toThrow('Правила nope нет — посмотри mitm_mocks')
+    expect(puts).toHaveLength(0)
+  })
+
+  it('reports a failed push as failure after storing the change', async () => {
+    options = {}
+    const res = await mutateMocks(() => saveMock(rule))
+    expect(res.failure).toContain('hub_mocks.py')
+    expect(listMocks()).toHaveLength(1)
   })
 })

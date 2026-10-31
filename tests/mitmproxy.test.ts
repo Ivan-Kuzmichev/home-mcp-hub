@@ -351,6 +351,43 @@ describe('mock tools', () => {
     expect(out).toContain('hub_mocks.py')
   })
 
+  const pending = (edits: { seq: number; op: string; id: string }[]) => {
+    options = { ...options, hub_mocks_edits: { value: JSON.stringify({ epoch: `p${Math.random()}`, edits }) } }
+  }
+
+  it('a hub toggle wins over an older mitmweb edit', async () => {
+    seedMock('m1', { ...rulePatch })
+    pending([{ seq: 1, op: 'disable', id: 'm1' }])
+    expect(await runTool(mitmproxy, 'mitm_mock_toggle', mockCfg(), { id: 'm1', enabled: true })).toBe('Мок «Карты» включён.')
+    expect(listMocks().map((r) => r.enabled)).toEqual([true])
+    const sent = JSON.parse(String(puts.at(-1)!.hub_mocks)) as { rules: { id: string; enabled: boolean }[] }
+    expect(sent.rules.map((r) => [r.id, r.enabled])).toEqual([['m1', true]])
+  })
+
+  it('a rule deleted in mitmweb is not resurrected by toggle or update', async () => {
+    seedMock('m1', { ...rulePatch })
+    pending([{ seq: 1, op: 'delete', id: 'm1' }])
+    await expect(runTool(mitmproxy, 'mitm_mock_patch', mockCfg(), { ...patchArgs, id: 'm1' })).rejects.toThrow('Правила m1 нет — посмотри mitm_mocks')
+    expect(listMocks()).toEqual([])
+    seedMock('m2', { ...rulePatch })
+    pending([{ seq: 1, op: 'delete', id: 'm2' }])
+    await expect(runTool(mitmproxy, 'mitm_mock_toggle', mockCfg(), { id: 'm2', enabled: true })).rejects.toThrow('Правила m2 нет — посмотри mitm_mocks')
+    seedMock('m3', { ...rulePatch })
+    pending([{ seq: 1, op: 'delete', id: 'm3' }])
+    await expect(runTool(mitmproxy, 'mitm_mock_delete', mockCfg(), { id: 'm3' })).rejects.toThrow('Правила m3 нет — посмотри mitm_mocks')
+    expect(listMocks()).toEqual([])
+  })
+
+  it('a hub change is saved even when the proxy is down', async () => {
+    seedMock('m1', { ...rulePatch })
+    mockFetch(() => {
+      throw new TypeError('fetch failed')
+    })
+    const out = await runTool(mitmproxy, 'mitm_mock_toggle', mockCfg(), { id: 'm1', enabled: false })
+    expect(out).toContain('выключен, но пока не применён')
+    expect(listMocks().map((r) => r.enabled)).toEqual([false])
+  })
+
   it('delete all needs confirm; a single id does not', async () => {
     const m1 = seedMock('m1', { ...rulePatch })
     seedMock('m2', { ...rulePatch })
