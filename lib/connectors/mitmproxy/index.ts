@@ -4,7 +4,7 @@ import { formatSize, plural } from '../format'
 import { defineConnector, field, secret, toolFor, ToolError } from '../types'
 import { MitmClient } from './client'
 import { ruleMatches, mockRuleSchema, type JsonOp, type MockRule } from './rules'
-import { clockOf, filterFlows, isHttp, hostSummary, mockLabel, renderFlow, sizeOf } from './flows'
+import { clockOf, filterFlows, hostOf, isHttp, hostSummary, mockLabel, parseMockComment, renderFlow, sizeOf } from './flows'
 
 const configSchema = z.object({
   baseUrl: field(
@@ -110,7 +110,7 @@ async function applyRule(config: Config, input: Omit<MockRule, 'id' | 'enabled'>
   const failure = await pushMocks(m)
   if (failure) return `Мок «${rule.name}» (${rule.id}) сохранён, но пока не работает: ${failure}`
   const hits = (await client(config).flows().catch(() => [])).filter(
-    (f) => isHttp(f) && ruleMatches(rule, { method: f.request!.method, host: f.request!.host, path: f.request!.path }),
+    (f) => isHttp(f) && ruleMatches(rule, { method: f.request!.method, host: hostOf(f), path: f.request!.path }),
   ).length
   const state = rule.enabled ? 'включён' : 'сохранён, но выключен'
   return `Мок «${rule.name}» ${state}: ${targetOf(rule)} → ${describeChange(rule)}. Под шаблон уже попадало ${hits} ${plural(hits, ['запрос', 'запроса', 'запросов'])} из перехваченных. id: ${rule.id}`
@@ -174,13 +174,13 @@ export const mitmproxy = defineConnector<Config>({
       async run(_args, { config }) {
         const mc = client(config)
         const [state, flows, options] = await Promise.all([mc.state(), mc.flows(), mc.options()])
-        const active = (await mocks()).filter((m) => m.enabled).length
+        const active = config.allowMocks ? `правил активно ${(await mocks()).filter((m) => m.enabled).length}` : 'моки выключены'
         return [
           `mitmproxy ${state.version}`,
           `режимы ${state.modes.join(', ') || '—'}`,
           `в памяти ${flows.length} ${plural(flows.length, ['запрос', 'запроса', 'запросов'])}`,
           `аддон hub_mocks ${'hub_mocks' in options ? 'подключён' : 'нет'}`,
-          `правил активно ${active}`,
+          active,
         ].join(' · ')
       },
     }),
@@ -233,10 +233,10 @@ export const mitmproxy = defineConnector<Config>({
         const shown = found.slice(0, limit)
         const lines = shown.map((f) => {
           const r = f.request!
-          const url = `${r.host}${r.path}`
+          const url = `${hostOf(f)}${r.path}`
           const status = f.response ? String(f.response.status_code) : f.error ? 'ошибка' : '…'
           const mock = mockLabel(f.comment ?? '', names)
-          return `• ${f.id.slice(0, 8)} · ${r.method} ${config.showTokens ? url : maskUrl(url)} · ${status} · ${clockOf(f)} · ${sizeOf(f)}${mock ? ` · мок «${mock}»` : ''}`
+          return `• ${f.id.slice(0, 8)} · ${r.method} ${config.showTokens ? url : maskUrl(url)} · ${status} · ${clockOf(f)} · ${sizeOf(f)}${mock ? ` · ${mock}` : ''}`
         })
         if (found.length > shown.length) lines.push(`…показано ${shown.length} из ${found.length}`)
         return lines.join('\n')
@@ -275,7 +275,7 @@ export const mitmproxy = defineConnector<Config>({
       description:
         'Мок: на подходящие запросы (всех устройств) mitmproxy сам отвечает заданным status, headers и body, настоящий сервер не вызывается. ' +
         'Без Content-Type в headers: тело-JSON получит application/json, иначе text/plain. id существующего правила — заменит его.',
-      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
       inputSchema: z.object({
         ...ruleTarget,
         status: z.number().int().min(100).max(599).optional().describe('Код ответа, по умолчанию 200'),
@@ -295,7 +295,7 @@ export const mitmproxy = defineConnector<Config>({
       description:
         'Мок: запрос уходит на настоящий сервер, а в ответе правятся поля. json — список {path, value}, путь вида user.items[0].price или items[*].price; ' +
         'setHeaders / removeHeaders — заголовки; status — другой код; delayMs — задержка. Нужно хотя бы одно изменение. id существующего правила — заменит его.',
-      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
       inputSchema: z.object({
         ...ruleTarget,
         status: z.number().int().min(100).max(599).optional().describe('Подставить другой код ответа'),
@@ -327,13 +327,21 @@ export const mitmproxy = defineConnector<Config>({
       async run(_args, { config }) {
         const rules = await mocks()
         if (rules.length === 0) return 'Моков нет.'
-        const hits = new Map<string, number>()
+        const hits = new Map<string, { n: number; skipped: number }>()
         for (const f of await client(config).flows().catch(() => [])) {
-          const id = /^mock:(\S+)/.exec(f.comment ?? '')?.[1]
-          if (id && isHttp(f)) hits.set(id, (hits.get(id) ?? 0) + 1)
+          const m = parseMockComment(f.comment ?? '')
+          if (!m || !isHttp(f)) continue
+          const h = hits.get(m.id) ?? { n: 0, skipped: 0 }
+          h.n++
+          if (m.skipped) h.skipped++
+          hits.set(m.id, h)
+        }
+        const fired = (id: string) => {
+          const { n, skipped } = hits.get(id) ?? { n: 0, skipped: 0 }
+          return `сработал ${n} ${plural(n, ['раз', 'раза', 'раз'])}${skipped ? `, из них json пропущен ${skipped}` : ''}`
         }
         return rules
-          .map((r) => `• ${r.id} «${r.name}» — ${r.enabled ? 'вкл' : 'выкл'} · ${r.kind} ${targetOf(r)} · сработал ${hits.get(r.id) ?? 0} раз`)
+          .map((r) => `• ${r.id} «${r.name}» — ${r.enabled ? 'вкл' : 'выкл'} · ${r.kind} ${targetOf(r)} · ${fired(r.id)}`)
           .join('\n')
       },
     }),

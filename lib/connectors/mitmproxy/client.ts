@@ -10,7 +10,8 @@ export type MitmFlow = {
   comment: string
   timestamp_created: number
   client_conn?: { peername?: [string, number] }
-  request?: { method: string; scheme: string; host: string; port: number; path: string; headers: [string, string][]; contentLength: number | null; timestamp_start: number }
+  // pretty_host: the Host / :authority name; `host` is the IP in transparent, WireGuard and SOCKS5-with-IP modes.
+  request?: { method: string; scheme: string; host: string; pretty_host?: string; port: number; path: string; headers: [string, string][]; contentLength: number | null; timestamp_start: number }
   response?: { status_code: number; headers: [string, string][]; contentLength: number | null }
   error?: { msg: string }
 }

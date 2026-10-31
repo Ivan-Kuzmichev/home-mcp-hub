@@ -50,6 +50,11 @@ describe('mock storage', () => {
     saveMock(rule)
     expect(deleteAllMocks()).toBe(2)
   })
+
+  it('refuses an unknown id instead of creating a rule with it', () => {
+    expect(() => saveMock({ ...rule, id: 'nope' })).toThrow('Правила nope нет — посмотри mitm_mocks')
+    expect(listMocks()).toEqual([])
+  })
 })
 
 describe('rule order', () => {

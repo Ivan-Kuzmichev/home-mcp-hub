@@ -30,6 +30,11 @@ function flowBytes(f: MitmFlow): number {
   return (f.request?.contentLength ?? 0) + (f.response?.contentLength ?? 0)
 }
 
+/** Host name as the client asked for it (Host / :authority), falling back to the connection host. */
+export function hostOf(f: MitmFlow): string {
+  return f.request?.pretty_host || f.request?.host || ''
+}
+
 export type FlowFilter = { host?: string; path?: string; app?: string; sinceMs: number }
 
 /** mitmweb also returns dns/tcp/udp flows whose request has no host or path. */
@@ -43,7 +48,7 @@ export function filterFlows(flows: MitmFlow[], q: FlowFilter): MitmFlow[] {
   const app = q.app?.toLowerCase()
   return flows.filter((f) => {
     if (!f.request || !isHttp(f) || f.timestamp_created * 1000 < q.sinceMs) return false
-    if (host && !f.request.host.toLowerCase().includes(host)) return false
+    if (host && !hostOf(f).toLowerCase().includes(host)) return false
     if (path && !f.request.path.toLowerCase().includes(path)) return false
     if (app && appOf(f).toLowerCase() !== app) return false
     return true
@@ -53,7 +58,7 @@ export function filterFlows(flows: MitmFlow[], q: FlowFilter): MitmFlow[] {
 export function hostSummary(flows: MitmFlow[], q: { sinceMs: number; app?: string }): HostRow[] {
   const rows = new Map<string, HostRow>()
   for (const f of filterFlows(flows, q)) {
-    const host = f.request!.host
+    const host = hostOf(f)
     const row = rows.get(host) ?? { host, count: 0, bytes: 0, codes: {} }
     row.count++
     row.bytes += flowBytes(f)
@@ -68,10 +73,18 @@ export function clockOf(f: MitmFlow): string {
   return new Date(f.timestamp_created * 1000).toLocaleTimeString('ru-RU', { hour12: false })
 }
 
-/** `mock:<id>` or `mock:<id> (json пропущен)` from the addon; the rule name when known. */
+const MOCK_COMMENT = /^mock:(\S+)( \(json пропущен\))?/
+
+/** Rule id from the addon's `mock:<id>` or `mock:<id> (json пропущен)` comment; skipped tells the json ops were not applied. */
+export function parseMockComment(comment: string): { id: string; skipped: boolean } | null {
+  const m = MOCK_COMMENT.exec(comment)
+  return m ? { id: m[1]!, skipped: m[2] !== undefined } : null
+}
+
+/** «мок «Премиум»» or «мок «Премиум» (json пропущен)»; the id when the rule is gone. */
 export function mockLabel(comment: string, names: Map<string, string>): string | null {
-  const m = /^mock:(\S+)/.exec(comment)
-  return m ? (names.get(m[1]!) ?? m[1]!) : null
+  const m = parseMockComment(comment)
+  return m ? `мок «${names.get(m.id) ?? m.id}»${m.skipped ? ' (json пропущен)' : ''}` : null
 }
 
 export type FlowBodies = { request?: Buffer | null; response?: Buffer | null }
@@ -107,11 +120,11 @@ function headerLines(headers: [string, string][] | undefined, masked: boolean): 
 export function renderFlow(f: MitmFlow, bodies: FlowBodies, o: RenderOpts): string {
   const req = f.request
   const lines: string[] = []
-  const url = req ? `${req.scheme}://${req.host}${req.path}` : '?'
+  const url = req ? `${req.scheme}://${hostOf(f)}${req.path}` : '?'
   lines.push(`${req?.method ?? '?'} ${o.masked ? maskUrl(url) : url}`)
   const status = f.response ? String(f.response.status_code) : f.error ? 'ошибка' : 'нет ответа'
   lines.push(`id ${f.id} · ${status} · ${clockOf(f)} · приложение ${appOf(f)}`)
-  if (o.mock) lines.push(`мок «${o.mock}»`)
+  if (o.mock) lines.push(o.mock)
   if (f.error) lines.push(`Ошибка: ${f.error.msg}`)
   lines.push('', '— Запрос —', ...headerLines(req?.headers, o.masked), '', bodyText('request', f, bodies.request, o.masked))
   if (f.response) {
