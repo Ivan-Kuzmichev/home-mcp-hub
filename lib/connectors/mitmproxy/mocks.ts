@@ -70,8 +70,20 @@ const ADDON_MISSING =
 // Last known reachability, so a down proxy is logged once rather than every minute.
 let reachable = true
 
+type SyncResult = 'in-sync' | 'pushed' | 'skipped'
+
+// Syncs run one at a time, each reading the rules inside the lock, so an older (cron) PUT can never
+// land after a newer (tool) one.
+let queue: Promise<unknown> = Promise.resolve()
+
 /** Push the desired rules if the proxy differs. Non-strict mode never throws (used by the cron job). */
-export async function syncMocks(opts: { strict?: boolean } = {}): Promise<'in-sync' | 'pushed' | 'skipped'> {
+export function syncMocks(opts: { strict?: boolean } = {}): Promise<SyncResult> {
+  const run = queue.then(() => syncOnce(opts))
+  queue = run.catch(() => undefined)
+  return run
+}
+
+async function syncOnce(opts: { strict?: boolean }): Promise<SyncResult> {
   const connector = getConnector('mitmproxy')
   const row = getConnectorRow('mitmproxy')
   if (!connector || !row) return 'skipped'

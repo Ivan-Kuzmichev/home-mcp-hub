@@ -125,6 +125,30 @@ describe('syncMocks', () => {
     expect(sent.rules.map((r) => r.name)).toEqual(['on'])
   })
 
+  it('runs one at a time so an older push never lands after a newer one', async () => {
+    let gets = 0
+    puts = []
+    mockFetch(async ({ method, body }) => {
+      if (method === 'GET') {
+        // The first (cron) read is slow, the second (tool) read is fast.
+        if (gets++ === 0) await new Promise((r) => setTimeout(r, 30))
+        return Response.json(options)
+      }
+      const update = JSON.parse(String(body)) as Record<string, unknown>
+      puts.push(update)
+      options = { ...options, hub_mocks: { value: update.hub_mocks } }
+      return new Response(null, { status: 200 })
+    })
+    options = { hub_mocks: { value: 'stale' } }
+    const cron = syncMocks()
+    await Promise.resolve()
+    saveMock(rule)
+    const tool = syncMocks({ strict: true })
+    await Promise.all([cron, tool])
+    const final = JSON.parse(String(options.hub_mocks!.value)) as { rules: unknown[] }
+    expect(final.rules).toHaveLength(1)
+  })
+
   it('throws on network errors only in strict mode', async () => {
     saveMock(rule)
     mockFetch(() => {
