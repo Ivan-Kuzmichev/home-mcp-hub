@@ -112,8 +112,10 @@ export const mockRuleSchema: z.ZodType<Omit<MockRule, 'id' | 'enabled'>> = z
     }
   })
 
-/** What the addon receives: enabled rules only, ordered by id so equal sets give equal JSON. */
+/**
+ * What the addon receives: enabled rules only, in the given order. The addon takes the first matching
+ * rule of each kind, so callers pass `listMocks()` (oldest first, then by id) — equal sets give equal JSON.
+ */
 export function payloadFor(rules: MockRule[]): string {
-  const enabled = rules.filter((r) => r.enabled).sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
-  return JSON.stringify({ rules: enabled })
+  return JSON.stringify({ rules: rules.filter((r) => r.enabled) })
 }

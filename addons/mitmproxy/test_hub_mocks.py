@@ -54,6 +54,15 @@ class MatchingTests(unittest.TestCase):
         self.assertIsNone(select_rule(rules, "GET", "other", "/x"))
         self.assertIsNone(select_rule([{"id": "bad"}], "GET", "a.example", "/x"))
 
+    def test_kind_filter(self):
+        rules = [
+            {"id": "p", "kind": "patch", "match": {"host": "a.example", "path": "/*"}},
+            {"id": "r", "kind": "replace", "match": {"host": "a.example", "path": "/x"}},
+        ]
+        self.assertEqual(select_rule(rules, "GET", "a.example", "/x", "replace")["id"], "r")
+        self.assertEqual(select_rule(rules, "GET", "a.example", "/x", "patch")["id"], "p")
+        self.assertIsNone(select_rule(rules, "GET", "a.example", "/y", "replace"))
+
 
 class PathTests(unittest.TestCase):
     def test_parse(self):
@@ -214,6 +223,30 @@ class HookTests(unittest.TestCase):
             self.run_hook(raw, "response", flow)
             self.run_hook(raw, "responseheaders", flow)
             self.assertEqual(flow.comment, "")
+
+    def test_overlapping_mixed_kinds_in_any_order(self):
+        patch = {"id": "p1", "kind": "patch", "match": {"host": "api.example.com", "path": "/v1/*"}, "status": 500}
+        replace = {"id": "r1", "kind": "replace", "match": MATCH, "status": 201, "body": "{}"}
+        for order in ((patch, replace), (replace, patch)):
+            raw = _rules(*order)
+            flow = _Flow()
+            self.run_hook(raw, "request", flow)
+            self.assertEqual(flow.response.status_code, 201)
+            self.assertEqual(flow.comment, "mock:r1")
+            # the replaced answer is not patched afterwards
+            self.run_hook(raw, "responseheaders", flow)
+            self.run_hook(raw, "response", flow)
+            self.assertEqual((flow.response.status_code, flow.response.stream, flow.comment), (201, True, "mock:r1"))
+            # a real answer on the same path gets the patch
+            flow = _Flow()
+            self.run_hook(raw, "request", flow)
+            self.assertEqual(flow.comment, "mock:r1")
+            other = _Flow(_Resp(200, b"{}"))
+            other.request.path = "/v1/other"
+            self.run_hook(raw, "request", other)
+            self.run_hook(raw, "responseheaders", other)
+            self.run_hook(raw, "response", other)
+            self.assertEqual((other.response.status_code, other.response.stream, other.comment), (500, False, "mock:p1"))
 
     def test_non_matching_flow_untouched(self):
         rule = {"id": "p1", "kind": "patch", "match": {"host": "other.example", "path": "/*"}, "status": 500}

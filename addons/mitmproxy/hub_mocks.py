@@ -56,10 +56,15 @@ def rule_matches(rule, method, host, path):
     return host_matches(host, match["host"]) and path_matches(path, match["path"])
 
 
-def select_rule(rules, method, host, path):
-    """First matching rule in list order; malformed rules are skipped."""
+def select_rule(rules, method, host, path, kind=None):
+    """First matching rule of `kind` (any kind if None) in list order; malformed rules are skipped.
+
+    The hub sends rules ordered by creation time, so overlapping rules resolve predictably.
+    """
     for rule in rules:
         try:
+            if kind is not None and rule.get("kind") != kind:
+                continue
             if rule_matches(rule, method, host, path):
                 return rule
         except (KeyError, TypeError, AttributeError):
@@ -158,16 +163,22 @@ class HubMocks:
             self._rules = parse_rules(raw)
         return self._rules
 
-    def _find(self, flow):
+    def _find(self, flow, kind):
         req = flow.request
-        return select_rule(self._current_rules(), req.method, req.pretty_host, req.path)
+        return select_rule(self._current_rules(), req.method, req.pretty_host, req.path, kind)
+
+    def _find_patch(self, flow):
+        # A flow already answered by a replace rule is never patched on top.
+        if str(getattr(flow, "comment", "") or "").startswith("mock:"):
+            return None
+        return self._find(flow, "patch")
 
     async def request(self, flow):
         from mitmproxy import http
 
         try:
-            rule = self._find(flow)
-            if rule is None or rule.get("kind") != "replace":
+            rule = self._find(flow, "replace")
+            if rule is None:
                 return
             delay = rule.get("delayMs")
             if delay:
@@ -185,16 +196,16 @@ class HubMocks:
         # stream_large_bodies would send big bodies before `response` runs; buffer them
         # when a patch rule matches (mocked API bodies are small).
         try:
-            rule = self._find(flow)
-            if rule is not None and rule.get("kind") == "patch" and flow.response is not None:
+            rule = self._find_patch(flow)
+            if rule is not None and flow.response is not None:
                 flow.response.stream = False
         except Exception as exc:
             logger.warning("hub_mocks: responseheaders failed: %s", exc)
 
     async def response(self, flow):
         try:
-            rule = self._find(flow)
-            if rule is None or rule.get("kind") != "patch" or flow.response is None:
+            rule = self._find_patch(flow)
+            if rule is None or flow.response is None:
                 return
             delay = rule.get("delayMs")
             if delay:

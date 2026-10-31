@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { eq } from 'drizzle-orm'
+import { asc, eq } from 'drizzle-orm'
 import { getDb } from '../../db'
 import { mitmMock } from '../../db/schema'
 import { logger } from '../../logger'
@@ -26,8 +26,9 @@ function getRow(id: string): Row {
   return row
 }
 
+/** Oldest first, then by id: the order the addon tries rules in. */
 export function listMocks(): MockRule[] {
-  return getDb().select().from(mitmMock).all().map(toRule)
+  return getDb().select().from(mitmMock).orderBy(asc(mitmMock.createdAt), asc(mitmMock.id)).all().map(toRule)
 }
 
 /** New rules start enabled; saving with an existing id replaces the rule and keeps its enabled flag. */

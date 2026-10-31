@@ -42,9 +42,9 @@ describe('mitmproxy mock rules', () => {
     expect(mockRuleSchema.safeParse({ ...base, body: '', delayMs: 30001 }).success).toBe(false)
     expect(mockRuleSchema.safeParse({ ...base, body: 'x'.repeat(1024 * 1024 + 1) }).success).toBe(false)
   })
-  it('sorts the payload by id', () => {
+  it('keeps the given order in the payload (listMocks orders by creation)', () => {
     const r = { name: 'n', enabled: true, kind: 'patch', match: { host: 'a.example', path: '/x' }, delayMs: 1 } as const
     const ids = JSON.parse(payloadFor([{ ...r, id: 'b' }, { ...r, id: 'a' }])).rules.map((x: MockRule) => x.id)
-    expect(ids).toEqual(['a', 'b'])
+    expect(ids).toEqual(['b', 'a'])
   })
 })

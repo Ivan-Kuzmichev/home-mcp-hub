@@ -52,6 +52,23 @@ describe('mock storage', () => {
   })
 })
 
+describe('rule order', () => {
+  it('lists and pushes rules by creation time, then id', async () => {
+    const at = (id: string, ms: number) => getDb().insert(mitmMock).values({
+      id, name: id, enabled: true, ruleJson: JSON.stringify({ match: rule.match, kind: 'replace', body: '' }),
+      createdAt: new Date(ms), updatedAt: new Date(ms),
+    }).run()
+    at('zzz', 1000)
+    at('bbb', 2000)
+    at('aaa', 2000)
+    at('mmm', 500)
+    expect(listMocks().map((r) => r.id)).toEqual(['mmm', 'zzz', 'aaa', 'bbb'])
+    await syncMocks()
+    const sent = JSON.parse((puts[0] as { hub_mocks: string }).hub_mocks) as { rules: { id: string }[] }
+    expect(sent.rules.map((r) => r.id)).toEqual(['mmm', 'zzz', 'aaa', 'bbb'])
+  })
+})
+
 describe('syncMocks', () => {
   it('pushes once, then is in sync', async () => {
     saveMock(rule)
