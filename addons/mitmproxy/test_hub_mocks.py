@@ -1,6 +1,13 @@
+import asyncio
+import json
+import sys
+import types
 import unittest
+from unittest import mock
 
 from hub_mocks import (
+    HubMocks,
+    parse_rules,
     apply_json_ops,
     host_matches,
     parse_path,
@@ -97,6 +104,124 @@ class JsonOpsTests(unittest.TestCase):
         doc = {"a": 1}
         self.assertTrue(apply_json_ops(doc, [{"path": "a..b", "value": 2}, {"nope": 1}]))
         self.assertEqual(doc, {"a": 1})
+
+
+class _Resp:
+    def __init__(self, status_code=200, content=b"", headers=None):
+        self.status_code = status_code
+        self.raw_content = content
+        self.headers = dict(headers or {})
+        self.stream = True
+
+    def get_text(self):
+        return None if self.raw_content is None else self.raw_content.decode("utf-8")
+
+    def set_text(self, text):
+        self.raw_content = text.encode("utf-8")
+
+
+class _Req:
+    method = "GET"
+    pretty_host = "api.example.com"
+    path = "/v1/profile?x=1"
+
+
+class _Flow:
+    def __init__(self, response=None):
+        self.request = _Req()
+        self.response = response
+        self.comment = ""
+
+
+def _stub_modules(raw):
+    ctx = types.SimpleNamespace(options=types.SimpleNamespace(hub_mocks=raw))
+    http = types.SimpleNamespace(
+        Response=types.SimpleNamespace(
+            make=staticmethod(lambda status=200, content=b"", headers=None: _Resp(status, content, headers))
+        )
+    )
+    pkg = types.ModuleType("mitmproxy")
+    pkg.ctx = ctx
+    pkg.http = http
+    return {"mitmproxy": pkg}
+
+
+def _rules(*rules):
+    return json.dumps({"rules": list(rules)})
+
+
+MATCH = {"host": "api.example.com", "path": "/v1/profile"}
+
+
+class HookTests(unittest.TestCase):
+    def run_hook(self, raw, hook, flow):
+        with mock.patch.dict(sys.modules, _stub_modules(raw)):
+            result = getattr(HubMocks(), hook)(flow)
+            if asyncio.iscoroutine(result):
+                asyncio.run(result)
+
+    def test_replace_uses_utf8_bytes(self):
+        rule = {"id": "r1", "kind": "replace", "match": MATCH, "status": 201, "body": "é « » Привет"}
+        flow = _Flow()
+        self.run_hook(_rules(rule), "request", flow)
+        self.assertEqual(flow.response.status_code, 201)
+        self.assertEqual(flow.response.raw_content, "é « » Привет".encode("utf-8"))
+        self.assertEqual(flow.comment, "mock:r1")
+
+    def test_replace_headers_and_empty_body(self):
+        rule = {"id": "r1", "kind": "replace", "match": MATCH, "headers": {"X-A": "1"}, "body": ""}
+        flow = _Flow()
+        self.run_hook(_rules(rule), "request", flow)
+        self.assertEqual(flow.response.raw_content, b"")
+        self.assertEqual(flow.response.headers, {"X-A": "1"})
+
+    def test_patch_modifies_json_status_headers(self):
+        rule = {
+            "id": "p1", "kind": "patch", "match": MATCH, "status": 203,
+            "setHeaders": {"X-Mock": "1"}, "removeHeaders": ["Content-Length"],
+            "json": [{"path": "user.isPremium", "value": True}],
+        }
+        resp = _Resp(200, b'{"user": {"isPremium": false}}', {"Content-Length": "30"})
+        flow = _Flow(resp)
+        self.run_hook(_rules(rule), "response", flow)
+        self.assertEqual(resp.status_code, 203)
+        self.assertEqual(resp.headers, {"X-Mock": "1"})
+        self.assertEqual(json.loads(resp.raw_content), {"user": {"isPremium": True}})
+        self.assertEqual(flow.comment, "mock:p1")
+
+    def test_patch_non_json_or_missing_body(self):
+        rule = {"id": "p1", "kind": "patch", "match": MATCH, "json": [{"path": "a", "value": 1}]}
+        for content in (b"<html>", None):
+            flow = _Flow(_Resp(200, content))
+            self.run_hook(_rules(rule), "response", flow)
+            self.assertEqual(flow.comment, "mock:p1 (json пропущен)")
+
+    def test_responseheaders_disables_streaming_for_patch_only(self):
+        patch = {"id": "p1", "kind": "patch", "match": MATCH, "status": 200}
+        flow = _Flow(_Resp())
+        self.run_hook(_rules(patch), "responseheaders", flow)
+        self.assertFalse(flow.response.stream)
+        replace = {"id": "r1", "kind": "replace", "match": MATCH, "body": ""}
+        flow = _Flow(_Resp())
+        self.run_hook(_rules(replace), "responseheaders", flow)
+        self.assertTrue(flow.response.stream)
+
+    def test_bad_option_values_give_no_rules(self):
+        for raw in ("", "not json", '{"rules": 5}', "[]", '{"rules": [1, "x"]}'):
+            self.assertEqual(parse_rules(raw), [])
+            flow = _Flow(_Resp())
+            self.run_hook(raw, "request", flow)
+            self.run_hook(raw, "response", flow)
+            self.run_hook(raw, "responseheaders", flow)
+            self.assertEqual(flow.comment, "")
+
+    def test_non_matching_flow_untouched(self):
+        rule = {"id": "p1", "kind": "patch", "match": {"host": "other.example", "path": "/*"}, "status": 500}
+        resp = _Resp(200, b"{}")
+        flow = _Flow(resp)
+        for hook in ("request", "responseheaders", "response"):
+            self.run_hook(_rules(rule), hook, flow)
+        self.assertEqual((resp.status_code, resp.stream, flow.comment), (200, True, ""))
 
 
 if __name__ == "__main__":

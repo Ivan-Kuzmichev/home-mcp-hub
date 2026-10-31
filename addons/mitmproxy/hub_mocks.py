@@ -175,11 +175,21 @@ class HubMocks:
             body = rule.get("body")
             headers = {str(k): str(v) for k, v in (rule.get("headers") or {}).items()}
             flow.response = http.Response.make(
-                rule.get("status", 200), body if body is not None else "", headers
+                rule.get("status", 200), (body or "").encode("utf-8"), headers
             )
             flow.comment = f"mock:{rule.get('id')}"
         except Exception as exc:  # a broken rule must never break the proxy
             logger.warning("hub_mocks: replace failed: %s", exc)
+
+    def responseheaders(self, flow):
+        # stream_large_bodies would send big bodies before `response` runs; buffer them
+        # when a patch rule matches (mocked API bodies are small).
+        try:
+            rule = self._find(flow)
+            if rule is not None and rule.get("kind") == "patch" and flow.response is not None:
+                flow.response.stream = False
+        except Exception as exc:
+            logger.warning("hub_mocks: responseheaders failed: %s", exc)
 
     async def response(self, flow):
         try:
@@ -199,10 +209,12 @@ class HubMocks:
             comment = f"mock:{rule.get('id')}"
             ops = rule.get("json")
             if ops:
-                try:
-                    doc = json.loads(resp.get_text())
-                except (ValueError, TypeError):
-                    doc = None
+                doc = None
+                if resp.raw_content is not None:  # None: body was streamed, not available
+                    try:
+                        doc = json.loads(resp.get_text())
+                    except (ValueError, TypeError):
+                        pass
                 if doc is not None and apply_json_ops(doc, ops):
                     resp.set_text(json.dumps(doc, ensure_ascii=False))
                 else:
