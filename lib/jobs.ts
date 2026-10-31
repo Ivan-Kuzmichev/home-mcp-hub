@@ -1,5 +1,6 @@
 import cron from 'node-cron'
 import { checkAllConnectors } from './connectors/health'
+import { syncMocks } from './connectors/mitmproxy/mocks'
 import { purgeOldChanges } from './connectors/paperless/logic'
 import { purgeExpiredLinks } from './download-links'
 import { purgeJournal } from './journal'
@@ -49,6 +50,8 @@ export function startJobs(): void {
   if (globalForJobs.__hubJobs) return
   globalForJobs.__hubJobs = true
   cron.schedule('*/2 * * * *', safe('health', runHealthCheck), { name: 'health', noOverlap: true })
+  // Keep the mock rules in mitmproxy equal to the desired state (also after a proxy restart).
+  cron.schedule('* * * * *', safe('mitm-mocks', () => syncMocks()), { name: 'mitm-mocks', noOverlap: true })
   cron.schedule('7 * * * *', safe('cleanup', runCleanup), { name: 'cleanup', noOverlap: true })
   // Cron scripts written by the assistant and approved by the admin.
   safe('scripts', syncSchedules)()

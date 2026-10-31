@@ -154,3 +154,13 @@ export const scriptState = sqliteTable('script_state', {
   key: text('key').notNull(),
   valueJson: text('value_json').notNull(),
 }, (t) => [uniqueIndex('script_state_pk').on(t.scriptId, t.key)])
+
+/** Mock rules for the mitmproxy connector; the rule body (match, kind, fields) is JSON. */
+export const mitmMock = sqliteTable('mitm_mock', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  enabled: integer('enabled', { mode: 'boolean' }).notNull().default(true),
+  ruleJson: text('rule_json').notNull(),
+  createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+  updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+})
