@@ -14,6 +14,7 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit --incremental false",
     "test": "vitest run",
+    "test:addon": "python3 -m unittest discover -s addons/mitmproxy",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "auth:schema": "auth generate --config scripts/auth-schema.ts --adapter drizzle --dialect sqlite --output lib/db/auth-schema.ts --yes",
