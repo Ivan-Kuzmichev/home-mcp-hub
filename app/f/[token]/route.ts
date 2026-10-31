@@ -65,10 +65,10 @@ const SANDBOX = { 'Content-Security-Policy': 'sandbox', 'Cache-Control': 'privat
 
 /** One-time links ignore Range: the second request of a video player would find the link used. */
 async function fileResponse(shown: string, range: string | null): Promise<Response> {
-  const config = activeConfig('files') as { folders: string } | null
+  const config = activeConfig('files') as { folders: string; deny?: string } | null
   if (!config) return simplePage(503, 'Файлы выключены', 'Коннектор «Файлы» отключён в админке хаба.')
   try {
-    const file = await openFile(config.folders, shown, range)
+    const file = await openFile(config.folders, shown, range, config.deny)
     if (!range) logger.info({ connector: 'files' }, 'file downloaded')
     return new Response(file.body, { status: file.status, headers: { ...PUBLIC_HEADERS, ...file.headers, ...SANDBOX } })
   } catch (e) {

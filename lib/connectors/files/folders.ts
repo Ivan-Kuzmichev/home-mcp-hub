@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import { ToolError } from '../types'
+import { deniedSegment, denyMatcher, parseDeny, type DenyMatcher } from './deny'
 
 // ---------------------------------------------------------------------------
 // Folders from the connector settings: one per line, «name | /path | mode».
@@ -28,7 +29,8 @@ const ACCESS_ALIASES: Record<string, Access> = {
   полный: 'full',
 }
 
-export type Folder = { name: string; root: string; access: Access }
+/** `deny`: closed names from the connector settings (see deny.ts), checked on every path. */
+export type Folder = { name: string; root: string; access: Access; deny?: DenyMatcher }
 
 const NAME = /^[\p{L}\p{N}][\p{L}\p{N}._ -]*$/u
 
@@ -60,10 +62,11 @@ export function parseFolders(text: string): { ok: true; folders: Folder[] } | { 
   return { ok: true, folders }
 }
 
-export function folderList(text: string): Folder[] {
+export function folderList(text: string, denyText?: string): Folder[] {
   const r = parseFolders(text)
   if (!r.ok) throw new ToolError(`Список папок в настройках коннектора с ошибкой: ${r.error}`)
-  return r.folders
+  const deny = denyMatcher(parseDeny(denyText))
+  return r.folders.map((f) => ({ ...f, deny }))
 }
 
 export function allows(f: Folder, need: Access): boolean {
@@ -130,6 +133,8 @@ async function realOrAncestor(abs: string): Promise<string> {
 /** Resolve and check that symlinks do not lead outside the folder. */
 export async function resolveTarget(folders: Folder[], input: string, need: Access): Promise<Target> {
   const t = target(folders, input)
+  const closed = deniedSegment(t.shown.split('/').slice(1), t.folder.deny)
+  if (closed) throw new ToolError(`«${t.shown}» закрыт: «${closed}» в списке запрещённых файлов коннектора «Файлы»`)
   requireAccess(t.folder, need)
   let rootReal: string
   try {

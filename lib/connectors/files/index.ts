@@ -6,6 +6,7 @@ import { z } from 'zod'
 import { createLink, LINK_KIND_TEXT, linkUrl } from '../../download-links'
 import { formatDate, formatSize, plural, truncate } from '../format'
 import { defineConnector, field, toolFor, ToolError } from '../types'
+import { DEFAULT_DENY } from './deny'
 import { ACCESS_LABEL, allows, code, folderList, fsCall, fsMessage, parseFolders, resolveTarget, type Folder, type Target } from './folders'
 
 const configSchema = z
@@ -16,6 +17,14 @@ const configSchema = z
       placeholder: 'Документы | /files/docs | edit\nФото | /files/photos | read\n/files/inbox | add',
       help: 'По строке на папку: «имя | путь в контейнере | режим». Режимы: read — только чтение, add — ещё создание новых файлов и папок, edit — ещё правка, переименование и перенос, full — ещё удаление. Путь — как в volumes docker-compose; без имени берётся имя папки, без режима — read.',
       section: 'connection',
+    }),
+    deny: field(z.string().default(DEFAULT_DENY), {
+      label: 'Запрещённые файлы',
+      widget: 'textarea',
+      mono: true,
+      placeholder: DEFAULT_DENY,
+      help: 'По маске на строку: * — любые символы, ? — один. Маска проверяется на каждом имени в пути, «.ssh» закрывает всю папку. Такие файлы не читаются, не ищутся, не копируются и не отдаются ссылкой; в списке видно только имя. Пусто — без запретов',
+      section: 'defaults',
     }),
   })
   .superRefine((c, ctx) => {
@@ -50,7 +59,7 @@ function rememberCreated(abs: string) {
   created.set(abs, now)
 }
 
-const folders = (c: Config) => folderList(c.folders)
+const folders = (c: Config) => folderList(c.folders, c.deny)
 const pathInput = z.string().min(1).describe('Путь вида «папка/подпапка/файл»; первая часть — имя папки из files_list')
 
 async function statOrNull(abs: string) {
@@ -198,6 +207,10 @@ export const files = defineConnector<Config>({
               continue
             }
             const p = path.join(dir, d.name)
+            if (t.folder.deny?.(d.name)) {
+              lines.push(`${prefix}• ${d.name}${d.isDirectory() ? '/' : ''} — закрыт`)
+              continue
+            }
             const s = await fs.lstat(p).catch(() => null)
             lines.push(entryLine(d.name, d.isDirectory(), s?.size ?? 0, s?.mtime ?? new Date(0), prefix))
             if (d.isDirectory() && level < args.depth) await walk(p, level + 1, `${prefix}   `)
@@ -326,6 +339,8 @@ export const files = defineConnector<Config>({
             for (const d of entries.sort(byDirThenName)) {
               if (hits.length >= args.limit) break
               visited++
+              // Closed names are neither found nor searched inside.
+              if (start.folder.deny?.(d.name)) continue
               const abs = path.join(dir, d.name)
               const rel = `${shown}/${d.name}`
               // Symlinked folders are not followed: they may lead outside the mount.

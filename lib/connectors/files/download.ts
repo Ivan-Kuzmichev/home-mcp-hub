@@ -59,8 +59,8 @@ export type FileResponse = { status: number; body: ReadableStream | null; header
  * A file for /f/{token}. The stored path is resolved against the current folder settings,
  * so a folder removed or a path that now escapes it stops working. Throws ToolError.
  */
-export async function openFile(folders: string, shown: string, range: string | null): Promise<FileResponse> {
-  const t = await resolveTarget(folderList(folders), shown, 'read')
+export async function openFile(folders: string, shown: string, range: string | null, deny?: string): Promise<FileResponse> {
+  const t = await resolveTarget(folderList(folders, deny), shown, 'read')
   const st = await fs.stat(t.abs)
   if (!st.isFile()) throw Object.assign(new Error('not a file'), { code: 'EISDIR' })
   const type = TYPES[path.extname(t.abs).toLowerCase()] ?? 'application/octet-stream'

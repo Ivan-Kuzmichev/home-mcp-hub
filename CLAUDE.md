@@ -71,7 +71,8 @@ Self-hosted MCP-хаб для домашних сервисов (Jackett, qBitto
 - **Файлы:** папки — строки `имя | /путь | режим` в textarea (`lib/connectors/files/folders.ts`), режимы `read` < `add` < `edit` < `full`.
   Каждый путь проходит `resolveTarget`: без `..`, realpath (символьные ссылки) внутри папки, проверка режима. Модели — только `папка/…`,
   без путей контейнера. В `add` дописывать можно лишь файлы, созданные хабом за последний час (запись частями).
-  Ссылки `/f/{token}` общие с Paperless (`lib/download-links.ts`, колонка `path`); у одноразовых ссылок `Range` игнорируется.
+  Запрещённые файлы (`lib/connectors/files/deny.ts`, поле `deny`) проверяются в `resolveTarget` на каждом сегменте пути, плюс отдельно
+  в `files_list` и `files_search`, которые обходят каталог сами. Ссылки `/f/{token}` общие с Paperless (`lib/download-links.ts`, колонка `path`); у одноразовых ссылок `Range` игнорируется.
 - **Прототипы** отдаются с `Content-Security-Policy: sandbox allow-scripts allow-forms allow-modals allow-popups allow-downloads` (без `allow-same-origin`)
   и `X-Robots-Tag: noindex`. Пин — argon2-хэш, cookie на 24 ч, 5 попыток за 10 мин. В отдаваемый HTML (и превью админки)
   вставляется скрипт `window.hub.db` (`lib/prototypes/data.ts`): JSON до 50 МБ в `prototypes/{id}/data.json`, API `/p/{slug}/db`

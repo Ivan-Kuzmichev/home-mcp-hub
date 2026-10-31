@@ -27,7 +27,7 @@ beforeEach(() => {
   fs.writeFileSync(path.join(dir('add'), 'old.txt'), 'old')
   fs.writeFileSync(path.join(dir('edit'), 'a.txt'), 'one two two')
   fs.writeFileSync(path.join(dir('full'), 'x.txt'), 'x')
-  fs.writeFileSync(path.join(outside, 'secret.txt'), 'top secret')
+  fs.writeFileSync(path.join(outside, 'private.txt'), 'top secret')
 })
 
 const cfg = configOf(files, {
@@ -99,9 +99,9 @@ describe('reading', () => {
   it('never leaves the folder: .., symlinks, unknown folders', async () => {
     await expect(run('files_read', { path: 'Архив/../edit/a.txt' })).rejects.toThrow('«..»')
     fs.symlinkSync(outside, path.join(dir('ro'), 'escape'))
-    fs.symlinkSync(path.join(outside, 'secret.txt'), path.join(dir('ro'), 'secret.txt'))
-    await expect(run('files_read', { path: 'Архив/escape/secret.txt' })).rejects.toThrow('за пределы')
-    await expect(run('files_read', { path: 'Архив/secret.txt' })).rejects.toThrow('за пределы')
+    fs.symlinkSync(path.join(outside, 'private.txt'), path.join(dir('ro'), 'private.txt'))
+    await expect(run('files_read', { path: 'Архив/escape/private.txt' })).rejects.toThrow('за пределы')
+    await expect(run('files_read', { path: 'Архив/private.txt' })).rejects.toThrow('за пределы')
     await expect(run('files_read', { path: 'etc/passwd' })).rejects.toThrow('Нет папки «etc»')
   })
 })
@@ -146,5 +146,49 @@ describe('access modes', () => {
     expect(await run('files_delete', { path: 'full/x.txt', confirm: true })).toContain('Удалено: файл full/x.txt')
     expect(fs.existsSync(path.join(dir('full'), 'x.txt'))).toBe(false)
     await expect(run('files_delete', { path: 'full', confirm: true })).rejects.toThrow('Саму папку')
+  })
+})
+
+describe('closed files', () => {
+  const seed = () => {
+    fs.writeFileSync(path.join(dir('edit'), '.env'), 'PASSWORD=hunter2')
+    fs.writeFileSync(path.join(dir('edit'), 'mitmproxy-ca.pem'), '-----BEGIN PRIVATE KEY-----')
+    fs.mkdirSync(path.join(dir('edit'), '.ssh'))
+    fs.writeFileSync(path.join(dir('edit'), '.ssh', 'config'), 'Host nas')
+  }
+
+  it('default masks block read, link, copy, move, write and folders like .ssh', async () => {
+    seed()
+    await expect(run('files_read', { path: 'edit/.env' })).rejects.toThrow('«edit/.env» закрыт: «.env» в списке запрещённых файлов')
+    await expect(run('files_read', { path: 'edit/MITMPROXY-CA.PEM' })).rejects.toThrow('закрыт')
+    await expect(run('files_read', { path: 'edit/.ssh/config' })).rejects.toThrow('«.ssh»')
+    await expect(run('files_link', { path: 'edit/.env' })).rejects.toThrow('закрыт')
+    await expect(run('files_copy', { from: 'edit/.env', to: 'edit/notes.txt' })).rejects.toThrow('закрыт')
+    await expect(run('files_move', { from: 'edit/a.txt', to: 'edit/.env.local' })).rejects.toThrow('закрыт')
+    await expect(run('files_write', { path: 'edit/server.key', content: 'x' })).rejects.toThrow('закрыт')
+    expect(fs.existsSync(path.join(dir('edit'), 'notes.txt'))).toBe(false)
+  })
+
+  it('lists closed names without details and never finds them', async () => {
+    seed()
+    const list = await run('files_list', { path: 'edit', depth: 2 })
+    expect(list).toContain('• .env — закрыт')
+    expect(list).toContain('• .ssh/ — закрыт')
+    expect(list).not.toContain('config')
+    expect(await run('files_search', { path: 'edit', text: 'hunter2' })).toBe('Ничего не нашлось.')
+    expect(await run('files_search', { path: 'edit', name: '*.pem' })).toBe('Ничего не нашлось.')
+  })
+
+  it('an empty list turns the protection off', async () => {
+    seed()
+    const open = configOf(files, { folders: `${dir('edit')} | edit`, deny: '' })
+    expect(await runTool(files, 'files_read', open, { path: 'edit/.env' })).toContain('PASSWORD=hunter2')
+  })
+
+  it('download links check the list too', async () => {
+    seed()
+    const { openFile } = await import('@/lib/connectors/files/download')
+    await expect(openFile(`${dir('edit')} | edit`, 'edit/.env', null, '.env')).rejects.toThrow('закрыт')
+    await expect(openFile(`${dir('edit')} | edit`, 'edit/a.txt', null, '.env')).resolves.toMatchObject({ status: 200 })
   })
 })
