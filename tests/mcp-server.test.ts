@@ -132,4 +132,18 @@ describe('tools hidden by connector settings', () => {
     expect(rw).not.toContain('browser_import_cookies')
     expect(buildInstructions()).toContain('Не вводи пароли')
   })
+
+  it('mock tools of mitmproxy appear only with «Разрешить моки»', async () => {
+    const names = async () => (await rpc<{ tools: { name: string }[] }>('tools/list')).tools.map((t) => t.name)
+    saveConfig(getConnector('mitmproxy')!, { baseUrl: 'http://mitmweb:8081', allowMocks: false })
+    const ro = await names()
+    expect(ro).toContain('mitm_hosts')
+    expect(ro).not.toContain('mitm_mock_patch')
+    expect(ro).not.toContain('mitm_clear')
+
+    saveConfig(getConnector('mitmproxy')!, { baseUrl: 'http://mitmweb:8081', allowMocks: true })
+    const rw = await names()
+    expect(rw).toContain('mitm_mock_patch')
+    expect(rw).toContain('mitm_mock_delete')
+  })
 })

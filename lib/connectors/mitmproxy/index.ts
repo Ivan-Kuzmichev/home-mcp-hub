@@ -3,6 +3,7 @@ import { maskUrl } from '../../redact'
 import { formatSize, plural } from '../format'
 import { defineConnector, field, secret, toolFor, ToolError } from '../types'
 import { MitmClient } from './client'
+import { ruleMatches, mockRuleSchema, type JsonOp, type MockRule } from './rules'
 import { clockOf, filterFlows, isHttp, hostSummary, mockLabel, renderFlow, sizeOf } from './flows'
 
 const configSchema = z.object({
@@ -57,8 +58,72 @@ const client = (c: Config) => new MitmClient({ baseUrl: c.baseUrl, password: c.p
 export const MOCK_TOOLS = ['mitm_mock_replace', 'mitm_mock_patch', 'mitm_mocks', 'mitm_mock_toggle', 'mitm_mock_delete', 'mitm_clear']
 
 // Loaded lazily: mocks.ts imports the registry, which imports this file.
+const store = () => import('./mocks')
 async function mocks() {
-  return (await import('./mocks')).listMocks()
+  return (await store()).listMocks()
+}
+
+const methodInput = z.string().regex(/^[A-Za-z]+$/).optional().describe('HTTP-метод, например GET; пусто — любой')
+const headersInput = z.record(z.string(), z.string())
+const ruleTarget = {
+  id: z.string().min(1).optional().describe('id существующего правила — заменит его; пусто — новое'),
+  name: z.string().describe('Короткое имя правила, например «Премиум»'),
+  host: z.string().describe('Хост: api.example.com или *.example.com'),
+  path: z.string().describe('Путь со звёздочкой, например /v1/profile или /v1/*; query не учитывается'),
+  method: methodInput,
+  delayMs: z.number().int().min(0).max(30000).optional().describe('Задержка ответа, мс'),
+}
+
+function hasContentType(headers: Record<string, string>): boolean {
+  return Object.keys(headers).some((k) => k.toLowerCase() === 'content-type')
+}
+
+function isJson(text: string): boolean {
+  try {
+    JSON.parse(text)
+    return true
+  } catch {
+    return false
+  }
+}
+
+function describeChange(r: Omit<MockRule, 'id' | 'enabled'>): string {
+  const parts: string[] = []
+  for (const op of r.json ?? []) parts.push(`${op.path} = ${JSON.stringify(op.value)}`.slice(0, 80))
+  if (r.kind === 'replace') parts.push(`ответ ${r.status ?? 200}, тело ${(r.body ?? '').length} симв.`)
+  else if (r.status !== undefined) parts.push(`статус ${r.status}`)
+  if (r.setHeaders) parts.push(`заголовки: ${Object.keys(r.setHeaders).join(', ')}`)
+  if (r.removeHeaders) parts.push(`без заголовков: ${r.removeHeaders.join(', ')}`)
+  if (r.delayMs) parts.push(`задержка ${r.delayMs} мс`)
+  return parts.join(', ')
+}
+
+const targetOf = (r: { match: MockRule['match'] }) => `${r.match.method ? `${r.match.method.toUpperCase()} ` : ''}${r.match.host}${r.match.path}`
+
+/** Validate, store, push to the proxy. A failed push keeps the rule and says what to fix. */
+async function applyRule(config: Config, input: Omit<MockRule, 'id' | 'enabled'> & { id?: string }): Promise<string> {
+  const { id, ...body } = input
+  const parsed = mockRuleSchema.safeParse(body)
+  if (!parsed.success) throw new ToolError(parsed.error.issues.map((i) => i.message).join('; '))
+  const m = await store()
+  const rule = m.saveMock({ ...parsed.data, ...(id ? { id } : {}) })
+  const failure = await pushMocks(m)
+  if (failure) return `Мок «${rule.name}» (${rule.id}) сохранён, но пока не работает: ${failure}`
+  const hits = (await client(config).flows().catch(() => [])).filter(
+    (f) => isHttp(f) && ruleMatches(rule, { method: f.request!.method, host: f.request!.host, path: f.request!.path }),
+  ).length
+  const state = rule.enabled ? 'включён' : 'сохранён, но выключен'
+  return `Мок «${rule.name}» ${state}: ${targetOf(rule)} → ${describeChange(rule)}. Под шаблон уже попадало ${hits} ${plural(hits, ['запрос', 'запроса', 'запросов'])} из перехваченных. id: ${rule.id}`
+}
+
+async function pushMocks(m: Awaited<ReturnType<typeof store>>): Promise<string | null> {
+  try {
+    await m.syncMocks({ strict: true })
+    return null
+  } catch (e) {
+    if (e instanceof ToolError) return e.message
+    throw e
+  }
 }
 
 const minutesInput = z.number().int().min(1).max(1440).optional().describe('За сколько последних минут, по умолчанию 15')
@@ -201,6 +266,130 @@ export const mitmproxy = defineConnector<Config>({
         const [request, response] = await Promise.all([fetchBody('request'), fetchBody('response')])
         const names = new Map((await mocks()).map((m) => [m.id, m.name]))
         return renderFlow(f, { request, response }, { masked: !config.showTokens, limit: config.textLimit, offset, mock: mockLabel(f.comment ?? '', names) })
+      },
+    }),
+
+    tool({
+      name: 'mitm_mock_replace',
+      title: 'Подменить ответ целиком',
+      description:
+        'Мок: на подходящие запросы (всех устройств) mitmproxy сам отвечает заданным status, headers и body, настоящий сервер не вызывается. ' +
+        'Без Content-Type в headers: тело-JSON получит application/json, иначе text/plain. id существующего правила — заменит его.',
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+      inputSchema: z.object({
+        ...ruleTarget,
+        status: z.number().int().min(100).max(599).optional().describe('Код ответа, по умолчанию 200'),
+        headers: headersInput.optional().describe('Заголовки ответа'),
+        body: z.string().describe('Тело ответа (можно пустое)'),
+      }),
+      async run({ id, name, host, path, method, status = 200, headers, body, delayMs }, { config }) {
+        const h = headers ?? {}
+        if (!hasContentType(h)) h['Content-Type'] = isJson(body) ? 'application/json' : 'text/plain; charset=utf-8'
+        return applyRule(config, { id, name, match: { host, path, ...(method ? { method } : {}) }, kind: 'replace', status, headers: h, body, delayMs })
+      },
+    }),
+
+    tool({
+      name: 'mitm_mock_patch',
+      title: 'Поправить настоящий ответ',
+      description:
+        'Мок: запрос уходит на настоящий сервер, а в ответе правятся поля. json — список {path, value}, путь вида user.items[0].price или items[*].price; ' +
+        'setHeaders / removeHeaders — заголовки; status — другой код; delayMs — задержка. Нужно хотя бы одно изменение. id существующего правила — заменит его.',
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+      inputSchema: z.object({
+        ...ruleTarget,
+        status: z.number().int().min(100).max(599).optional().describe('Подставить другой код ответа'),
+        setHeaders: headersInput.optional().describe('Заголовки, которые выставить'),
+        removeHeaders: z.array(z.string()).optional().describe('Заголовки, которые убрать'),
+        json: z.array(z.object({ path: z.string(), value: z.unknown() })).optional().describe('Правки JSON-тела: путь и новое значение'),
+      }),
+      async run({ id, name, host, path, method, status, setHeaders, removeHeaders, json, delayMs }, { config }) {
+        return applyRule(config, {
+          id,
+          name,
+          match: { host, path, ...(method ? { method } : {}) },
+          kind: 'patch',
+          status,
+          setHeaders,
+          removeHeaders,
+          json: json as JsonOp[] | undefined,
+          delayMs,
+        })
+      },
+    }),
+
+    tool({
+      name: 'mitm_mocks',
+      title: 'Список моков',
+      description: 'Все правила моков: id, имя, включено ли, шаблон и сколько раз сработало среди перехваченных запросов.',
+      annotations: { readOnlyHint: true, openWorldHint: false },
+      inputSchema: z.object({}),
+      async run(_args, { config }) {
+        const rules = await mocks()
+        if (rules.length === 0) return 'Моков нет.'
+        const hits = new Map<string, number>()
+        for (const f of await client(config).flows().catch(() => [])) {
+          const id = /^mock:(\S+)/.exec(f.comment ?? '')?.[1]
+          if (id && isHttp(f)) hits.set(id, (hits.get(id) ?? 0) + 1)
+        }
+        return rules
+          .map((r) => `• ${r.id} «${r.name}» — ${r.enabled ? 'вкл' : 'выкл'} · ${r.kind} ${targetOf(r)} · сработал ${hits.get(r.id) ?? 0} раз`)
+          .join('\n')
+      },
+    }),
+
+    tool({
+      name: 'mitm_mock_toggle',
+      title: 'Включить или выключить мок',
+      description: 'Включить или выключить правило по id, не удаляя его.',
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+      inputSchema: z.object({ id: z.string().min(1), enabled: z.boolean() }),
+      async run({ id, enabled }) {
+        const m = await store()
+        const rule = m.setMockEnabled(id, enabled)
+        const failure = await pushMocks(m)
+        const state = enabled ? 'включён' : 'выключен'
+        return failure ? `Мок «${rule.name}» ${state}, но пока не применён: ${failure}` : `Мок «${rule.name}» ${state}.`
+      },
+    }),
+
+    tool({
+      name: 'mitm_mock_delete',
+      title: 'Удалить мок',
+      description: 'Удалить правило по id или все сразу (all: true). Все сразу — необратимо: сначала переспроси пользователя и передай confirm: true.',
+      annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
+      inputSchema: z.object({
+        id: z.string().min(1).optional().describe('id правила'),
+        all: z.boolean().optional().describe('true — удалить все правила'),
+        confirm: z.boolean().optional().describe('true — пользователь подтвердил удаление всех'),
+      }),
+      async run({ id, all, confirm }) {
+        const m = await store()
+        if (all) {
+          const n = m.listMocks().length
+          if (confirm !== true) return `Не удалено. Переспроси пользователя и повтори с confirm: true.\nБудет удалено правил: ${n}`
+          m.deleteAllMocks()
+          const failure = await pushMocks(m)
+          return `Удалено правил: ${n}.${failure ? ` Не применено в прокси: ${failure}` : ''}`
+        }
+        if (!id) throw new ToolError('Укажи id правила или all: true')
+        const rule = m.listMocks().find((r) => r.id === id)
+        if (!rule) throw new ToolError(`Правила ${id} нет`)
+        m.deleteMock(id)
+        const failure = await pushMocks(m)
+        return `Мок «${rule.name}» удалён.${failure ? ` Не применено в прокси: ${failure}` : ''}`
+      },
+    }),
+
+    tool({
+      name: 'mitm_clear',
+      title: 'Очистить перехваченное',
+      description: 'Стереть список перехваченных запросов в памяти mitmproxy. Правила моков остаются.',
+      annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
+      inputSchema: z.object({}),
+      async run(_args, { config }) {
+        await client(config).clear()
+        return 'Список перехваченных запросов очищен.'
       },
     }),
   ],

@@ -1,5 +1,6 @@
 import { and, count, desc, eq, gte, inArray, isNotNull, like, lt, or, sql, type SQL } from 'drizzle-orm'
 import { scrub } from './connectors/http'
+import { isSensitiveName, maskHeaders } from './redact'
 import { getDb } from './db'
 import { toolCall } from './db/schema'
 import { logger } from './logger'
@@ -33,16 +34,45 @@ function describeValue(key: string, value: unknown): string | null {
   return String(value)
 }
 
-/** Arguments that may hold what the user typed into a web form (a password): only the length is kept. */
-const TYPED_ARGS: Record<string, string[]> = { browser_act: ['text'] }
+/** Per-tool argument sanitizers: return the text to journal for one argument, or undefined to use the default. */
+type Sanitizer = (value: unknown) => string | undefined
+
+const lengthOnly: Sanitizer = (v) => (typeof v === 'string' ? `${v.length} симв.` : undefined)
+
+const headerValues: Sanitizer = (v) => {
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return undefined
+  const pairs = Object.entries(v as Record<string, unknown>).map(([k, x]): [string, string] => [k, String(x)])
+  return maskHeaders(pairs).map(([k, x]) => `${k}: ${x}`).join('; ')
+}
+
+const jsonOps: Sanitizer = (v) => {
+  if (!Array.isArray(v)) return undefined
+  return v
+    .map((op) => {
+      const { path, value } = (op ?? {}) as { path?: unknown; value?: unknown }
+      const p = String(path)
+      const last = p.split('.').pop()!.replace(/\[.*$/, '')
+      return `${p} = ${isSensitiveName(last) ? '***' : JSON.stringify(value)}`
+    })
+    .join('; ')
+}
+
+const MOCK_ARGS: Record<string, Sanitizer> = { body: lengthOnly, headers: headerValues, setHeaders: headerValues, json: jsonOps }
+
+const SANITIZERS: Record<string, Record<string, Sanitizer>> = {
+  // What the user typed into a web form (a password): only the length is kept.
+  browser_act: { text: lengthOnly },
+  mitm_mock_replace: MOCK_ARGS,
+  mitm_mock_patch: MOCK_ARGS,
+}
 
 /** «query: «Severance», type: tv, limit: 10» — secrets dropped, HTML replaced by its size. */
 export function redactArgs(args: unknown, tool?: string): string {
   if (!args || typeof args !== 'object' || Array.isArray(args)) return '—'
-  const typed = (tool && TYPED_ARGS[tool]) || []
+  const sanitizers = (tool && SANITIZERS[tool]) || {}
   const parts = Object.entries(args as Record<string, unknown>)
     .map(([k, v]) => {
-      const d = typed.includes(k) && typeof v === 'string' ? `${v.length} симв.` : describeValue(k, v)
+      const d = sanitizers[k]?.(v) ?? describeValue(k, v)
       return d === null ? null : `${k}: ${d}`
     })
     .filter((p): p is string => !!p)

@@ -7,6 +7,7 @@
 | Transmission | `transmission_status`, `transmission_add`, `transmission_stop`, `transmission_start`, `transmission_delete`, `transmission_files`, `transmission_info` | ⚠️ только автотесты |
 | Paperless (ngx) | `paperless_search`, `paperless_review`, `paperless_get`, `paperless_thumbnail`, `paperless_taxonomy`, `paperless_update`, `paperless_undo`, `paperless_link` | ⚠️ только автотесты |
 | TorrServe | `torrserve_add`, `torrserve_list`, `torrserve_links`, `torrserve_remove` | ✅ |
+| mitmproxy | `mitm_status`, `mitm_hosts`, `mitm_flows`, `mitm_flow`; с моками — `mitm_mock_replace`, `mitm_mock_patch`, `mitm_mocks`, `mitm_mock_toggle`, `mitm_mock_delete`, `mitm_clear` | ⚠️ только автотесты |
 | camofox (браузер) | `browser_open`, `browser_snapshot`, `browser_links`, `browser_screenshot`, `browser_extract`, `browser_tabs`, `browser_youtube_transcript`; с действиями — `browser_act`, `browser_close`, `browser_import_cookies` | ⚠️ только автотесты |
 | Файлы | `files_list`, `files_read`, `files_search`, `files_write`, `files_edit`, `files_mkdir`, `files_move`, `files_copy`, `files_delete`, `files_link` | ⚠️ только автотесты |
 | Скрипты (встроенный) | `cron_create`, `cron_update`, `tool_create`, `tool_update`, `cron_enable`, `cron_run`, `cron_logs`, `cron_list`, `cron_get`, `cron_delete`, `script_secrets`, свои `my_*` | ✅ |
@@ -100,6 +101,38 @@ camofox сам ходит по редиректам, поэтому после �
 только его длина.
 
 Интеграционные тесты против живого camofox: `CAMOFOX_URL=http://localhost:9377 CAMOFOX_ACCESS_KEY=… pnpm vitest run tests/browser-live.test.ts`.
+
+## mitmproxy
+
+Коннектор к [mitmproxy](https://docs.mitmproxy.org/) (контейнер `mitmweb`, веб-интерфейс `http://mitmweb:8081`). Устройства ходят
+через прокси, а ассистент видит перехваченный трафик и при желании подменяет ответы сервисов.
+
+**Просмотр** (всегда): `mitm_status`, `mitm_hosts` (сводка по доменам за N минут: число запросов, объём, коды; фильтр по приложению
+из User-Agent), `mitm_flows` (список запросов с короткими id), `mitm_flow` (заголовки и тела запроса и ответа, длинное — частями через
+`offset`). Хаб ходит в mitmweb с `Authorization: Bearer <пароль>` (пароль — `MITM_WEB_PASSWORD`, пусто — без пароля). Токены, пароли,
+cookie и JWT в заголовках, URL и телах маскируются; переключатель «Показывать токены» отключает маскировку. mitmproxy стримит тела больше
+1 МБ (`stream_large_bodies=1m`) — для них показывается «тело не сохранено (больше 1 МБ, стрим)».
+
+**Моки** — переключатель «Разрешить моки» (по умолчанию выключен; пока он выключен, инструменты моков и `mitm_clear` ассистент не видит):
+- `mitm_mock_replace` — ответ целиком (код, заголовки, тело; без `Content-Type` JSON-тело получит `application/json`, остальное — `text/plain`);
+  настоящий сервер не вызывается;
+- `mitm_mock_patch` — запрос уходит на сервер, а в настоящем ответе правятся поля JSON (`user.items[0].price`, `items[*].price`),
+  заголовки, код или добавляется задержка;
+- `mitm_mocks` (список и сколько раз сработал каждый), `mitm_mock_toggle`, `mitm_mock_delete` (все сразу — только с `confirm: true`),
+  `mitm_clear` (очистить перехваченное).
+
+Шаблон: хост точный или `*.example.com`, путь со `*`, метод необязателен; query не учитывается. Правила действуют на всех устройствах
+за прокси и хранятся в хабе (SQLite). Это только данные: аддон ничего не исполняет.
+
+**Подключение аддона.** Моки применяет аддон `addons/mitmproxy/hub_mocks.py`:
+1. скопируйте его в `Docker/mitmproxy/scripts/` на NAS;
+2. добавьте `-s /scripts/hub_mocks.py` в `command` mitmweb и выполните `docker compose up -d`;
+3. хабу нужен доступ к контейнеру: `fw.allow.containers: "mitmweb"` (dockfw);
+4. в админке задайте пароль, включите «Разрешить моки» и нажмите «Проверить» — там видно, подключён ли аддон.
+
+Хаб передаёт правила в опцию `hub_mocks` через `PUT /options` и сверяет её раз в минуту (после перезапуска mitmproxy правила вернутся
+сами). Если выключить коннектор или «Разрешить моки», в прокси уходит пустой список и все моки перестают действовать, а в хабе остаются.
+Если аддон не подключён, правило сохраняется, а ответ ассистента объясняет, что поправить.
 
 ## Прототипы
 

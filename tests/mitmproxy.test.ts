@@ -4,7 +4,9 @@ import { configOf, mockFetch, runTool, setupTempDb } from './helpers'
 const cleanup = await setupTempDb()
 const { mitmproxy } = await import('@/lib/connectors/mitmproxy')
 const { appOf } = await import('@/lib/connectors/mitmproxy/flows')
-const { saveMock } = await import('@/lib/connectors/mitmproxy/mocks')
+const { saveMock, listMocks } = await import('@/lib/connectors/mitmproxy/mocks')
+const { saveConfig, setConnectorEnabled } = await import('@/lib/connectors/store')
+const { getConnector } = await import('@/lib/connectors/registry')
 const { getDb } = await import('@/lib/db')
 const { mitmMock } = await import('@/lib/db/schema')
 
@@ -185,5 +187,102 @@ describe('mitm_status, test, hiddenTools', () => {
     const missing = await mitmproxy.test(cfg())
     expect(missing.details).toContain('аддон hub_mocks: не подключён')
     expect(missing.details).toContain('в памяти 0 запросов')
+  })
+})
+
+describe('mock tools', () => {
+  let options: Record<string, { value: unknown }>
+  let puts: Record<string, unknown>[]
+  let cleared: number
+
+  beforeEach(() => {
+    options = { hub_mocks: { value: '' } }
+    puts = []
+    cleared = 0
+    saveConfig(getConnector('mitmproxy')!, { baseUrl: 'http://mitmweb:8081', allowMocks: true })
+    setConnectorEnabled('mitmproxy', true)
+    mockFetch(({ method, url, body }) => {
+      if (url.pathname === '/flows') return Response.json(FLOWS)
+      if (url.pathname === '/clear') {
+        cleared++
+        return new Response(null, { status: 200 })
+      }
+      if (url.pathname === '/options' && method === 'GET') return Response.json(options)
+      if (url.pathname === '/options') {
+        const update = JSON.parse(String(body)) as Record<string, unknown>
+        puts.push(update)
+        options = { hub_mocks: { value: update.hub_mocks } }
+        return new Response(null, { status: 200 })
+      }
+      return new Response('nope', { status: 500 })
+    })
+  })
+
+  const mockCfg = () => cfg({ allowMocks: true })
+  const patchArgs = { name: 'Карты', host: 'api.bank.example', path: '/v1/cards', method: 'GET', json: [{ path: 'isPremium', value: true }] }
+
+  it('patch is stored, pushed to the proxy and counts earlier matches', async () => {
+    const out = await runTool(mitmproxy, 'mitm_mock_patch', mockCfg(), patchArgs)
+    expect(out).toBe('Мок «Карты» включён: GET api.bank.example/v1/cards → isPremium = true. Под шаблон уже попадало 1 запрос из перехваченных. id: ' + listMocks()[0]!.id)
+    expect(listMocks()).toHaveLength(1)
+    expect(puts).toHaveLength(1)
+    expect(String(puts[0]!.hub_mocks)).toContain('"isPremium"')
+  })
+
+  it('an existing id updates the rule instead of duplicating it', async () => {
+    await runTool(mitmproxy, 'mitm_mock_patch', mockCfg(), { ...patchArgs, id: 'm1' })
+    await runTool(mitmproxy, 'mitm_mock_patch', mockCfg(), { ...patchArgs, id: 'm1', name: 'Новое имя' })
+    expect(listMocks().map((m) => [m.id, m.name])).toEqual([['m1', 'Новое имя']])
+  })
+
+  it('replace picks a Content-Type from the body', async () => {
+    await runTool(mitmproxy, 'mitm_mock_replace', mockCfg(), { name: 'j', host: 'a.example', path: '/*', body: '{"a":1}' })
+    await runTool(mitmproxy, 'mitm_mock_replace', mockCfg(), { name: 't', host: 'b.example', path: '/*', body: 'down', status: 503 })
+    await runTool(mitmproxy, 'mitm_mock_replace', mockCfg(), { name: 'h', host: 'c.example', path: '/*', body: '{}', headers: { 'content-type': 'text/html' } })
+    const by = Object.fromEntries(listMocks().map((m) => [m.name, m]))
+    expect(by.j!.headers).toEqual({ 'Content-Type': 'application/json' })
+    expect(by.t).toMatchObject({ status: 503, headers: { 'Content-Type': 'text/plain; charset=utf-8' } })
+    expect(by.h!.headers).toEqual({ 'content-type': 'text/html' })
+  })
+
+  it('rejects invalid rules without saving', async () => {
+    await expect(runTool(mitmproxy, 'mitm_mock_patch', mockCfg(), { name: 'x', host: 'a.example', path: '/*' })).rejects.toThrow(/хотя бы одно/)
+    expect(listMocks()).toEqual([])
+  })
+
+  it('toggle off pushes a payload without the rule', async () => {
+    await runTool(mitmproxy, 'mitm_mock_patch', mockCfg(), { ...patchArgs, id: 'm1' })
+    const out = await runTool(mitmproxy, 'mitm_mock_toggle', mockCfg(), { id: 'm1', enabled: false })
+    expect(out).toContain('выключен')
+    expect(JSON.parse(String(puts.at(-1)!.hub_mocks))).toEqual({ rules: [] })
+  })
+
+  it('lists rules with hit counts from flow comments', async () => {
+    saveMock({ id: 'm1', name: 'Премиум', match: { host: 'api.mocked.example', path: '/*', method: 'GET' }, kind: 'patch', json: [{ path: 'a', value: 1 }] })
+    expect(await runTool(mitmproxy, 'mitm_mocks', mockCfg())).toBe('• m1 «Премиум» — вкл · patch GET api.mocked.example/* · сработал 1 раз')
+  })
+
+  it('delete all needs confirm; a single id does not', async () => {
+    await runTool(mitmproxy, 'mitm_mock_patch', mockCfg(), { ...patchArgs, id: 'm1' })
+    await runTool(mitmproxy, 'mitm_mock_patch', mockCfg(), { ...patchArgs, id: 'm2' })
+    expect(await runTool(mitmproxy, 'mitm_mock_delete', mockCfg(), { all: true })).toContain('Не удалено')
+    expect(listMocks()).toHaveLength(2)
+    expect(await runTool(mitmproxy, 'mitm_mock_delete', mockCfg(), { id: 'm1' })).toContain('удалён')
+    expect(listMocks().map((m) => m.id)).toEqual(['m2'])
+    expect(await runTool(mitmproxy, 'mitm_mock_delete', mockCfg(), { all: true, confirm: true })).toContain('1')
+    expect(listMocks()).toEqual([])
+  })
+
+  it('keeps the rule when the addon is missing and says so', async () => {
+    options = {}
+    const out = await runTool(mitmproxy, 'mitm_mock_patch', mockCfg(), patchArgs)
+    expect(listMocks()).toHaveLength(1)
+    expect(out).toContain('сохранён')
+    expect(out).toContain('hub_mocks.py')
+  })
+
+  it('mitm_clear clears the captured flows', async () => {
+    expect(await runTool(mitmproxy, 'mitm_clear', mockCfg())).toContain('очищен')
+    expect(cleared).toBe(1)
   })
 })

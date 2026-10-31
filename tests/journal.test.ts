@@ -31,6 +31,22 @@ describe('argument redaction', () => {
     expect(journal.redactArgs({})).toBe('—')
     expect(journal.redactArgs({ tab: 't1', action: 'type', text: 'hunter2' }, 'browser_act')).toBe('tab: t1, action: type, text: 7 симв.')
   })
+
+  it('keeps mock bodies, header values and sensitive json values out of the journal', () => {
+    const replace = journal.redactArgs({ name: 'x', body: '{"token":"t"}', headers: { Authorization: 'Bearer a', 'X-Id': '5' } }, 'mitm_mock_replace')
+    expect(replace).not.toContain('Bearer a')
+    expect(replace).not.toContain('"t"')
+    expect(replace).toContain('body: 13 симв.')
+    expect(replace).toContain('X-Id: 5')
+    const patch = journal.redactArgs(
+      { name: 'p', setHeaders: { 'Set-Cookie': 'sid=abc' }, json: [{ path: 'user.accessToken', value: 'secretvalue' }, { path: 'isPremium', value: true }] },
+      'mitm_mock_patch',
+    )
+    expect(patch).not.toContain('secretvalue')
+    expect(patch).not.toContain('sid=abc')
+    expect(patch).toContain('isPremium = true')
+    expect(patch).toContain('user.accessToken = ***')
+  })
 })
 
 describe('journal queries', () => {

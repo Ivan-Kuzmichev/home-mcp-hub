@@ -1,6 +1,6 @@
 # Home MCP Hub
 
-Self-hosted MCP-хаб для домашних сервисов (Jackett, qBittorrent, Transmission, TorrServe, Paperless, файлы, браузер camofox, HTML-прототипы, скрипты) с админкой.
+Self-hosted MCP-хаб для домашних сервисов (Jackett, qBittorrent, Transmission, TorrServe, Paperless, файлы, браузер camofox, перехват трафика mitmproxy, HTML-прототипы, скрипты) с админкой.
 Один Docker-контейнер за реверс-прокси, подключается к Claude и ChatGPT как custom connector.
 
 ## Главное правило
@@ -61,6 +61,12 @@ Self-hosted MCP-хаб для домашних сервисов (Jackett, qBitto
   скриншот — бинарный PNG, субтитры YouTube — плагин `POST /youtube/transcript` (берёт первый язык). Адрес проверяет `checkUrl`
   (`lib/connectors/browser/url.ts`) до открытия, итоговый — после (редиректы). Действия скрываются через `hiddenTools(config)`
   коннектора — общий механизм: `enabledTools()` в `lib/connectors/active.ts` учитывает и выключенные админом, и скрытые настройками.
+- **mitmproxy (id `mitmproxy`):** REST mitmweb `http://mitmweb:8081`, `Authorization: Bearer <пароль>`; для всех не-GET нужен XSRF — cookie
+  `_mitmproxy_xsrf` и такой же заголовок `X-XSRFToken` (любой hex, лишь бы совпадали); неверный пароль — `403`. Потоки: `/flows`, тела — `/flows/{id}/{request|response}/content.data`;
+  не-HTTP потоки (dns/tcp) пропускать, `contentLength: null` = тело не сохранено (стрим). Моки — строки `mitm_mock`, аддон `addons/mitmproxy/hub_mocks.py` читает опцию
+  `hub_mocks` (JSON с включёнными правилами, `PUT /options`); `syncMocks` сверяет её раз в минуту (cron) и после каждого изменения, при выключенном коннекторе/`allowMocks`
+  шлёт пустой список. Моки только декларативные (host/path/method + replace или patch json/заголовков), никакого кода; семантика сопоставления общая для `rules.ts` и аддона.
+  Инструменты моков скрыты через `hiddenTools`, `mocks.ts` импортируется динамически (цикл с реестром). Попадания — потоки с `comment` `mock:<id>`.
 - **Файлы:** папки — строки `имя | /путь | режим` в textarea (`lib/connectors/files/folders.ts`), режимы `read` < `add` < `edit` < `full`.
   Каждый путь проходит `resolveTarget`: без `..`, realpath (символьные ссылки) внутри папки, проверка режима. Модели — только `папка/…`,
   без путей контейнера. В `add` дописывать можно лишь файлы, созданные хабом за последний час (запись частями).
