@@ -113,9 +113,11 @@ export const mockRuleSchema: z.ZodType<Omit<MockRule, 'id' | 'enabled'>> = z
   })
 
 /**
- * What the addon receives: enabled rules only, in the given order. The addon takes the first matching
- * rule of each kind, so callers pass `listMocks()` (oldest first, then by id) — equal sets give equal JSON.
+ * What the addon receives: every rule with its `enabled` flag (the addon skips disabled ones and lists
+ * them in `hub.mocks`), in the given order. The addon takes the first matching rule of each kind, so
+ * callers pass `listMocks()` (oldest first, then by id) — equal sets give equal JSON.
+ * Not allowed (connector or «Разрешить моки» off) — no rules, and the addon refuses its commands.
  */
-export function payloadFor(rules: MockRule[]): string {
-  return JSON.stringify({ rules: rules.filter((r) => r.enabled) })
+export function payloadFor(rules: MockRule[], allowed: boolean): string {
+  return JSON.stringify({ allowed, rules: allowed ? rules : [] })
 }

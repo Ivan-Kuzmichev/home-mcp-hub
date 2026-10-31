@@ -246,7 +246,7 @@ describe('mock tools', () => {
       if (url.pathname === '/options') {
         const update = JSON.parse(String(body)) as Record<string, unknown>
         puts.push(update)
-        options = { hub_mocks: { value: update.hub_mocks } }
+        options = { ...options, hub_mocks: { value: update.hub_mocks } }
         return new Response(null, { status: 200 })
       }
       return new Response('nope', { status: 500 })
@@ -322,7 +322,9 @@ describe('mock tools', () => {
     await runTool(mitmproxy, 'mitm_mock_patch', mockCfg(), patchArgs)
     const out = await runTool(mitmproxy, 'mitm_mock_toggle', mockCfg(), { id: listMocks()[0]!.id, enabled: false })
     expect(out).toContain('выключен')
-    expect(JSON.parse(String(puts.at(-1)!.hub_mocks))).toEqual({ rules: [] })
+    const sent = JSON.parse(String(puts.at(-1)!.hub_mocks)) as { allowed: boolean; rules: { enabled: boolean }[] }
+    expect(sent.allowed).toBe(true)
+    expect(sent.rules.map((r) => r.enabled)).toEqual([false])
   })
 
   it('lists rules with hit counts from flow comments', async () => {
@@ -330,6 +332,23 @@ describe('mock tools', () => {
     expect(await runTool(mitmproxy, 'mitm_mocks', mockCfg())).toBe('• m1 «Премиум» — вкл · patch GET api.mocked.example/* · сработал 2 раза, из них json пропущен 1')
     FLOWS.splice(FLOWS.findIndex((f) => f.id === 'ip000000-0001'), 1)
     expect(await runTool(mitmproxy, 'mitm_mocks', mockCfg())).toBe('• m1 «Премиум» — вкл · patch GET api.mocked.example/* · сработал 1 раз')
+  })
+
+  it('mitm_mocks shows changes made in mitmweb without waiting for the cron', async () => {
+    seedMock('m1', { name: 'Премиум', match: { host: 'api.mocked.example', path: '/*', method: 'GET' }, kind: 'patch', json: [{ path: 'a', value: 1 }] })
+    seedMock('m2', { ...rulePatch })
+    options = { ...options, hub_mocks_edits: { value: JSON.stringify({ epoch: 'x', edits: [{ seq: 1, op: 'disable', id: 'm1' }, { seq: 2, op: 'delete', id: 'm2' }] }) } }
+    const out = await runTool(mitmproxy, 'mitm_mocks', mockCfg())
+    expect(out).toContain('• m1 «Премиум» — выкл')
+    expect(out).not.toContain('m2')
+  })
+
+  it('mitm_mocks still lists when the proxy cannot be synced', async () => {
+    seedMock('m1', { ...rulePatch })
+    options = {}
+    const out = await runTool(mitmproxy, 'mitm_mocks', mockCfg())
+    expect(out).toContain('• m1 «Карты»')
+    expect(out).toContain('hub_mocks.py')
   })
 
   it('delete all needs confirm; a single id does not', async () => {

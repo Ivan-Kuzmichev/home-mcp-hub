@@ -64,8 +64,9 @@ Self-hosted MCP-хаб для домашних сервисов (Jackett, qBitto
 - **mitmproxy (id `mitmproxy`):** REST mitmweb `http://mitmweb:8081`, `Authorization: Bearer <пароль>`; для всех не-GET нужен XSRF — cookie
   `_mitmproxy_xsrf` и такой же заголовок `X-XSRFToken` (любой hex, лишь бы совпадали); неверный пароль — `403`. Потоки: `/flows`, тела — `/flows/{id}/{request|response}/content.data`;
   не-HTTP потоки (dns/tcp) пропускать, `contentLength: null` = тело не сохранено (стрим). Моки — строки `mitm_mock`, аддон `addons/mitmproxy/hub_mocks.py` читает опцию
-  `hub_mocks` (JSON с включёнными правилами, `PUT /options`); `syncMocks` сверяет её раз в минуту (cron) и после каждого изменения, при выключенном коннекторе/`allowMocks`
-  шлёт пустой список. Моки только декларативные (host/path/method + replace или patch json/заголовков), никакого кода; семантика сопоставления общая для `rules.ts` и аддона.
+  `hub_mocks` (`{allowed, rules}` — все правила с флагом `enabled`, `PUT /options`); `syncMocks` сверяет её раз в минуту (cron) и после каждого изменения, при выключенном коннекторе/`allowMocks`
+  шлёт `{"allowed":false,"rules":[]}`. Команды mitmweb (`hub.mocks`, `hub.mock.on|off|delete`) пишут журнал в опцию `hub_mocks_edits` (`{epoch, edits[{seq,op,id}]}`,
+  последние 100); `syncMocks` применяет правки новее курсора `{epoch, lastSeq}` (setting `mitm_edits_cursor`; новая epoch — все), журнал не очищает. Моки только декларативные (host/path/method + replace или patch json/заголовков), никакого кода; семантика сопоставления общая для `rules.ts` и аддона.
   Инструменты моков скрыты через `hiddenTools`, `mocks.ts` импортируется динамически (цикл с реестром). Попадания — потоки с `comment` `mock:<id>`.
 - **Файлы:** папки — строки `имя | /путь | режим` в textarea (`lib/connectors/files/folders.ts`), режимы `read` < `add` < `edit` < `full`.
   Каждый путь проходит `resolveTarget`: без `..`, realpath (символьные ссылки) внутри папки, проверка режима. Модели — только `папка/…`,

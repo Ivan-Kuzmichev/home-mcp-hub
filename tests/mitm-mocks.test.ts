@@ -7,6 +7,7 @@ const { getConnector } = await import('@/lib/connectors/registry')
 const { getDb } = await import('@/lib/db')
 const { mitmMock, connector: connectorTable } = await import('@/lib/db/schema')
 const { eq } = await import('drizzle-orm')
+const { getSetting } = await import('@/lib/settings')
 const { AddonMissingError, deleteAllMocks, deleteMock, listMocks, saveMock, setMockEnabled, syncMocks } = await import('@/lib/connectors/mitmproxy/mocks')
 
 afterAll(cleanup)
@@ -95,14 +96,14 @@ describe('syncMocks', () => {
     await syncMocks()
     setConnectorEnabled('mitmproxy', false)
     expect(await syncMocks()).toBe('pushed')
-    expect(puts[1]).toEqual({ hub_mocks: '{"rules":[]}' })
+    expect(puts[1]).toEqual({ hub_mocks: '{"allowed":false,"rules":[]}' })
   })
 
   it('pushes an empty list when allowMocks is off', async () => {
     saveMock(rule)
     saveConfig(conn, { baseUrl: 'http://mitmweb:8081', allowMocks: false })
     expect(await syncMocks()).toBe('pushed')
-    expect(puts[0]).toEqual({ hub_mocks: '{"rules":[]}' })
+    expect(puts[0]).toEqual({ hub_mocks: '{"allowed":false,"rules":[]}' })
   })
 
   it('reports a missing addon', async () => {
@@ -116,13 +117,15 @@ describe('syncMocks', () => {
     expect(await syncMocks()).toBe('skipped')
   })
 
-  it('leaves disabled rules out of the payload', async () => {
+  it('sends disabled rules too, flagged, with allowed', async () => {
     const a = saveMock(rule)
     saveMock({ ...rule, name: 'on' })
     setMockEnabled(a.id, false)
     await syncMocks()
-    const sent = JSON.parse((puts[0] as { hub_mocks: string }).hub_mocks) as { rules: { name: string }[] }
-    expect(sent.rules.map((r) => r.name)).toEqual(['on'])
+    const sent = JSON.parse((puts[0] as { hub_mocks: string }).hub_mocks) as { allowed: boolean; rules: { name: string; enabled: boolean }[] }
+    expect(sent.allowed).toBe(true)
+    // Same createdAt: the order between the two depends on the random ids.
+    expect(Object.fromEntries(sent.rules.map((r) => [r.name, r.enabled]))).toEqual({ x: false, on: true })
   })
 
   it('runs one at a time so an older push never lands after a newer one', async () => {
@@ -156,5 +159,69 @@ describe('syncMocks', () => {
     })
     expect(await syncMocks()).toBe('skipped')
     await expect(syncMocks({ strict: true })).rejects.toThrow()
+  })
+})
+
+describe('edits from mitmweb', () => {
+  type Edit = { seq: number; op: 'enable' | 'disable' | 'delete'; id: string }
+  const journal = (epoch: string, edits: Edit[]) => {
+    options = { ...options, hub_mocks_edits: { value: JSON.stringify({ epoch, edits }) } }
+  }
+  const enabledOf = () => Object.fromEntries(listMocks().map((r) => [r.id, r.enabled]))
+
+  it('applies each edit once and pushes the result', async () => {
+    const a = saveMock(rule)
+    const b = saveMock({ ...rule, name: 'b' })
+    journal('e1', [{ seq: 1, op: 'disable', id: a.id }, { seq: 2, op: 'delete', id: b.id }])
+    expect(await syncMocks()).toBe('pushed')
+    expect(enabledOf()).toEqual({ [a.id]: false })
+    expect(JSON.parse(getSetting('mitm_edits_cursor')!)).toEqual({ epoch: 'e1', lastSeq: 2 })
+    // The same journal again changes nothing: a rule enabled since then stays enabled.
+    setMockEnabled(a.id, true)
+    await syncMocks()
+    expect(enabledOf()).toEqual({ [a.id]: true })
+    // Only newer edits apply.
+    journal('e1', [{ seq: 1, op: 'disable', id: a.id }, { seq: 2, op: 'delete', id: b.id }, { seq: 3, op: 'disable', id: a.id }])
+    await syncMocks()
+    expect(enabledOf()).toEqual({ [a.id]: false })
+  })
+
+  it('applies all edits again under a new epoch', async () => {
+    const a = saveMock(rule)
+    journal('e1', [{ seq: 1, op: 'disable', id: a.id }])
+    await syncMocks()
+    setMockEnabled(a.id, true)
+    journal('e2', [{ seq: 1, op: 'disable', id: a.id }])
+    await syncMocks()
+    expect(enabledOf()).toEqual({ [a.id]: false })
+    expect(JSON.parse(getSetting('mitm_edits_cursor')!)).toEqual({ epoch: 'e2', lastSeq: 1 })
+  })
+
+  it('ignores unknown ids and broken journals', async () => {
+    const a = saveMock(rule)
+    journal('e3', [{ seq: 1, op: 'enable', id: 'nope' }, { seq: 2, op: 'delete', id: 'gone' }, { seq: 3, op: 'disable', id: a.id }])
+    expect(await syncMocks({ strict: true })).toBe('pushed')
+    expect(enabledOf()).toEqual({ [a.id]: false })
+    options = { ...options, hub_mocks_edits: { value: 'garbage' } }
+    expect(await syncMocks({ strict: true })).toBe('in-sync')
+  })
+
+  it('ignores edits but advances the cursor while allowMocks is off', async () => {
+    const a = saveMock(rule)
+    saveConfig(conn, { baseUrl: 'http://mitmweb:8081', allowMocks: false })
+    journal('e4', [{ seq: 1, op: 'delete', id: a.id }])
+    await syncMocks()
+    expect(enabledOf()).toEqual({ [a.id]: true })
+    expect(JSON.parse(getSetting('mitm_edits_cursor')!)).toEqual({ epoch: 'e4', lastSeq: 1 })
+    saveConfig(conn, { baseUrl: 'http://mitmweb:8081', allowMocks: true })
+    await syncMocks()
+    expect(enabledOf()).toEqual({ [a.id]: true })
+  })
+
+  it('never clears the addon journal', async () => {
+    const a = saveMock(rule)
+    journal('e5', [{ seq: 1, op: 'disable', id: a.id }])
+    await syncMocks()
+    expect(puts.every((p) => !('hub_mocks_edits' in (p as object)))).toBe(true)
   })
 })

@@ -3,6 +3,7 @@ import { asc, eq } from 'drizzle-orm'
 import { getDb } from '../../db'
 import { mitmMock } from '../../db/schema'
 import { logger } from '../../logger'
+import { getSetting, setSetting } from '../../settings'
 import { getConnector } from '../registry'
 import { getConnectorRow, readConfig } from '../store'
 import { ToolError } from '../types'
@@ -67,6 +68,63 @@ export function deleteAllMocks(): number {
 const ADDON_MISSING =
   'В mitmproxy не подключён аддон hub_mocks.py: положи его в Docker/mitmproxy/scripts/ и добавь `-s /scripts/hub_mocks.py` в command'
 
+type Edit = { seq: number; op: 'enable' | 'disable' | 'delete'; id: string }
+type Cursor = { epoch: string; lastSeq: number }
+
+const CURSOR_KEY = 'mitm_edits_cursor'
+
+function parseJournal(raw: unknown): { epoch: string; edits: Edit[] } | null {
+  if (typeof raw !== 'string' || !raw) return null
+  try {
+    const data = JSON.parse(raw) as { epoch?: unknown; edits?: unknown }
+    if (typeof data.epoch !== 'string' || !Array.isArray(data.edits)) return null
+    const edits = data.edits.filter(
+      (e): e is Edit =>
+        typeof e === 'object' && e !== null &&
+        typeof (e as Edit).seq === 'number' && typeof (e as Edit).id === 'string' &&
+        ['enable', 'disable', 'delete'].includes((e as Edit).op),
+    )
+    return { epoch: data.epoch, edits }
+  } catch {
+    return null
+  }
+}
+
+function readCursor(): Cursor | null {
+  try {
+    const c = JSON.parse(getSetting(CURSOR_KEY) ?? 'null') as Cursor | null
+    return c && typeof c.epoch === 'string' && typeof c.lastSeq === 'number' ? c : null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Apply changes made with the mitmweb commands (option `hub_mocks_edits`) that the hub has not seen:
+ * newer than the stored cursor for the same addon epoch, all of them for a new epoch. The journal
+ * is never cleared on the proxy; the cursor alone keeps edits from applying twice. While mocks are
+ * not allowed the edits are skipped, but the cursor still moves so they never apply later.
+ */
+function applyEdits(raw: unknown, allowed: boolean): void {
+  const journal = parseJournal(raw)
+  if (!journal || journal.edits.length === 0) return
+  const cursor = readCursor()
+  const after = cursor?.epoch === journal.epoch ? cursor.lastSeq : 0
+  const fresh = journal.edits.filter((e) => e.seq > after).sort((a, b) => a.seq - b.seq)
+  if (fresh.length === 0) return
+  if (allowed) {
+    for (const e of fresh) {
+      try {
+        if (e.op === 'delete') deleteMock(e.id)
+        else setMockEnabled(e.id, e.op === 'enable')
+      } catch (err) {
+        if (!(err instanceof ToolError)) throw err // unknown id: deleted in the hub meanwhile
+      }
+    }
+  }
+  setSetting(CURSOR_KEY, JSON.stringify({ epoch: journal.epoch, lastSeq: fresh.at(-1)!.seq }))
+}
+
 // Last known reachability, so a down proxy is logged once rather than every minute.
 let reachable = true
 
@@ -76,7 +134,7 @@ type SyncResult = 'in-sync' | 'pushed' | 'skipped'
 // land after a newer (tool) one.
 let queue: Promise<unknown> = Promise.resolve()
 
-/** Push the desired rules if the proxy differs. Non-strict mode never throws (used by the cron job). */
+/** Apply edits made in mitmweb, then push the desired rules if the proxy differs. Non-strict mode never throws (used by the cron job). */
 export function syncMocks(opts: { strict?: boolean } = {}): Promise<SyncResult> {
   const run = queue.then(() => syncOnce(opts))
   queue = run.catch(() => undefined)
@@ -91,13 +149,15 @@ async function syncOnce(opts: { strict?: boolean }): Promise<SyncResult> {
   if (!parsed.ok) return 'skipped'
   const config = parsed.config as { baseUrl: string; password?: string; timeoutSec: number; allowMocks: boolean }
 
-  const desired = row.enabled && config.allowMocks ? payloadFor(listMocks()) : payloadFor([])
+  const allowed = row.enabled && config.allowMocks
   const client = new MitmClient({ baseUrl: config.baseUrl, password: config.password, timeoutSec: config.timeoutSec })
   try {
     const options = await client.options()
     reachable = true
     const current = options.hub_mocks
     if (!current) throw new AddonMissingError(ADDON_MISSING)
+    applyEdits(options.hub_mocks_edits?.value, allowed)
+    const desired = payloadFor(allowed ? listMocks() : [], allowed)
     if (current.value === desired) return 'in-sync'
     await client.setOptions({ hub_mocks: desired })
     return 'pushed'

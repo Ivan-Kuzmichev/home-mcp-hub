@@ -29,7 +29,13 @@ describe('mitmproxy mock rules', () => {
     expect(ruleMatches(r, { method: 'get', host: 'A.example:443', path: '/x?y=1' })).toBe(true)
     expect(mockRuleSchema.safeParse({ ...r, json: [{ path: 'a..b', value: 1 }] }).success).toBe(false)
     expect(mockRuleSchema.safeParse({ name: 'n', kind: 'patch', match: { host: 'a.example', path: '/x' } }).success).toBe(false)
-    expect(JSON.parse(payloadFor([{ ...r, id: 'b' }, { ...r, enabled: false }])).rules.map((x: MockRule) => x.id)).toEqual(['b'])
+  })
+  it('sends all rules with their enabled flag, or nothing when not allowed', () => {
+    const r = { name: 'n', enabled: true, kind: 'patch', match: { host: 'a.example', path: '/x' }, delayMs: 1 } as const
+    const sent = JSON.parse(payloadFor([{ ...r, id: 'b' }, { ...r, id: 'c', enabled: false }], true)) as { allowed: boolean; rules: MockRule[] }
+    expect(sent.allowed).toBe(true)
+    expect(sent.rules.map((x) => [x.id, x.enabled])).toEqual([['b', true], ['c', false]])
+    expect(payloadFor([{ ...r, id: 'b' }], false)).toBe('{"allowed":false,"rules":[]}')
   })
   it('validates replace rules and match shape', () => {
     const base = { name: 'n', kind: 'replace', match: { host: 'a.example', path: '/x' } }
@@ -44,7 +50,7 @@ describe('mitmproxy mock rules', () => {
   })
   it('keeps the given order in the payload (listMocks orders by creation)', () => {
     const r = { name: 'n', enabled: true, kind: 'patch', match: { host: 'a.example', path: '/x' }, delayMs: 1 } as const
-    const ids = JSON.parse(payloadFor([{ ...r, id: 'b' }, { ...r, id: 'a' }])).rules.map((x: MockRule) => x.id)
+    const ids = JSON.parse(payloadFor([{ ...r, id: 'b' }, { ...r, id: 'a' }], true)).rules.map((x: MockRule) => x.id)
     expect(ids).toEqual(['b', 'a'])
   })
 })

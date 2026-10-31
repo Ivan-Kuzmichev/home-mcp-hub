@@ -325,8 +325,12 @@ export const mitmproxy = defineConnector<Config>({
       annotations: { readOnlyHint: true, openWorldHint: false },
       inputSchema: z.object({}),
       async run(_args, { config }) {
-        const rules = await mocks()
-        if (rules.length === 0) return 'Моков нет.'
+        const m = await store()
+        // Picks up changes made with the mitmweb commands right away.
+        const failure = await pushMocks(m)
+        const note = failure ? `\nНе синхронизировано с прокси: ${failure}` : ''
+        const rules = m.listMocks()
+        if (rules.length === 0) return `Моков нет.${note}`
         const hits = new Map<string, { n: number; skipped: number }>()
         for (const f of await client(config).flows().catch(() => [])) {
           const m = parseMockComment(f.comment ?? '')
@@ -340,9 +344,11 @@ export const mitmproxy = defineConnector<Config>({
           const { n, skipped } = hits.get(id) ?? { n: 0, skipped: 0 }
           return `сработал ${n} ${plural(n, ['раз', 'раза', 'раз'])}${skipped ? `, из них json пропущен ${skipped}` : ''}`
         }
-        return rules
-          .map((r) => `• ${r.id} «${r.name}» — ${r.enabled ? 'вкл' : 'выкл'} · ${r.kind} ${targetOf(r)} · ${fired(r.id)}`)
-          .join('\n')
+        return (
+          rules
+            .map((r) => `• ${r.id} «${r.name}» — ${r.enabled ? 'вкл' : 'выкл'} · ${r.kind} ${targetOf(r)} · ${fired(r.id)}`)
+            .join('\n') + note
+        )
       },
     }),
 
