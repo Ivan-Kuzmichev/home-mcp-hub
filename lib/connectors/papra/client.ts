@@ -18,6 +18,7 @@ export type PaDocument = {
   createdAt: string
   isDeleted?: boolean
   tags: PaTag[]
+  customProperties?: unknown[]
 }
 
 export type PaOrganization = { id: string; name?: string }
@@ -30,7 +31,7 @@ export class PaClient {
 
   constructor(private readonly cfg: PaConfig) {}
 
-  private async send(path: string, init: RequestInit & { params?: Record<string, string | number | undefined>; allow?: number[] } = {}, what = path): Promise<Response> {
+  private async send(path: string, init: RequestInit & { params?: Record<string, string | number | undefined>; allow?: number[]; timeoutMs?: number } = {}, what = path): Promise<Response> {
     if (!this.cfg.apiKey) throw new ToolError(`${SERVICE}: не задан API-ключ`)
     const { params, allow, ...rest } = init
     const q = new URLSearchParams()
@@ -100,6 +101,19 @@ export class PaClient {
   /** The reply has no tags, so the caller keeps its own picture of the document. */
   async update(id: string, patch: Record<string, unknown>): Promise<void> {
     await this.send(await this.orgPath(this.docPath(id)), { method: 'PATCH', body: JSON.stringify(patch), headers: JSON_HEADERS }, `изменение документа ${id}`)
+  }
+
+  /** A new document. Papra starts its OCR in the background, so the text is not there yet. */
+  async upload(file: Buffer, name: string, mimeType: string): Promise<PaDocument> {
+    const body = new FormData()
+    body.set('file', new Blob([new Uint8Array(file)], { type: mimeType }), name)
+    const res = await this.send(await this.orgPath('documents'), { method: 'POST', body, timeoutMs: 120_000 }, 'загрузка документа')
+    return ((await res.json()) as { document: PaDocument }).document
+  }
+
+  /** To the trash: Papra purges it later, until then it can be restored in the web interface. */
+  async trash(id: string): Promise<void> {
+    await this.send(await this.orgPath(this.docPath(id)), { method: 'DELETE' }, `удаление документа ${id}`)
   }
 
   async tags(): Promise<PaTag[]> {

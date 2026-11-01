@@ -3,7 +3,7 @@ import { plural, truncate } from '../format'
 import { mapLimit } from '../map-limit'
 import { baseUrl, defineConnector, field, secret, toolFor, ToolError } from '../types'
 import { LINK_KIND_TEXT, linkUrl } from '../../download-links'
-import { PaClient } from './client'
+import { PaClient, type PaDocument } from './client'
 import {
   applyDiff,
   assertVisible,
@@ -19,6 +19,7 @@ import {
   markUndone,
   metaLine,
   newBatchId,
+  patchOf,
   plan,
   recordChange,
   searchQuery,
@@ -28,15 +29,12 @@ import {
   type Snapshot,
 } from './logic'
 
-const MAX_PREVIEW_BYTES = 2 * 1024 * 1024
-const PREVIEW_TYPES = /^image\/(png|jpeg|gif|webp)$/
-
 const configSchema = z
   .object({
     baseUrl: baseUrl({ label: 'Адрес в локальной сети', placeholder: 'http://papra:1221' }),
     apiKey: secret({
       label: 'API-ключ',
-      help: 'Создаётся в настройках аккаунта Papra. Права: documents:read, documents:update, tags:read, tags:create и organizations:read, если ID организации ниже не указан. Нужен Papra 26.5 или новее',
+      help: 'Создаётся в настройках аккаунта Papra. Права: documents:read, documents:update, tags:read, tags:create; organizations:read, если ID организации ниже не указан; documents:create и documents:delete — для поворота файлов (papra_rotate). Нужен Papra 26.5 или новее',
       section: 'connection',
     }),
     organizationId: field(
@@ -88,6 +86,21 @@ function rulesBlock(c: Config): string {
   return c.rules ? `Правила разметки (от пользователя):\n${c.rules}\n` : 'Правил разметки нет — держись существующих тегов и названий.\n'
 }
 
+const angleInput = z.union([z.literal(0), z.literal(90), z.literal(180), z.literal(270)])
+
+// Mirrors render.ts, which is not imported up front: it pulls in the heavy libraries only when used.
+const MAX_FILE_BYTES = 50 * 1024 * 1024
+const canPreview = (mimeType: string) => mimeType === 'application/pdf' || /^image\/(png|jpeg|gif|webp)$/.test(mimeType)
+const canRotate = (mimeType: string) => mimeType === 'application/pdf' || /^image\/(png|jpeg|webp)$/.test(mimeType)
+
+async function download(pa: PaClient, doc: PaDocument): Promise<Buffer> {
+  const tooBig = () => new ToolError('Файл больше 50 МБ, обрабатывать его здесь не буду. Скачать — через papra_link')
+  if ((doc.originalSize ?? 0) > MAX_FILE_BYTES) throw tooBig()
+  const data = Buffer.from(await (await pa.file(doc.id)).arrayBuffer())
+  if (data.length > MAX_FILE_BYTES) throw tooBig()
+  return data
+}
+
 const documentId = z.string().regex(/^doc_[a-z0-9]+$/, 'Нужен id вида doc_…').describe('id документа, doc_…')
 
 const filterInput = {
@@ -115,6 +128,7 @@ const changeInput = z.object({
   name: z.string().max(255).optional().describe('Название'),
   date: z.string().nullable().optional().describe('Дата документа, ГГГГ-ММ-ДД; null — убрать'),
   notes: z.string().max(2048).optional().describe('Заметки; пустая строка — убрать'),
+  content: z.string().max(500_000).optional().describe('Заменить распознанный текст: то, что ты прочитал на скане через papra_preview. Поиск работает по нему'),
   tags: z.array(z.string().max(64)).optional().describe('Заменить теги этим списком'),
   add_tags: z.array(z.string().max(64)).optional().describe('Добавить теги (новые создаются)'),
   remove_tags: z.array(z.string()).optional(),
@@ -215,7 +229,7 @@ export const papra = defineConnector<Config>({
           .map((d) => `  «${truncate(d.name, 60)}» · ${day(d.documentDate)} · [${d.tags.map((t) => t.name).join(', ')}]`)
 
         const blocks = full.map((doc) =>
-          [`${headLine(doc)}`, `Сейчас: ${metaLine(doc)}`, `Текст: ${truncate((doc.content ?? '').replace(/\s+/g, ' ').trim() || '(пусто — нет распознанного текста)', 800)}`].join('\n'),
+          [`${headLine(doc)}`, `Сейчас: ${metaLine(doc)}`, `Текст: ${truncate((doc.content ?? '').replace(/\s+/g, ' ').trim() || '(пусто — нет распознанного текста, глянь papra_preview)', 800)}`].join('\n'),
         )
         return [
           rulesBlock(config),
@@ -251,7 +265,7 @@ export const papra = defineConnector<Config>({
           headLine(doc),
           metaLine(doc),
           org ? `Открыть в Papra: ${config.webUrl}/organizations/${org.id}/documents/${id}` : null,
-          `\nТекст (${offset}–${offset + part.length} из ${text.length}):\n${part || '(нет распознанного текста)'}`,
+          `\nТекст (${offset}–${offset + part.length} из ${text.length}):\n${part || '(нет распознанного текста — посмотри papra_preview)'}`,
           rest > 0 ? `\n…ещё ${rest} символов: papra_get(id: "${id}", offset: ${offset + part.length})` : null,
         ]
           .filter(Boolean)
@@ -261,19 +275,67 @@ export const papra = defineConnector<Config>({
 
     tool({
       name: 'papra_preview',
-      title: 'Показать картинку документа',
-      description: 'Сам файл, если документ — картинка (фото чека, скан в JPG/PNG) до 2 МБ: когда распознанного текста нет или он плохой. Превью PDF в Papra нет.',
+      title: 'Посмотреть страницу документа',
+      description:
+        'Картинка страницы PDF или документа-картинки — когда распознанного текста нет или он плохой. rotate разворачивает только показ, файл не меняется. Прочитанный текст можно сохранить для поиска: papra_update с полем content.',
       annotations: { readOnlyHint: true, openWorldHint: false },
-      inputSchema: z.object({ id: documentId }),
-      async run({ id }, { config }) {
+      inputSchema: z.object({
+        id: documentId,
+        page: z.number().int().min(1).default(1).describe('Страница PDF, с 1'),
+        rotate: angleInput.default(0).describe('Повернуть показ по часовой стрелке, градусы'),
+      }),
+      async run({ id, page, rotate }, { config }) {
         const pa = client(config)
         const doc = await pa.document(id)
         assertVisible(doc, config.excludeTag)
-        if (!PREVIEW_TYPES.test(doc.mimeType)) throw new ToolError(`Это ${doc.mimeType}: показать можно только картинку. Файл — через papra_link`)
-        if ((doc.originalSize ?? 0) > MAX_PREVIEW_BYTES) throw new ToolError('Картинка больше 2 МБ — не отправляю. Файл — через papra_link')
-        const data = Buffer.from(await (await pa.file(id)).arrayBuffer())
-        if (data.length > MAX_PREVIEW_BYTES) throw new ToolError('Картинка больше 2 МБ — не отправляю. Файл — через papra_link')
-        return { text: `Файл ${id} «${truncate(doc.name, 60)}»`, images: [{ data: data.toString('base64'), mimeType: doc.mimeType }] }
+        if (!canPreview(doc.mimeType)) throw new ToolError(`Это ${doc.mimeType}: показать можно только PDF или картинку. Файл — через papra_link`)
+        const { preview } = await import('./render')
+        const shown = await preview(await download(pa, doc), doc.mimeType, page, rotate)
+        const where = shown.pages ? `, страница ${page} из ${shown.pages}` : ''
+        return { text: `${id} «${truncate(doc.name, 60)}»${where}`, images: [{ data: shown.data.toString('base64'), mimeType: shown.mimeType }] }
+      },
+    }),
+
+    tool({
+      name: 'papra_rotate',
+      title: 'Повернуть файл документа',
+      description:
+        'Действительно повернуть файл, чтобы он был ровным в Papra и OCR прочитал его заново. Создаётся новый документ с новым id, название, дата, заметки и теги переносятся, старый уходит в корзину Papra; papra_undo это не откатит. Страницы PDF становятся картинками. Сначала посмотри через papra_preview с rotate и переспроси пользователя. Только с confirm: true.',
+      annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: false },
+      inputSchema: z.object({
+        id: documentId,
+        angle: z.union([z.literal(90), z.literal(180), z.literal(270)]).describe('По часовой стрелке, градусы'),
+        pages: z.array(z.number().int().min(1)).optional().describe('Какие страницы PDF повернуть; по умолчанию все'),
+        drop_text: z.boolean().default(false).describe('true — PDF с текстовым слоем: заменить его заново распознанным'),
+        confirm: z.boolean().default(false).describe('true — пользователь подтвердил'),
+      }),
+      async run({ id, angle, pages, drop_text, confirm }, { config }) {
+        if (!confirm) throw new ToolError('Нужно confirm: true: документ получит новый id, старый уйдёт в корзину Papra. Сначала переспроси пользователя')
+        const pa = client(config)
+        const doc = await pa.document(id)
+        assertVisible(doc, config.excludeTag)
+        if (!canRotate(doc.mimeType)) throw new ToolError(`Это ${doc.mimeType}: повернуть можно только PDF, JPEG, PNG или WebP`)
+        // Custom property values are not carried over and would quietly stay behind in the trash.
+        if (doc.customProperties?.length) throw new ToolError('У документа есть свои свойства Papra, их перенести нельзя. Поверни файл вручную')
+        const { rotateFile } = await import('./render')
+        const rotated = await rotateFile(await download(pa, doc), doc.mimeType, angle, { pages, dropText: drop_text })
+
+        const created = await pa.upload(rotated, doc.originalName || doc.name, doc.mimeType)
+        // The old one goes only when the new one is complete: nothing is lost if a step fails.
+        try {
+          // The upload reply has no tags. They go separately below, the text comes from Papra's OCR.
+          const patch = patchOf({ name: created.name, documentDate: created.documentDate ?? null, notes: created.notes ?? '', tags: [] }, { ...snapshot(doc), content: undefined })
+          if (Object.keys(patch).length) await pa.update(created.id, patch)
+          for (const t of doc.tags) await pa.addTag(created.id, t.id)
+        } catch (e) {
+          throw new ToolError(`Новый документ ${created.id} создан, но метаданные перенеслись не все; старый ${id} на месте. ${e instanceof Error ? e.message : String(e)}`)
+        }
+        try {
+          await pa.trash(id)
+        } catch (e) {
+          throw new ToolError(`Новый документ ${created.id} готов, но старый ${id} не удалён, теперь их два. ${e instanceof Error ? e.message : String(e)}`)
+        }
+        return [`Повёрнуто на ${angle}°: «${truncate(doc.name, 60)}».`, `Новый id: ${created.id}. Старый ${id} — в корзине Papra.`, 'Текст появится, когда Papra закончит OCR, обычно через минуту.'].join('\n')
       },
     }),
 
@@ -297,7 +359,7 @@ export const papra = defineConnector<Config>({
     tool({
       name: 'papra_update',
       title: 'Разметить документы',
-      description: 'Изменить метаданные одного или нескольких документов: название, дату, заметки, теги (по именам; недостающие создаются). dry_run: true — только показать план. Изменения можно откатить через papra_undo.',
+      description: 'Изменить метаданные одного или нескольких документов: название, дату, заметки, распознанный текст, теги (по именам; недостающие создаются). dry_run: true — только показать план. Изменения можно откатить через papra_undo.',
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
       inputSchema: z.object({
         changes: z.array(changeInput).min(1).max(50),

@@ -8,7 +8,7 @@
 | qBittorrent | `torrents_status`, `torrent_add`, `torrent_stop`, `torrent_start`, `torrent_delete`, `torrent_files`, `transfer_info` | ✅ |
 | Transmission | `transmission_status`, `transmission_add`, `transmission_stop`, `transmission_start`, `transmission_delete`, `transmission_files`, `transmission_info` | ⚠️ только автотесты |
 | Paperless (ngx) | `paperless_search`, `paperless_review`, `paperless_get`, `paperless_thumbnail`, `paperless_taxonomy`, `paperless_update`, `paperless_undo`, `paperless_link` | ⚠️ только автотесты |
-| Papra (26.5+) | `papra_search`, `papra_review`, `papra_get`, `papra_preview`, `papra_tags`, `papra_update`, `papra_undo`, `papra_link` | ⚠️ только автотесты |
+| Papra (26.5+) | `papra_search`, `papra_review`, `papra_get`, `papra_preview`, `papra_tags`, `papra_update`, `papra_undo`, `papra_rotate`, `papra_link` | ⚠️ только автотесты |
 | TorrServe | `torrserve_add`, `torrserve_list`, `torrserve_links`, `torrserve_remove` | ✅ |
 | mitmproxy | `mitm_status`, `mitm_hosts`, `mitm_flows`, `mitm_flow`; с моками — `mitm_mock_replace`, `mitm_mock_patch`, `mitm_mocks`, `mitm_mock_toggle`, `mitm_mock_delete`, `mitm_clear` | ⚠️ только автотесты |
 | camofox (браузер) | `browser_open`, `browser_snapshot`, `browser_links`, `browser_screenshot`, `browser_extract`, `browser_tabs`, `browser_youtube_transcript`; с действиями — `browser_act`, `browser_close`, `browser_import_cookies` | ⚠️ только автотесты |
@@ -50,9 +50,15 @@
 пачку можно откатить (`papra_undo`). Документы с тегом-исключением (по умолчанию `private`) ассистенту не видны, ссылки на файлы — те же `/f/{токен}`.
 
 Отличия — от самого Papra. В нём нет корреспондентов, типов документов, тега «входящие» и подсказок классификатора, поэтому «неразмеченные» — это без тегов или без даты,
-а `papra_review` показывает для примера недавно размеченные документы. Превью PDF нет: `papra_preview` показывает только документы-картинки до 2 МБ.
+а `papra_review` показывает для примера недавно размеченные документы. 
 
-Нужен Papra 26.5 или новее. API-ключ создаётся в аккаунте Papra с правами `documents:read`, `documents:update`, `tags:read` и `tags:create`.
+Превью страниц в Papra нет, поэтому их рисует хаб: `papra_preview` показывает страницу PDF или картинку, при необходимости развёрнутую, файл при этом не меняется.
+Если у скана нет нормального OCR-текста, ассистент может прочитать страницу и сохранить текст через `papra_update` (`content`), и поиск начнёт его находить. Это тоже откатывается.
+
+`papra_rotate` поворачивает сам файл, потому что Papra этого не умеет. Он загружает новый документ с новым id, переносит название, дату, заметки и теги, а старый убирает в корзину Papra, откуда его можно восстановить в веб-интерфейсе; `papra_undo` это не откатывает.
+Страницы PDF пересобираются из картинок (200 DPI, до 30 страниц, файл до 50 МБ), потому что OCR в Papra читает вложенные картинки и не учитывает пометку о повороте. PDF с текстовым слоем пересобирается только с явным `drop_text: true`, а документы со своими свойствами Papra не поворачиваются.
+
+Нужен Papra 26.5 или новее. API-ключ создаётся в аккаунте Papra с правами `documents:read`, `documents:update`, `tags:read` и `tags:create`. Для `papra_rotate` нужны ещё `documents:create` и `documents:delete`.
 Добавьте `organizations:read`, если не указываете ID организации: без него коннектор берёт единственную организацию пользователя, а если их несколько — просит выбрать.
 
 ## Файлы

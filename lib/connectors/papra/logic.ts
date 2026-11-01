@@ -149,18 +149,21 @@ export type Change = {
   name?: string
   date?: string | null
   notes?: string
+  content?: string
   tags?: string[]
   add_tags?: string[]
   remove_tags?: string[]
 }
 
-export type Snapshot = { name: string; documentDate: string | null; notes: string; tags: string[] }
+/** content is absent in a stored snapshot unless that edit changed it: no reason to keep every text twice. */
+export type Snapshot = { name: string; documentDate: string | null; notes: string; content?: string; tags: string[] }
 
 /** The date keeps its full value, so an undo restores exactly what was there. */
 export const snapshot = (d: PaDocument): Snapshot => ({
   name: d.name,
   documentDate: d.documentDate ?? null,
   notes: d.notes ?? '',
+  content: d.content ?? '',
   tags: d.tags.map((t) => t.id).sort(),
 })
 
@@ -181,6 +184,7 @@ export async function plan(doc: PaDocument, change: Change, index: TagIndex, cli
   }
   if (change.date !== undefined) next.documentDate = change.date === null ? null : checkedDay(change.date)
   if (change.notes !== undefined) next.notes = change.notes
+  if (change.content !== undefined) next.content = change.content
 
   let tags = new Set(next.tags)
   if (change.tags) {
@@ -201,6 +205,7 @@ export function patchOf(before: Snapshot, after: Snapshot): Record<string, unkno
   if (before.name !== after.name) p.name = after.name
   if (day(before.documentDate) !== day(after.documentDate)) p.documentDate = after.documentDate
   if (before.notes !== after.notes) p.notes = after.notes
+  if (after.content !== undefined && before.content !== after.content) p.content = after.content
   return p
 }
 
@@ -233,6 +238,7 @@ export function diffLine(id: string, before: Snapshot, after: Snapshot, index: T
   if (before.name !== after.name) parts.push(`название «${truncate(before.name, 40)}» → «${truncate(after.name, 60)}»`)
   if (day(before.documentDate) !== day(after.documentDate)) parts.push(`дата ${day(before.documentDate)} → ${day(after.documentDate)}`)
   if (before.notes !== after.notes) parts.push(after.notes ? `заметки: ${truncate(after.notes, 60)}` : 'заметки убраны')
+  if (after.content !== undefined && before.content !== after.content) parts.push(`текст: ${before.content?.length ?? 0} → ${after.content.length} симв.`)
   const added = after.tags.filter((t) => !before.tags.includes(t))
   const removed = before.tags.filter((t) => !after.tags.includes(t))
   if (added.length || removed.length) {
@@ -242,9 +248,11 @@ export function diffLine(id: string, before: Snapshot, after: Snapshot, index: T
 }
 
 export function recordChange(batchId: string, documentId: string, before: Snapshot, after: Snapshot): void {
+  const changed = before.content !== after.content
+  const stored = (s: Snapshot) => JSON.stringify(changed ? s : { ...s, content: undefined })
   getDb()
     .insert(papraChange)
-    .values({ batchId, documentId, beforeJson: JSON.stringify(before), afterJson: JSON.stringify(after), createdAt: new Date() })
+    .values({ batchId, documentId, beforeJson: stored(before), afterJson: stored(after), createdAt: new Date() })
     .run()
 }
 

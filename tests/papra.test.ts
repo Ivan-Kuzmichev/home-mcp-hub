@@ -1,4 +1,5 @@
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type { ToolOutput } from '@/lib/connectors/types'
 import { configOf, mockFetch, runTool, runToolRaw, setupTempDb, type Call } from './helpers'
 
 const cleanup = await setupTempDb()
@@ -17,8 +18,41 @@ const API = `/api/organizations/${ORG}`
 const raw = { baseUrl: BASE, apiKey: 'ppapi_key', organizationId: ORG, rules: '- название: «Откуда — что — месяц год»' }
 const cfg = configOf(papra, raw)
 
+/** 200×100, the left half dark: enough to tell how it is turned. */
+async function halves(): Promise<Buffer> {
+  const { default: sharp } = await import('sharp')
+  const dark = await sharp({ create: { width: 100, height: 100, channels: 3, background: '#000' } }).png().toBuffer()
+  return sharp({ create: { width: 200, height: 100, channels: 3, background: '#fff' } }).composite([{ input: dark, left: 0, top: 0 }]).png().toBuffer()
+}
+
+async function pdfOf(images: Buffer[]): Promise<Buffer> {
+  const { PDFDocument } = await import('pdf-lib')
+  const doc = await PDFDocument.create()
+  for (const png of images) {
+    const image = await doc.embedPng(png)
+    doc.addPage([image.width, image.height]).drawImage(image, { x: 0, y: 0, width: image.width, height: image.height })
+  }
+  return Buffer.from(await doc.save())
+}
+
+function imageOf(out: ToolOutput): Buffer {
+  if (typeof out === 'string' || !out.images?.[0]) throw new Error('no image')
+  return Buffer.from(out.images[0].data, 'base64')
+}
+
+async function darkSide(image: Buffer): Promise<'left' | 'right' | 'top' | 'bottom'> {
+  const { default: sharp } = await import('sharp')
+  const { data, info } = await sharp(image).greyscale().raw().toBuffer({ resolveWithObject: true })
+  const at = (x: number, y: number) => data[Math.floor(y * (info.height - 1)) * info.width + Math.floor(x * (info.width - 1))]! < 128
+  if (at(0.1, 0.5) && !at(0.9, 0.5)) return 'left'
+  if (at(0.9, 0.5) && !at(0.1, 0.5)) return 'right'
+  if (at(0.5, 0.1) && !at(0.5, 0.9)) return 'top'
+  if (at(0.5, 0.9) && !at(0.5, 0.1)) return 'bottom'
+  throw new Error('no dark side')
+}
+
 type Tag = { id: string; name: string; documentsCount: number }
-type Doc = { id: string; name: string; originalName: string; mimeType: string; originalSize: number; content: string; documentDate: string | null; notes: string | null; createdAt: string; isDeleted: boolean; tags: Tag[] }
+type Doc = { id: string; name: string; originalName: string; mimeType: string; originalSize: number; content: string; documentDate: string | null; notes: string | null; createdAt: string; isDeleted: boolean; tags: Tag[]; customProperties?: unknown[] }
 
 const BANK: Tag = { id: 'tag_bank', name: 'Банк', documentsCount: 10 }
 const SECRET: Tag = { id: 'tag_private', name: 'private', documentsCount: 1 }
@@ -27,6 +61,8 @@ let tags: Tag[]
 let docs: Doc[]
 let writes: string[]
 let failOn: RegExp | null
+let files: Record<string, Buffer>
+let uploads: number
 
 beforeEach(() => {
   tags = [BANK, SECRET]
@@ -38,6 +74,8 @@ beforeEach(() => {
   ]
   writes = []
   failOn = null
+  files = {}
+  uploads = 0
 })
 
 /** Understands only what the connector sends. The real grammar is Papra's; here the terms it is built from. */
@@ -67,6 +105,15 @@ function server() {
     }
     if (p === `${API}/tags`) return Response.json({ tags })
     if (p === `${API}/documents/statistics`) return Response.json({ organizationStats: { documentsCount: docs.length } })
+    if (p === `${API}/documents` && c.method === 'POST') {
+      const file = (c.body as FormData).get('file') as File
+      const id = `doc_up${++uploads}`
+      files[id] = Buffer.from(await file.arrayBuffer())
+      const doc: Doc = { id, name: file.name, originalName: file.name, mimeType: file.type, originalSize: file.size, content: '', documentDate: null, notes: null, createdAt: '2026-11-01T10:00:00.000Z', isDeleted: false, tags: [] }
+      docs.push(doc)
+      writes.push(`upload ${file.name}`)
+      return Response.json({ document: { ...doc, tags: undefined } })
+    }
     if (p === `${API}/documents`) {
       const list = docs.filter((d) => matches(d, q.get('searchQuery') ?? ''))
       const size = Number(q.get('pageSize') ?? 100)
@@ -79,6 +126,7 @@ function server() {
     if (m) {
       const doc = docs.find((d) => d.id === m[1])
       if (!doc) return new Response('{}', { status: 404 })
+      if (m[2] === '/file' && files[doc.id]) return new Response(new Uint8Array(files[doc.id]!), { headers: { 'content-type': 'application/octet-stream' } })
       if (m[2] === '/file') return new Response('%PDF-1.7', { headers: { 'content-type': 'application/octet-stream', 'content-disposition': "attachment; filename*=UTF-8''scan.pdf" } })
       if (m[2]?.startsWith('/tags') && c.method === 'POST') {
         const { tagId } = JSON.parse(String(c.body)) as { tagId: string }
@@ -90,6 +138,11 @@ function server() {
       if (m[2]?.startsWith('/tags') && c.method === 'DELETE') {
         writes.push(`remove ${doc.id} ${m[3]}`)
         doc.tags = doc.tags.filter((t) => t.id !== m[3])
+        return new Response(null, { status: 204 })
+      }
+      if (c.method === 'DELETE') {
+        writes.push(`trash ${doc.id}`)
+        doc.isDeleted = true
         return new Response(null, { status: 204 })
       }
       if (c.method === 'PATCH') {
@@ -185,13 +238,144 @@ describe('Papra connector', () => {
     await expect(runTool(papra, 'papra_get', cfg, { id: 'doc_scan' })).rejects.toThrow('в корзине')
   })
 
-  it('preview returns images only, within the size limit', async () => {
+  it('preview shows PDF pages and images, rotated on request, and refuses the rest', async () => {
     server()
+    files.doc_photo = await halves()
     expect(await runToolRaw(papra, 'papra_preview', cfg, { id: 'doc_photo' })).toMatchObject({ images: [{ mimeType: 'image/png' }] })
-    await expect(runTool(papra, 'papra_preview', cfg, { id: 'doc_scan' })).rejects.toThrow('только картинку')
+
+    docs[0]!.originalSize = 1000
+    files.doc_scan = await pdfOf([await halves(), await halves()])
+    const page = await runToolRaw(papra, 'papra_preview', cfg, { id: 'doc_scan', page: 2 })
+    expect(page).toMatchObject({ text: expect.stringContaining('страница 2 из 2'), images: [{ mimeType: 'image/jpeg' }] })
+    expect(await darkSide(imageOf(page))).toBe('left')
+    const turned = await runToolRaw(papra, 'papra_preview', cfg, { id: 'doc_scan', page: 2, rotate: 90 })
+    expect(await darkSide(imageOf(turned))).toBe('top')
+
+    await expect(runTool(papra, 'papra_preview', cfg, { id: 'doc_scan', page: 9 })).rejects.toThrow('страницы 9 нет')
     await expect(runTool(papra, 'papra_preview', cfg, { id: 'doc_pass' })).rejects.toThrow('недоступен')
-    docs[3]!.originalSize = 3 * 1024 * 1024
-    await expect(runTool(papra, 'papra_preview', cfg, { id: 'doc_photo' })).rejects.toThrow('больше 2 МБ')
+    docs[0]!.mimeType = 'application/zip'
+    await expect(runTool(papra, 'papra_preview', cfg, { id: 'doc_scan' })).rejects.toThrow('только PDF или картинку')
+    docs[3]!.originalSize = 60 * 1024 * 1024
+    await expect(runTool(papra, 'papra_preview', cfg, { id: 'doc_photo' })).rejects.toThrow('больше 50 МБ')
+  })
+
+  it('a large photo is scaled down instead of refused', async () => {
+    server()
+    const { default: sharp } = await import('sharp')
+    files.doc_photo = await sharp({ create: { width: 4000, height: 3000, channels: 3, background: '#888' } }).jpeg().toBuffer()
+    docs[3]!.mimeType = 'image/jpeg'
+    const meta = await sharp(imageOf(await runToolRaw(papra, 'papra_preview', cfg, { id: 'doc_photo' }))).metadata()
+    expect(Math.max(meta.width, meta.height)).toBe(1568)
+  })
+
+  it('a broken PDF gives a short error', async () => {
+    server()
+    files.doc_scan = Buffer.from('not a pdf')
+    await expect(runTool(papra, 'papra_preview', cfg, { id: 'doc_scan' })).rejects.toThrow('PDF не открывается')
+  })
+
+  it('update can replace the text and undo brings it back', async () => {
+    server()
+    const original = docs[0]!.content
+    const plan = await runTool(papra, 'papra_update', cfg, { dry_run: true, changes: [{ id: 'doc_scan', content: 'Прочитано со скана' }] })
+    expect(plan).toContain(`текст: ${original.length} → 18 симв.`)
+    expect(writes).toEqual([])
+    const done = await runTool(papra, 'papra_update', cfg, { changes: [{ id: 'doc_scan', content: 'Прочитано со скана' }] })
+    expect(docs[0]!.content).toBe('Прочитано со скана')
+    await runTool(papra, 'papra_undo', cfg, { batch: /batch: "(pr_\w+)"/.exec(done)![1]! })
+    expect(docs[0]!.content).toBe(original)
+  })
+
+  it('an edit that leaves the text alone neither sends nor stores it, and undo keeps later text', async () => {
+    server()
+    const done = await runTool(papra, 'papra_update', cfg, { changes: [{ id: 'doc_scan', name: 'Новое' }] })
+    expect(writes).toEqual(['patch doc_scan {"name":"Новое"}'])
+    const { getDb } = await import('@/lib/db')
+    const { papraChange } = await import('@/lib/db/schema')
+    expect(getDb().select().from(papraChange).all().at(-1)!.beforeJson).not.toContain('content')
+    docs[0]!.content = 'дописано позже'
+    await runTool(papra, 'papra_undo', cfg, { batch: /batch: "(pr_\w+)"/.exec(done)![1]! })
+    expect(docs[0]).toMatchObject({ name: 'scan_0912', content: 'дописано позже' })
+  })
+
+  it('rotate needs confirm, rebuilds the PDF, carries metadata over and trashes the old one last', async () => {
+    server()
+    Object.assign(docs[2]!, { originalSize: 1000 })
+    files.doc_july = await pdfOf([await halves(), await halves()])
+    await expect(runTool(papra, 'papra_rotate', cfg, { id: 'doc_july', angle: 90 })).rejects.toThrow('Нужно confirm: true')
+    expect(writes).toEqual([])
+
+    const out = await runTool(papra, 'papra_rotate', cfg, { id: 'doc_july', angle: 90, pages: [2], confirm: true })
+    expect(out).toContain('Новый id: doc_up1')
+    expect(out).toContain('Старый doc_july — в корзине')
+
+    const created = docs.find((d) => d.id === 'doc_up1')!
+    expect(created).toMatchObject({ name: 'Сбербанк — выписка — июль 2026', documentDate: '2026-07-31T12:00:00.000Z', notes: 'важно', mimeType: 'application/pdf' })
+    expect(created.tags.map((t) => t.id)).toEqual(['tag_bank'])
+    expect(writes.at(-1)).toBe('trash doc_july')
+    expect(docs.find((d) => d.id === 'doc_july')!.isDeleted).toBe(true)
+
+    // Only page 2 turned, and for real: its image, not a flag, is what OCR will read.
+    const { getDocumentProxy } = await import('unpdf')
+    const pdf = await getDocumentProxy(new Uint8Array(files.doc_up1!))
+    const [first, second] = [await pdf.getPage(1), await pdf.getPage(2)]
+    expect(first.rotate).toBe(0)
+    expect(second.rotate).toBe(0)
+    expect(first.getViewport({ scale: 1 })).toMatchObject({ width: 200, height: 100 })
+    expect(second.getViewport({ scale: 1 })).toMatchObject({ width: 100, height: 200 })
+    expect(await darkSide(imageOf(await runToolRaw(papra, 'papra_preview', cfg, { id: 'doc_up1', page: 1 })))).toBe('left')
+    expect(await darkSide(imageOf(await runToolRaw(papra, 'papra_preview', cfg, { id: 'doc_up1', page: 2 })))).toBe('top')
+  })
+
+  it('rotate turns an image, honoring the rotation stored in EXIF', async () => {
+    server()
+    const { default: sharp } = await import('sharp')
+    files.doc_photo = await sharp(await halves()).withMetadata({ orientation: 6 }).jpeg().toBuffer() // shown turned 90°: dark on top
+    docs[3]!.mimeType = 'image/jpeg'
+    await runTool(papra, 'papra_rotate', cfg, { id: 'doc_photo', angle: 90, confirm: true })
+    expect(await darkSide(files.doc_up1!)).toBe('right')
+    expect((await sharp(files.doc_up1!).metadata()).orientation).toBeUndefined()
+  })
+
+  it('rotate asks before dropping a text layer', async () => {
+    server()
+    const { PDFDocument, StandardFonts } = await import('pdf-lib')
+    const doc = await PDFDocument.create()
+    doc.addPage([300, 200]).drawText('Hello text layer', { x: 20, y: 100, size: 14, font: await doc.embedFont(StandardFonts.Helvetica) })
+    files.doc_scan = Buffer.from(await doc.save())
+    await expect(runTool(papra, 'papra_rotate', cfg, { id: 'doc_scan', angle: 180, confirm: true })).rejects.toThrow('текстовый слой')
+    expect(writes).toEqual([])
+    expect(await runTool(papra, 'papra_rotate', cfg, { id: 'doc_scan', angle: 180, drop_text: true, confirm: true })).toContain('Новый id')
+    const { extractText, getDocumentProxy } = await import('unpdf')
+    expect((await extractText(await getDocumentProxy(new Uint8Array(files.doc_up1!)), { mergePages: true })).text.trim()).toBe('')
+  })
+
+  it('rotate leaves the old document alone when something fails', async () => {
+    server()
+    files.doc_photo = await halves()
+    failOn = /^POST .*\/documents\/doc_up1\/tags$/
+    await expect(runTool(papra, 'papra_rotate', cfg, { id: 'doc_photo', angle: 90, confirm: true })).rejects.toThrow('старый doc_photo на месте')
+    expect(docs.find((d) => d.id === 'doc_photo')!.isDeleted).toBe(false)
+    expect(writes).not.toContain('trash doc_photo')
+
+    failOn = /^DELETE .*\/documents\/doc_photo$/
+    await expect(runTool(papra, 'papra_rotate', cfg, { id: 'doc_photo', angle: 180, confirm: true })).rejects.toThrow('теперь их два')
+  })
+
+  it('rotate refuses hidden documents, custom properties, other types and long PDFs', async () => {
+    server()
+    await expect(runTool(papra, 'papra_rotate', cfg, { id: 'doc_pass', angle: 90, confirm: true })).rejects.toThrow('недоступен')
+    docs[3]!.customProperties = [{ key: 'x' }]
+    await expect(runTool(papra, 'papra_rotate', cfg, { id: 'doc_photo', angle: 90, confirm: true })).rejects.toThrow('свои свойства')
+    docs[3]!.customProperties = []
+    docs[3]!.mimeType = 'image/gif'
+    await expect(runTool(papra, 'papra_rotate', cfg, { id: 'doc_photo', angle: 90, confirm: true })).rejects.toThrow('только PDF, JPEG')
+    const long = await halves()
+    files.doc_scan = await pdfOf(Array.from({ length: 31 }, () => long))
+    await expect(runTool(papra, 'papra_rotate', cfg, { id: 'doc_scan', angle: 90, confirm: true })).rejects.toThrow('не больше 30')
+    files.doc_scan = await pdfOf([long])
+    await expect(runTool(papra, 'papra_rotate', cfg, { id: 'doc_scan', angle: 90, pages: [5], confirm: true })).rejects.toThrow('страницы 5 нет')
+    expect(writes).toEqual([])
   })
 
   it('tags lists counts and marks the hidden one', async () => {

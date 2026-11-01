@@ -8,7 +8,7 @@
 | qBittorrent | `torrents_status`, `torrent_add`, `torrent_stop`, `torrent_start`, `torrent_delete`, `torrent_files`, `transfer_info` | ✅ |
 | Transmission | `transmission_status`, `transmission_add`, `transmission_stop`, `transmission_start`, `transmission_delete`, `transmission_files`, `transmission_info` | ⚠️ automated tests only |
 | Paperless (ngx) | `paperless_search`, `paperless_review`, `paperless_get`, `paperless_thumbnail`, `paperless_taxonomy`, `paperless_update`, `paperless_undo`, `paperless_link` | ⚠️ automated tests only |
-| Papra (26.5+) | `papra_search`, `papra_review`, `papra_get`, `papra_preview`, `papra_tags`, `papra_update`, `papra_undo`, `papra_link` | ⚠️ automated tests only |
+| Papra (26.5+) | `papra_search`, `papra_review`, `papra_get`, `papra_preview`, `papra_tags`, `papra_update`, `papra_undo`, `papra_rotate`, `papra_link` | ⚠️ automated tests only |
 | TorrServe | `torrserve_add`, `torrserve_list`, `torrserve_links`, `torrserve_remove` | ✅ |
 | mitmproxy | `mitm_status`, `mitm_hosts`, `mitm_flows`, `mitm_flow`; with mocks: `mitm_mock_replace`, `mitm_mock_patch`, `mitm_mocks`, `mitm_mock_toggle`, `mitm_mock_delete`, `mitm_clear` | ⚠️ automated tests only |
 | camofox (browser) | `browser_open`, `browser_snapshot`, `browser_links`, `browser_screenshot`, `browser_extract`, `browser_tabs`, `browser_youtube_transcript`; with actions: `browser_act`, `browser_close`, `browser_import_cookies` | ⚠️ automated tests only |
@@ -50,9 +50,14 @@ Works like Paperless: the assistant searches and reads documents, labels them in
 and a batch can be rolled back (`papra_undo`). Documents with the exclusion tag (`private` by default) are invisible to the assistant, and file links are the same `/f/{token}`.
 
 What differs comes from Papra itself. It has no correspondents, document types, inbox tag or classifier suggestions, so "unlabeled" means no tags or no date,
-and `papra_review` shows recently labeled documents as examples. There are no PDF previews: `papra_preview` only shows documents that are images, up to 2 MB.
+and `papra_review` shows recently labeled documents as examples. 
+Papra has no page previews, so the hub renders them: `papra_preview` shows a page of a PDF or an image, optionally turned, without changing the file.
+When a scan has no usable OCR text, the assistant can read the page and save the text with `papra_update` (`content`), so search finds it. This can be rolled back too.
 
-Requires Papra 26.5 or newer. Create the API key in your Papra account with `documents:read`, `documents:update`, `tags:read` and `tags:create`.
+`papra_rotate` really turns the file, because Papra can't do that itself. It uploads a new document with a new ID, carries over the name, date, notes and tags, and moves the old one to the Papra trash, where you can restore it from the web interface; `papra_undo` doesn't cover this.
+PDF pages are rebuilt as images (200 DPI, up to 30 pages, files up to 50 MB), because Papra's OCR reads the embedded images and ignores a rotation flag. A PDF with a text layer is only rebuilt after an explicit `drop_text: true`, and documents with custom properties are refused.
+
+Requires Papra 26.5 or newer. Create the API key in your Papra account with `documents:read`, `documents:update`, `tags:read` and `tags:create`. `papra_rotate` also needs `documents:create` and `documents:delete`.
 Add `organizations:read` unless you set the organization ID: without an ID the connector uses the user's only organization and asks you to choose if there are several.
 
 ## Files
