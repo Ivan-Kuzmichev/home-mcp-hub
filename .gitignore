@@ -10,3 +10,6 @@ next-env.d.ts
 .DS_Store
 coverage/
 __pycache__/
+
+# static demo, built by pnpm demo
+/demo-out

@@ -29,7 +29,8 @@ export async function bootstrap(): Promise<void> {
   await ensureAdmin()
   // Built-in connectors have no settings: create their rows so they are on from the start.
   for (const c of CONNECTORS) if (c.builtin && !getConnectorRow(c.id)) saveConfig(c, {})
-  startJobs()
+  // The demo and README screenshots (scripts/demo) run without jobs: health checks would overwrite the seeded state.
+  if (process.env.HUB_DEMO !== '1') startJobs()
   logger.info('hub started')
 }
 

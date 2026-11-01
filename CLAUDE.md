@@ -98,6 +98,7 @@ instructions сервера, должна пропускать выключен�
 - `pnpm dev` — локально (`.env.local` из `.env.example`)
 - `pnpm db:generate` / `pnpm db:migrate` — Drizzle
 - `pnpm lint && pnpm typecheck && pnpm test` — перед каждым коммитом
+- `pnpm screenshots` / `pnpm demo` — картинки README и статическое демо на выдуманных данных (`scripts/demo/`, нужен `pnpm build`); новые экраны админки попадают в демо сами, если на них есть ссылка
 - Образ собирается в GitHub Actions (`.github/workflows/docker.yml`) и публикуется в GHCR; на NAS — `docker compose pull && up -d`
 
 ## Стиль

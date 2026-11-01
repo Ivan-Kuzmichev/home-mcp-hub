@@ -22,7 +22,11 @@
 One Docker container with an admin panel. Your assistant searches and downloads torrents, starts streaming,
 sorts your documents, publishes HTML prototypes and runs your scripts.
 
-![Home MCP Hub admin panel: dashboard, connectors, prototypes, scripts, MCP access, activity log, diagnostics](docs/media/demo.gif)
+<p align="center">
+  <a href="https://ivan-kuzmichev.github.io/home-mcp-hub/"><b>Try the live demo</b></a>
+</p>
+
+<img src="docs/screenshots/desktop-dashboard.png" alt="Home MCP Hub dashboard: connectors, their status and the latest MCP calls">
 
 ## Features
 
@@ -39,6 +43,20 @@ sorts your documents, publishes HTML prototypes and runs your scripts.
 - **Instructions for the assistant:** each connector has its own text, which you can extend or replace. The Diagnostics screen shows what the model receives.
 
 The admin panel and the tool replies are in Russian.
+
+<p align="center">
+  <img src="docs/screenshots/desktop-connector.png" width="32%" alt="mitmproxy connector settings">
+  <img src="docs/screenshots/desktop-activity.png" width="32%" alt="Activity log">
+  <img src="docs/screenshots/desktop-scripts.png" width="32%" alt="Scripts waiting for approval">
+</p>
+
+## On your phone
+
+<p align="center">
+  <img src="docs/screenshots/phone-dashboard.png" width="260" alt="Dashboard on a phone">
+  <img src="docs/screenshots/phone-prototypes.png" width="260" alt="Prototypes on a phone">
+  <img src="docs/screenshots/phone-access.png" width="260" alt="MCP access on a phone">
+</p>
 
 ## Install
 

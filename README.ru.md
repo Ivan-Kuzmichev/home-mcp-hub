@@ -22,7 +22,11 @@
 Один Docker-контейнер с админкой:
 ассистент ищет и качает торренты, запускает стриминг, разбирает документы, публикует HTML-прототипы и выполняет ваши скрипты.
 
-![Админка Home MCP Hub: дашборд, коннекторы, прототипы, скрипты, MCP доступ, журнал, диагностика](docs/media/demo.gif)
+<p align="center">
+  <a href="https://ivan-kuzmichev.github.io/home-mcp-hub/"><b>Открыть живое демо</b></a>
+</p>
+
+<img src="docs/screenshots/desktop-dashboard.png" alt="Дашборд Home MCP Hub: коннекторы, их состояние и последние вызовы MCP">
 
 ## Что умеет
 
@@ -38,6 +42,20 @@
 - **Скрипты** — cron-задачи и свои MCP-инструменты на JS в песочнице, с секретами, которые не видит ни скрипт, ни модель.
 - **Безопасность** — OAuth 2.1 с PKCE и обязательной 2FA для входа, секретный префикс пути, шифрование паролей сервисов, всегда закрытые файлы (ключи, `.env`, конфиги VPN), журнал всех вызовов.
 - **Инструкции для ассистента** — у каждого коннектора свой текст, который можно дополнить или заменить; что уходит модели — на экране «Диагностика».
+
+<p align="center">
+  <img src="docs/screenshots/desktop-connector.png" width="32%" alt="Настройки коннектора mitmproxy">
+  <img src="docs/screenshots/desktop-activity.png" width="32%" alt="Журнал вызовов">
+  <img src="docs/screenshots/desktop-scripts.png" width="32%" alt="Скрипт ждёт одобрения">
+</p>
+
+## На телефоне
+
+<p align="center">
+  <img src="docs/screenshots/phone-dashboard.png" width="260" alt="Дашборд на телефоне">
+  <img src="docs/screenshots/phone-prototypes.png" width="260" alt="Прототипы на телефоне">
+  <img src="docs/screenshots/phone-access.png" width="260" alt="MCP доступ на телефоне">
+</p>
 
 ## Запуск в Docker
 

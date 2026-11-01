@@ -22,6 +22,18 @@ pnpm db:generate                           # миграция после пра�
 
 `pnpm build` не запускать рядом с работающим `pnpm dev` — он перезаписывает `.next` и ломает dev-сервер.
 
+## Скриншоты и демо
+
+```bash
+pnpm build
+pnpm screenshots   # docs/screenshots/*.png для README и social preview
+pnpm demo          # demo-out/ — статическое демо для GitHub Pages
+```
+
+Оба поднимают хаб на выдуманных данных (`scripts/demo/seed.mts`) во временной папке с `HUB_DEMO=1` (без фоновых задач),
+обходят админку в Chromium и сохраняют страницы без скриптов. Демо публикует `.github/workflows/demo.yml` при каждом push в `main`;
+в настройках репозитория Pages → Source должно быть «GitHub Actions».
+
 ## Коннекторы
 
 Коннектор — папка `lib/connectors/<name>/`, экспортирующая объект `Connector` (`id`, `name`, `configSchema`, `test`, `tools`,
