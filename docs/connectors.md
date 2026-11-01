@@ -8,6 +8,7 @@
 | qBittorrent | `torrents_status`, `torrent_add`, `torrent_stop`, `torrent_start`, `torrent_delete`, `torrent_files`, `transfer_info` | ✅ |
 | Transmission | `transmission_status`, `transmission_add`, `transmission_stop`, `transmission_start`, `transmission_delete`, `transmission_files`, `transmission_info` | ⚠️ automated tests only |
 | Paperless (ngx) | `paperless_search`, `paperless_review`, `paperless_get`, `paperless_thumbnail`, `paperless_taxonomy`, `paperless_update`, `paperless_undo`, `paperless_link` | ⚠️ automated tests only |
+| Papra (26.5+) | `papra_search`, `papra_review`, `papra_get`, `papra_preview`, `papra_tags`, `papra_update`, `papra_undo`, `papra_link` | ⚠️ automated tests only |
 | TorrServe | `torrserve_add`, `torrserve_list`, `torrserve_links`, `torrserve_remove` | ✅ |
 | mitmproxy | `mitm_status`, `mitm_hosts`, `mitm_flows`, `mitm_flow`; with mocks: `mitm_mock_replace`, `mitm_mock_patch`, `mitm_mocks`, `mitm_mock_toggle`, `mitm_mock_delete`, `mitm_clear` | ⚠️ automated tests only |
 | camofox (browser) | `browser_open`, `browser_snapshot`, `browser_links`, `browser_screenshot`, `browser_extract`, `browser_tabs`, `browser_youtube_transcript`; with actions: `browser_act`, `browser_close`, `browser_import_cookies` | ⚠️ automated tests only |
@@ -42,6 +43,17 @@ A batch can be rolled back (`paperless_undo`). Documents with the exclusion tag 
 
 File links look like `/f/{token}` and have no secret prefix. They are either personal (24 h, only when signed in to the admin panel) or shareable on a direct request
 (one use, 15 minutes). Uploading files through the assistant is not supported yet.
+
+## Papra
+
+Works like Paperless: the assistant searches and reads documents, labels them in batches (name, date, notes, tags) following the "labeling rules",
+and a batch can be rolled back (`papra_undo`). Documents with the exclusion tag (`private` by default) are invisible to the assistant, and file links are the same `/f/{token}`.
+
+What differs comes from Papra itself. It has no correspondents, document types, inbox tag or classifier suggestions, so "unlabeled" means no tags or no date,
+and `papra_review` shows recently labeled documents as examples. There are no PDF previews: `papra_preview` only shows documents that are images, up to 2 MB.
+
+Requires Papra 26.5 or newer. Create the API key in your Papra account with `documents:read`, `documents:update`, `tags:read` and `tags:create`.
+Add `organizations:read` unless you set the organization ID: without an ID the connector uses the user's only organization and asks you to choose if there are several.
 
 ## Files
 

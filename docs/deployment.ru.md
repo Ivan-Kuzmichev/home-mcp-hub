@@ -49,7 +49,7 @@ scripts/check-oauth.sh https://hub.example.com <префикс>
 ## Сеть: bridge или сеть хоста
 
 **Общая docker-сеть** — хаб подключается к той же сети, что сервисы, и обращается к ним по именам контейнеров:
-`http://qbittorrent:8080`, `http://jackett:9117`, `http://torrserve:8090`, `http://transmission:9091`, `http://paperless:8000`.
+`http://qbittorrent:8080`, `http://jackett:9117`, `http://torrserve:8090`, `http://transmission:9091`, `http://paperless:8000`, `http://papra:1221`.
 Полный пример с Pangolin (Newt) и Watchtower — [`docker-compose.yml`](../docker-compose.yml) в корне репозитория.
 
 **Сеть хоста** — если сервисы запущены на хосте или в `network_mode: host`:

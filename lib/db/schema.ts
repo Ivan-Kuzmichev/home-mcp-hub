@@ -85,12 +85,23 @@ export const paperlessChange = sqliteTable('paperless_change', {
   createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
 }, (t) => [index('paperless_change_batch_idx').on(t.batchId)])
 
+/** Papra metadata edits made through the hub: before/after for undo, grouped by batch. Ids are strings there. */
+export const papraChange = sqliteTable('papra_change', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  batchId: text('batch_id').notNull(),
+  documentId: text('document_id').notNull(),
+  beforeJson: text('before_json').notNull(),
+  afterJson: text('after_json').notNull(),
+  undoneAt: integer('undone_at', { mode: 'timestamp_ms' }),
+  createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+}, (t) => [index('papra_change_batch_idx').on(t.batchId)])
+
 /** Download links for documents: personal (admin session required) or shareable (one-time, short). */
 export const downloadLink = sqliteTable('download_link', {
   token: text('token').primaryKey(),
   connectorId: text('connector_id').notNull(),
   documentId: integer('document_id').notNull(),
-  /** Files connector: «folder/sub/file», checked against the folder settings on every open */
+  /** Files connector: «folder/sub/file», checked against the folder settings on every open. Papra: document id */
   path: text('path'),
   original: integer('original', { mode: 'boolean' }).notNull().default(false),
   shareable: integer('shareable', { mode: 'boolean' }).notNull().default(false),

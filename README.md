@@ -30,7 +30,7 @@ sorts your documents, publishes HTML prototypes and runs your scripts.
 
 ## Features
 
-- **Connectors:** Jackett, qBittorrent, Transmission, TorrServe, Paperless-ngx, folders on disk (read, edit and move, by access level), the camofox browser and mitmproxy traffic capture. Set them up in the admin panel and turn off the tools you don't need.
+- **Connectors:** Jackett, qBittorrent, Transmission, TorrServe, Paperless-ngx, Papra, folders on disk (read, edit and move, by access level), the camofox browser and mitmproxy traffic capture. Set them up in the admin panel and turn off the tools you don't need.
 - **camofox:** the assistant opens sites in the [camofox](https://github.com/jo-inc/camofox-browser) stealth browser from your home IP.
   It reads pages, links and YouTube subtitles and takes screenshots. Read-only by default; clicks, typing and navigation are behind a switch.
   For example: "open news.ycombinator.com and sum up the top five headlines", "what does this video say: <YouTube link>".
@@ -113,7 +113,7 @@ Database migrations run on start. All state lives in `./data`; backups and the r
 ## Documentation
 
 - [Deployment](docs/deployment.md): reverse proxy, host network, images and versions, auto-update, backups
-- [Connectors and tools](docs/connectors.md): what each connector does, instructions, Paperless, scripts and custom tools
+- [Connectors and tools](docs/connectors.md): what each connector does, instructions, Paperless, Papra, scripts and custom tools
 - [Security](docs/security.md): how sign-in, OAuth, the prefix, secrets and prototypes are protected
 - [Development](docs/development.md): running locally, checks, releases
 

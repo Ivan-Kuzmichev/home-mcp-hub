@@ -4,23 +4,26 @@ import { getDb } from './db'
 import { downloadLink } from './db/schema'
 
 // ---------------------------------------------------------------------------
-// Download links (/f/{token}, outside the secret prefix like /p/): Paperless documents
-// and files from the Files connector.
+// Download links (/f/{token}, outside the secret prefix like /p/): Paperless and Papra
+// documents and files from the Files connector.
 
 export const PERSONAL_LINK_TTL_MS = 24 * 60 * 60 * 1000
 export const SHAREABLE_LINK_TTL_MS = 15 * 60 * 1000
 
-export type LinkTarget = { connectorId: 'paperless'; documentId: number; original: boolean } | { connectorId: 'files'; path: string }
+export type LinkTarget =
+  | { connectorId: 'paperless'; documentId: number; original: boolean }
+  | { connectorId: 'files'; path: string }
+  | { connectorId: 'papra'; documentId: string }
 
 export function createLink(target: LinkTarget, opts: { shareable: boolean }): { token: string; expiresAt: Date } {
   const token = randomBytes(24).toString('base64url')
   const now = Date.now()
   const expiresAt = new Date(now + (opts.shareable ? SHAREABLE_LINK_TTL_MS : PERSONAL_LINK_TTL_MS))
+  // document_id is NOT NULL from the Paperless-only days and an integer: the others keep 0 there and use path.
   const values =
     target.connectorId === 'paperless'
       ? { connectorId: target.connectorId, documentId: target.documentId, original: target.original }
-      : // document_id is NOT NULL from the Paperless-only days; files keep 0 there.
-        { connectorId: target.connectorId, documentId: 0, path: target.path }
+      : { connectorId: target.connectorId, documentId: 0, path: target.connectorId === 'papra' ? target.documentId : target.path }
   getDb()
     .insert(downloadLink)
     .values({ token, ...values, shareable: opts.shareable, expiresAt, createdAt: new Date(now) })

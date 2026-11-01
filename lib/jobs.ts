@@ -2,6 +2,7 @@ import cron from 'node-cron'
 import { checkAllConnectors } from './connectors/health'
 import { syncMocks } from './connectors/mitmproxy/mocks'
 import { purgeOldChanges } from './connectors/paperless/logic'
+import { purgeOldPapraChanges } from './connectors/papra/logic'
 import { purgeExpiredLinks } from './download-links'
 import { purgeJournal } from './journal'
 import { syncSchedules } from './scripts/scheduler'
@@ -24,6 +25,7 @@ export function runCleanup(): { prototypes: number; journal: number } {
   const journal = purgeJournal()
   purgeExpiredLinks()
   purgeOldChanges()
+  purgeOldPapraChanges()
   purgeOldRuns()
   if (prototypes || journal) logger.info({ prototypes, journal }, 'cleanup')
   return { prototypes, journal }

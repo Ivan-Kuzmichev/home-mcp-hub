@@ -1,6 +1,6 @@
 # Home MCP Hub
 
-Self-hosted MCP-хаб для домашних сервисов (Jackett, qBittorrent, Transmission, TorrServe, Paperless, файлы, браузер camofox, перехват трафика mitmproxy, HTML-прототипы, скрипты) с админкой.
+Self-hosted MCP-хаб для домашних сервисов (Jackett, qBittorrent, Transmission, TorrServe, Paperless, Papra, файлы, браузер camofox, перехват трафика mitmproxy, HTML-прототипы, скрипты) с админкой.
 Один Docker-контейнер за реверс-прокси, подключается к Claude и ChatGPT как custom connector.
 
 ## Главное правило
@@ -44,6 +44,10 @@ Self-hosted MCP-хаб для домашних сервисов (Jackett, qBitto
 - **Paperless (ngx, совместимо с ng):** `Authorization: Token …`; фильтры дат — только `date__gt`/`date__lt` (в ng нет `__gte`);
   «неразмеченные» = inbox-тег ИЛИ без корреспондента ИЛИ без типа — API не умеет OR, запросы сливаются. Тег-исключение проверяется
   на каждом чтении и правке. Правки пишутся в `paperless_change` для `paperless_undo`. Ссылки на файлы — `/f/{token}` вне префикса.
+- **Papra (26.5+):** `Authorization: Bearer …`, всё под `/api/organizations/{org}/…`, организация из настроек или единственная у ключа. Id — строки (`doc_…`, `tag_…`), проверяются regex до запроса.
+  Фильтры — только язык запросов в `searchQuery` (`has:tags`, `date:>=…`, `NOT tag:<id>`), теги подставляем по id; до 26.5 список молча игнорирует `searchQuery`, поэтому `test` проверяет версию, а тег-исключение проверяется ещё и по результатам.
+  Нет корреспондентов, типов, inbox-тега, подсказок и превью PDF. `PATCH` — поля (`notes` не nullable, очистка — `''`), теги — отдельными запросами (`409` = уже есть), так что возможна частичная правка: откат пишется в `papra_change` с первой успешной записи. Цвет обязателен при создании тега.
+  Файл всегда приходит как `octet-stream`, настоящий тип — `mimeType` документа. Ссылки `/f/{token}` общие: id в колонке `path`.
 - **TorrServe:** `POST /torrents` с JSON `{action, link, title, poster, save_to_db}`, `/echo` — версия, Basic-auth только если включён `--httpauth`.
 - **Cron-скрипты:** код пишет модель, запускается только версия, одобренная админом (`approved_hash` = sha256 кода),
   либо сразу одобренная хабом при включённом в коннекторе «Без одобрения» (по умолчанию выключено). Песочница —
@@ -72,7 +76,7 @@ Self-hosted MCP-хаб для домашних сервисов (Jackett, qBitto
   Каждый путь проходит `resolveTarget`: без `..`, realpath (символьные ссылки) внутри папки, проверка режима. Модели — только `папка/…`,
   без путей контейнера. В `add` дописывать можно лишь файлы, созданные хабом за последний час (запись частями).
   Запрещённые файлы (`lib/connectors/files/deny.ts`, поле `deny`) проверяются в `resolveTarget` на каждом сегменте пути, плюс отдельно
-  в `files_list` и `files_search`, которые обходят каталог сами. Ссылки `/f/{token}` общие с Paperless (`lib/download-links.ts`, колонка `path`); у одноразовых ссылок `Range` игнорируется.
+  в `files_list` и `files_search`, которые обходят каталог сами. Ссылки `/f/{token}` общие с Paperless и Papra (`lib/download-links.ts`, колонка `path`); у одноразовых ссылок `Range` игнорируется.
 - **Прототипы** отдаются с `Content-Security-Policy: sandbox allow-scripts allow-forms allow-modals allow-popups allow-downloads` (без `allow-same-origin`)
   и `X-Robots-Tag: noindex`. Пин — argon2-хэш, cookie на 24 ч, 5 попыток за 10 мин. В отдаваемый HTML (и превью админки)
   вставляется скрипт `window.hub.db` (`lib/prototypes/data.ts`): JSON до 50 МБ в `prototypes/{id}/data.json`, API `/p/{slug}/db`

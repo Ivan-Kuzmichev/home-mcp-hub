@@ -76,7 +76,7 @@ const WELL_KNOWN_WITH_SUFFIX = ['oauth-authorization-server', 'openid-configurat
 export function decideRoute(pathname: string, prefix: string | null, opts: { dev?: boolean } = {}): RouteDecision {
   // Prototypes live outside the prefix: their links are shared and survive a prefix change.
   if (pathname === '/p' || pathname.startsWith('/p/')) return { type: 'pass' }
-  // Document download links (Paperless): random token, shared without revealing the prefix.
+  // Document download links (Paperless, Papra, Files): random token, shared without revealing the prefix.
   if (pathname.startsWith('/f/')) return { type: 'pass' }
   // Hashed build assets are not guessable. In dev Next also needs HMR and friends.
   if (pathname.startsWith('/_next/static/')) return { type: 'pass' }

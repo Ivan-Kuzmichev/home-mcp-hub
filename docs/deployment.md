@@ -49,7 +49,7 @@ Check over the LAN before the proxy is set up: `BASE_URL=http://<ip>:3000`, `TRU
 ## Network: bridge or host network
 
 **Shared Docker network:** the hub joins the same network as the services and reaches them by container name:
-`http://qbittorrent:8080`, `http://jackett:9117`, `http://torrserve:8090`, `http://transmission:9091`, `http://paperless:8000`.
+`http://qbittorrent:8080`, `http://jackett:9117`, `http://torrserve:8090`, `http://transmission:9091`, `http://paperless:8000`, `http://papra:1221`.
 A full example with Pangolin (Newt) and Watchtower is [`docker-compose.yml`](../docker-compose.yml) in the repository root.
 
 **Host network:** use it if the services run on the host or with `network_mode: host`:

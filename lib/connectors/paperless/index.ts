@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { plural, truncate } from '../format'
+import { mapLimit } from '../map-limit'
 import { baseUrl, defineConnector, field, secret, toolFor, ToolError } from '../types'
 import { LINK_KIND_TEXT, linkUrl } from '../../download-links'
 import { PlClient, type PlDocument } from './client'
@@ -85,21 +86,6 @@ const webLink = (c: Config, id: number) => (c.webUrl ? `${c.webUrl}/documents/${
 
 function rulesBlock(c: Config): string {
   return c.rules ? `Правила разметки (от пользователя):\n${c.rules}\n` : 'Правил разметки нет — держись существующих тегов и названий.\n'
-}
-
-/** Run with limited parallelism: Paperless on a NAS does not like 20 requests at once. */
-async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
-  const out: R[] = new Array(items.length)
-  let next = 0
-  await Promise.all(
-    Array.from({ length: Math.min(limit, items.length) }, async () => {
-      while (next < items.length) {
-        const i = next++
-        out[i] = await fn(items[i]!)
-      }
-    }),
-  )
-  return out
 }
 
 const filterInput = {

@@ -8,6 +8,7 @@
 | qBittorrent | `torrents_status`, `torrent_add`, `torrent_stop`, `torrent_start`, `torrent_delete`, `torrent_files`, `transfer_info` | ✅ |
 | Transmission | `transmission_status`, `transmission_add`, `transmission_stop`, `transmission_start`, `transmission_delete`, `transmission_files`, `transmission_info` | ⚠️ только автотесты |
 | Paperless (ngx) | `paperless_search`, `paperless_review`, `paperless_get`, `paperless_thumbnail`, `paperless_taxonomy`, `paperless_update`, `paperless_undo`, `paperless_link` | ⚠️ только автотесты |
+| Papra (26.5+) | `papra_search`, `papra_review`, `papra_get`, `papra_preview`, `papra_tags`, `papra_update`, `papra_undo`, `papra_link` | ⚠️ только автотесты |
 | TorrServe | `torrserve_add`, `torrserve_list`, `torrserve_links`, `torrserve_remove` | ✅ |
 | mitmproxy | `mitm_status`, `mitm_hosts`, `mitm_flows`, `mitm_flow`; с моками — `mitm_mock_replace`, `mitm_mock_patch`, `mitm_mocks`, `mitm_mock_toggle`, `mitm_mock_delete`, `mitm_clear` | ⚠️ только автотесты |
 | camofox (браузер) | `browser_open`, `browser_snapshot`, `browser_links`, `browser_screenshot`, `browser_extract`, `browser_tabs`, `browser_youtube_transcript`; с действиями — `browser_act`, `browser_close`, `browser_import_cookies` | ⚠️ только автотесты |
@@ -42,6 +43,17 @@
 
 Ссылки на файлы — `/f/{токен}` без секретного префикса: личные (24 ч, только с входом в админку) и пересылаемые по прямой просьбе
 (один раз, 15 минут). Загрузки файлов через ассистента пока нет.
+
+## Papra
+
+Работает как Paperless: ассистент ищет и читает документы, размечает их пачками — название, дата, заметки, теги — по «правилам разметки»,
+пачку можно откатить (`papra_undo`). Документы с тегом-исключением (по умолчанию `private`) ассистенту не видны, ссылки на файлы — те же `/f/{токен}`.
+
+Отличия — от самого Papra. В нём нет корреспондентов, типов документов, тега «входящие» и подсказок классификатора, поэтому «неразмеченные» — это без тегов или без даты,
+а `papra_review` показывает для примера недавно размеченные документы. Превью PDF нет: `papra_preview` показывает только документы-картинки до 2 МБ.
+
+Нужен Papra 26.5 или новее. API-ключ создаётся в аккаунте Papra с правами `documents:read`, `documents:update`, `tags:read` и `tags:create`.
+Добавьте `organizations:read`, если не указываете ID организации: без него коннектор берёт единственную организацию пользователя, а если их несколько — просит выбрать.
 
 ## Файлы
 

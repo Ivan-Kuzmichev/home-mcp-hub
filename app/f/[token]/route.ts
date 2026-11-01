@@ -3,6 +3,8 @@ import { getAuth } from '@/lib/auth'
 import { activeConfig } from '@/lib/connectors/active'
 import { openFile } from '@/lib/connectors/files/download'
 import { PlClient } from '@/lib/connectors/paperless/client'
+import { PaClient, type PaConfig } from '@/lib/connectors/papra/client'
+import { isVisible } from '@/lib/connectors/papra/logic'
 import { ToolError } from '@/lib/connectors/types'
 import { claimLink, getLink } from '@/lib/download-links'
 import { logger } from '@/lib/logger'
@@ -16,7 +18,7 @@ const INLINE = /^(application\/pdf|image\/(png|jpeg|gif|webp))$/
 
 /**
  * Download: /f/{token}, outside the secret prefix so a shared link does not reveal it.
- * Paperless documents and files from the Files connector.
+ * Paperless and Papra documents and files from the Files connector.
  * Personal links need the admin session; shareable ones open once within 15 minutes.
  */
 export async function GET(req: Request, { params }: { params: Promise<{ token: string }> }): Promise<Response> {
@@ -35,6 +37,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ token: s
   }
 
   if (link.connectorId === 'files') return fileResponse(link.path ?? '', link.shareable ? null : req.headers.get('range'))
+  if (link.connectorId === 'papra') return papraResponse(link.path ?? '', link.shareable)
 
   const config = activeConfig(link.connectorId) as { baseUrl: string; apiToken?: string } | null
   if (!config) return simplePage(503, 'Paperless выключен', 'Коннектор Paperless отключён в админке хаба.')
@@ -62,6 +65,36 @@ export async function GET(req: Request, { params }: { params: Promise<{ token: s
 }
 
 const SANDBOX = { 'Content-Security-Policy': 'sandbox', 'Cache-Control': 'private, no-store' }
+
+/**
+ * Papra serves every file as an octet-stream attachment: the real type comes from the document.
+ * The exclusion tag is checked again here, it may have appeared after the link was made.
+ */
+async function papraResponse(id: string, shareable: boolean): Promise<Response> {
+  const config = activeConfig('papra') as (PaConfig & { excludeTag?: string }) | null
+  if (!config) return simplePage(503, 'Papra выключен', 'Коннектор Papra отключён в админке хаба.')
+  try {
+    const client = new PaClient(config)
+    const doc = await client.document(id)
+    if (doc.isDeleted || !isVisible(doc, config.excludeTag)) return simplePage(404, 'Документ недоступен', 'Его удалили или закрыли от ассистента.')
+    const upstream = await client.file(id)
+    const inline = INLINE.test(doc.mimeType)
+    const disposition = upstream.headers.get('content-disposition') ?? `attachment; filename="${id}"`
+    logger.info({ connector: 'papra', shareable }, 'document downloaded')
+    return new Response(upstream.body, {
+      headers: {
+        ...PUBLIC_HEADERS,
+        'Content-Type': inline ? doc.mimeType : 'application/octet-stream',
+        'Content-Disposition': inline ? disposition.replace(/^attachment/, 'inline') : disposition,
+        ...(upstream.headers.get('content-length') ? { 'Content-Length': upstream.headers.get('content-length')! } : {}),
+        ...SANDBOX,
+      },
+    })
+  } catch (e) {
+    logger.warn({ err: e instanceof Error ? e.message : String(e) }, 'papra download failed')
+    return simplePage(502, 'Не получилось скачать', 'Papra не отдал файл. Попробуй позже.')
+  }
+}
 
 /** One-time links ignore Range: the second request of a video player would find the link used. */
 async function fileResponse(shown: string, range: string | null): Promise<Response> {
