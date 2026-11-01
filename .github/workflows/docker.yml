@@ -58,3 +58,27 @@ jobs:
             HUB_VERSION=${{ steps.version.outputs.version }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions: { contents: write }
+    steps:
+      - uses: actions/checkout@v7
+        with: { fetch-depth: 0 }
+      - name: GitHub Release with the commits since the previous tag
+        env: { GH_TOKEN: '${{ secrets.GITHUB_TOKEN }}' }
+        run: |
+          prev=$(git describe --tags --abbrev=0 --match 'v*' "$GITHUB_REF_NAME^" 2>/dev/null || true)
+          {
+            git log --no-merges --format='- %s' ${prev:+$prev..}"$GITHUB_REF_NAME" | grep -v '^- Release v' || true
+            echo
+            echo "Image: \`ghcr.io/${GITHUB_REPOSITORY,,}:${GITHUB_REF_NAME#v}\`"
+            if [ -n "$prev" ]; then echo "Changes: https://github.com/$GITHUB_REPOSITORY/compare/$prev...$GITHUB_REF_NAME"; fi
+          } > notes.md
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release edit "$GITHUB_REF_NAME" --notes-file notes.md
+          else
+            gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --notes-file notes.md --verify-tag
+          fi

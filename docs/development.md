@@ -30,7 +30,7 @@ pnpm db:generate                           # миграция после пра�
 ## Релизы
 
 `pnpm release` (или `pnpm release minor` / `major`) поднимает версию в `package.json`, делает коммит, ставит тег `vX.Y.Z` и пушит.
-CI собирает образ и публикует `:X.Y.Z` и `:X.Y` рядом с `:latest`.
+CI собирает образ, публикует `:X.Y.Z` и `:X.Y` рядом с `:latest` и создаёт GitHub Release со списком коммитов с прошлого тега.
 
 Зависимости обновляет Dependabot (`.github/dependabot.yml`) раз в неделю; better-auth и MCP SDK сгруппированы — их стоит обновлять вместе,
 обе библиотеки быстро меняются.

@@ -1,33 +1,53 @@
-# Home MCP Hub
+<p align="center">
+  <img src="docs/logo.png" width="96" height="96" alt="Home MCP Hub logo">
+</p>
 
-Self-hosted MCP-хаб, который подключает домашние сервисы к Claude и ChatGPT. Один Docker-контейнер с админкой:
-ассистент ищет и качает торренты, запускает стриминг, разбирает документы, публикует HTML-прототипы и выполняет ваши скрипты.
+<h1 align="center">Home MCP Hub</h1>
 
-![Админка Home MCP Hub: дашборд, коннекторы, прототипы, скрипты, MCP доступ, журнал, диагностика](docs/media/demo.gif)
+<p align="center">
+  A self-hosted MCP hub that connects your home services to Claude and ChatGPT.
+</p>
 
-## Что умеет
+<p align="center">
+  <a href="https://github.com/Ivan-Kuzmichev/home-mcp-hub/releases/latest"><img src="https://img.shields.io/github/v/release/Ivan-Kuzmichev/home-mcp-hub" alt="Latest release"></a>
+  <a href="https://github.com/Ivan-Kuzmichev/home-mcp-hub/actions/workflows/docker.yml"><img src="https://github.com/Ivan-Kuzmichev/home-mcp-hub/actions/workflows/docker.yml/badge.svg" alt="CI"></a>
+  <img src="https://img.shields.io/badge/MCP-Streamable%20HTTP-7FA7FF" alt="MCP Streamable HTTP">
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/Ivan-Kuzmichev/home-mcp-hub" alt="MIT license"></a>
+</p>
 
-- **Коннекторы** — Jackett, qBittorrent, Transmission, TorrServe, Paperless-ngx, папки с диска (чтение, правка, перенос по режимам), браузер camofox, перехват трафика mitmproxy. Настраиваются в админке, лишние инструменты можно выключить.
-- **camofox** — ассистент открывает сайты в stealth-браузере [camofox](https://github.com/jo-inc/camofox-browser) с домашнего IP:
-  читает страницы, ссылки и субтитры YouTube, делает скриншоты. По умолчанию только чтение; клики, ввод и переходы — по переключателю.
-  Например: «открой news.ycombinator.com и перескажи первые пять заголовков», «что пишут в этом видео: <ссылка на YouTube>»,
-  «найди на avito.ru велосипед до 20 000 и пришли три ссылки» (последнее — с включёнными действиями).
-- **mitmproxy** — ассистент видит, куда ходят приложения домашних устройств, и по переключателю подменяет ответы сервисов
-  (аддон `hub_mocks.py`, правила — только данные). Например: «куда ходило приложение Bank за последние 10 минут», «покажи запрос к api.bank.example/v1/profile»,
-  «подмени ответ api.example.com/v1/profile: isPremium = true», «выключи мок».
-- **Прототипы** — ассистент публикует HTML-страницу и отдаёт ссылку, при желании с пином и сроком жизни.
-- **Скрипты** — cron-задачи и свои MCP-инструменты на JS в песочнице, с секретами, которые не видит ни скрипт, ни модель.
-- **Безопасность** — OAuth 2.1 с PKCE и обязательной 2FA для входа, секретный префикс пути, шифрование паролей сервисов, журнал всех вызовов.
-- **Инструкции для ассистента** — у каждого коннектора свой текст, который можно дополнить или заменить; что уходит модели — на экране «Диагностика».
+<p align="center">
+  <b>English</b> · <a href="README.ru.md">Русский</a>
+</p>
 
-## Запуск в Docker
+One Docker container with an admin panel. Your assistant searches and downloads torrents, starts streaming,
+sorts your documents, publishes HTML prototypes and runs your scripts.
+
+![Home MCP Hub admin panel: dashboard, connectors, prototypes, scripts, MCP access, activity log, diagnostics](docs/media/demo.gif)
+
+## Features
+
+- **Connectors:** Jackett, qBittorrent, Transmission, TorrServe, Paperless-ngx, folders on disk (read, edit and move, by access level), the camofox browser and mitmproxy traffic capture. Set them up in the admin panel and turn off the tools you don't need.
+- **camofox:** the assistant opens sites in the [camofox](https://github.com/jo-inc/camofox-browser) stealth browser from your home IP.
+  It reads pages, links and YouTube subtitles and takes screenshots. Read-only by default; clicks, typing and navigation are behind a switch.
+  For example: "open news.ycombinator.com and sum up the top five headlines", "what does this video say: <YouTube link>".
+- **mitmproxy:** the assistant sees where the apps on your home devices go, and behind a switch replaces service responses
+  (the `hub_mocks.py` addon; rules are data, never code). For example: "where did the Bank app go in the last 10 minutes",
+  "replace the api.example.com/v1/profile response: isPremium = true", "turn the mock off".
+- **Prototypes:** the assistant publishes an HTML page and gives you a link, optionally with a PIN, an expiry date and a small JSON database.
+- **Scripts:** cron jobs and your own MCP tools in JavaScript, run in a sandbox, with secrets that neither the script nor the model can see.
+- **Security:** OAuth 2.1 with PKCE and mandatory 2FA, a secret path prefix, encrypted service passwords, files that are always closed (keys, `.env`, VPN configs) and a log of every call.
+- **Instructions for the assistant:** each connector has its own text, which you can extend or replace. The Diagnostics screen shows what the model receives.
+
+The admin panel and the tool replies are in Russian.
+
+## Install
 
 `docker-compose.yml`:
 
 ```yaml
 services:
   hub:
-    image: ghcr.io/ivan-kuzmichev/home-mcp-hub:latest   # или закрепить версию: :0.11
+    image: ghcr.io/ivan-kuzmichev/home-mcp-hub:latest   # or pin a version: :0.15
     restart: unless-stopped
     env_file: .env
     environment:
@@ -39,41 +59,53 @@ services:
       - ./data:/data
 ```
 
-`.env` рядом (`chmod 600 .env`):
+`.env` next to it (`chmod 600 .env`):
 
 ```bash
-BASE_URL=https://hub.example.com        # публичный адрес, без префикса; MCP работает только по https
-HUB_MASTER_KEY=                         # openssl rand -hex 32 — шифрует пароли сервисов
+BASE_URL=https://hub.example.com        # public address without the prefix; MCP works over https only
+HUB_MASTER_KEY=                         # openssl rand -hex 32, encrypts service passwords
 BETTER_AUTH_SECRET=                     # openssl rand -base64 32
 ADMIN_EMAIL=you@example.com
-ADMIN_PASSWORD=                         # от 12 символов, нужен только при первом старте
-TRUST_PROXY=1                           # хаб за реверс-прокси (Traefik, Caddy, Pangolin…)
+ADMIN_PASSWORD=                         # 12+ characters, needed on the first start only
+TRUST_PROXY=1                           # the hub sits behind a reverse proxy (Traefik, Caddy, Pangolin…)
 ```
 
-```bash
+```sh
 docker compose up -d
-docker compose logs hub | grep "Admin panel"   # адрес админки с секретным префиксом, печатается один раз
+docker compose logs hub | grep "Admin panel"   # the admin address with the secret prefix, printed once
 ```
 
-Дальше:
+Then:
 
-1. Открыть адрес из лога, войти и настроить 2FA — без неё админка не пустит.
-2. «Коннекторы» — указать адреса сервисов, например `http://qbittorrent:8080`, если хаб в одной docker-сети с ними.
-3. «MCP доступ» — скопировать MCP URL и включить регистрацию клиентов:
-   - **Claude** → Settings → Connectors → Add custom connector → URL, OAuth-поля пустые → Connect.
-   - **ChatGPT** → Плагины → Добавить → Создать MCP-приложение → URL, аутентификация OAuth → Создать.
-4. Войти, ввести код 2FA, нажать «Разрешить». В новом чате попросить `вызови hub_status`.
+1. Open the address from the log, sign in and set up 2FA. The admin panel stays closed without it.
+2. **Коннекторы** (Connectors): enter the service addresses, for example `http://qbittorrent:8080` if the hub shares a Docker network with them.
+3. **MCP доступ** (MCP access): copy the MCP URL and turn on client registration.
+   - **Claude:** Settings → Connectors → Add custom connector → the URL, leave the OAuth fields empty → Connect.
+   - **ChatGPT:** Apps → Add → Create MCP app → the URL, OAuth authentication → Create.
+4. Sign in, enter the 2FA code and press **Разрешить** (Allow). In a new chat, ask it to `call hub_status`.
 
-Обновление — `docker compose pull && docker compose up -d`, миграции базы применяются при старте.
-Всё состояние хранится в `./data`, бэкап и остальное — в [docs/deployment.md](docs/deployment.md).
+## Update
 
-## Документация
+```sh
+docker compose pull && docker compose up -d
+```
 
-- [Развёртывание](docs/deployment.md) — реверс-прокси, сеть хоста, образы и версии, автообновление, бэкап
-- [Коннекторы и инструменты](docs/connectors.md) — что умеет каждый коннектор, инструкции, Paperless, скрипты и свои инструменты
-- [Безопасность](docs/security.md) — как закрыты вход, OAuth, префикс, секреты и прототипы
-- [Разработка](docs/development.md) — локальный запуск, проверки, релизы
+Database migrations run on start. All state lives in `./data`; backups and the rest are in [docs/deployment.md](docs/deployment.md).
 
-## Лицензия
+## Documentation
+
+In Russian:
+
+- [Deployment](docs/deployment.md): reverse proxy, host network, images and versions, auto-update, backups
+- [Connectors and tools](docs/connectors.md): what each connector does, instructions, Paperless, scripts and custom tools
+- [Security](docs/security.md): how sign-in, OAuth, the prefix, secrets and prototypes are protected
+- [Development](docs/development.md): running locally, checks, releases
+
+## Releases
+
+A `v*` tag builds the `ghcr.io/ivan-kuzmichev/home-mcp-hub` image tagged `X.Y.Z` and `X.Y` and publishes a GitHub Release
+with the commits since the previous tag. Every push to `main` updates `latest`.
+
+## License
 
 [MIT](LICENSE)
