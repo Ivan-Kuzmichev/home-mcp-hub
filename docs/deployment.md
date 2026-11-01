@@ -1,56 +1,58 @@
-# Развёртывание
+# Deployment
 
-## Образ и версии
+**English** · [Русский](deployment.ru.md)
 
-Каждый push в `main` собирает образ в GitHub Actions и публикует в GHCR: `ghcr.io/ivan-kuzmichev/home-mcp-hub:latest` и `:sha-<коммит>`.
-Релиз (`pnpm release`, см. [development.md](development.md)) ставит тег `vX.Y.Z`, и CI публикует ещё `:X.Y.Z` и `:X.Y`.
+## Image and versions
 
-- Можно жить на `:latest` с автообновлением или закрепить `:X.Y` и получать только патчи этой версии.
-- Версия и коммит образа видны в админке → «Настройки».
-- Если пакет в GHCR приватный — один раз `docker login ghcr.io` с токеном `read:packages`. Секретов в образе нет, пакет можно сделать публичным.
+Every push to `main` builds an image in GitHub Actions and publishes it to GHCR: `ghcr.io/ivan-kuzmichev/home-mcp-hub:latest` and `:sha-<commit>`.
+A release (`pnpm release`, see [development.md](development.md)) creates the tag `vX.Y.Z`, and CI also publishes `:X.Y.Z` and `:X.Y`.
 
-## Переменные окружения
+- You can run `:latest` with auto-update, or pin `:X.Y` and get only the patches of that version.
+- The image version and commit are shown in the admin panel under **Настройки** (Settings).
+- If the GHCR package is private, run `docker login ghcr.io` once with a token that has `read:packages`. The image contains no secrets, so you can make the package public.
 
-| Переменная | Что это |
+## Environment variables
+
+| Variable | What it is |
 | --- | --- |
-| `BASE_URL` | Публичный адрес хаба без префикса. MCP работает только по https; по http доступны админка и коннекторы |
-| `HUB_MASTER_KEY` | `openssl rand -hex 32`. Шифрует пароли и ключи сервисов (AES-256-GCM). Потеряешь — придётся ввести их заново, остальное цело |
-| `BETTER_AUTH_SECRET` | `openssl rand -base64 32`. Подпись сессий |
-| `ADMIN_EMAIL`, `ADMIN_PASSWORD` | Админ, создаётся при первом старте, пароль от 12 символов |
-| `DATABASE_PATH` | SQLite, в контейнере `/data/hub.db` |
-| `TRUST_PROXY` | `1` — брать IP клиента из `X-Forwarded-For` (хаб за прокси), `0` — напрямую |
-| `PORT` | Порт внутри контейнера, по умолчанию 3000 |
-| `PUID`, `PGID` | Необязательно: владелец файлов в `/data` и в папках коннектора «Файлы» на хосте (`id -u`, `id -g`) |
-| `TZ`, `LOG_LEVEL` | Часовой пояс для cron-скриптов, уровень логов (`info`) |
+| `BASE_URL` | Public address of the hub without the prefix. MCP works over https only; the admin panel and connectors also work over http |
+| `HUB_MASTER_KEY` | `openssl rand -hex 32`. Encrypts service passwords and keys (AES-256-GCM). If you lose it, you have to enter them again, everything else stays intact |
+| `BETTER_AUTH_SECRET` | `openssl rand -base64 32`. Signs sessions |
+| `ADMIN_EMAIL`, `ADMIN_PASSWORD` | The admin, created on the first start. The password needs 12+ characters |
+| `DATABASE_PATH` | SQLite file, `/data/hub.db` in the container |
+| `TRUST_PROXY` | `1`: take the client IP from `X-Forwarded-For` (the hub is behind a proxy), `0`: direct connections |
+| `PORT` | Port inside the container, 3000 by default |
+| `PUID`, `PGID` | Optional: owner of the files in `/data` and in the folders of the **Файлы** (Files) connector on the host (`id -u`, `id -g`) |
+| `TZ`, `LOG_LEVEL` | Time zone for cron scripts, log level (`info`) |
 
-Права на `/data` образ выставляет сам при старте, `chown` на хосте не нужен.
+The image sets permissions on `/data` itself at start, so you don't need `chown` on the host.
 
-## Реверс-прокси
+## Reverse proxy
 
-Хаб рассчитан на работу за прокси с https: Traefik, Caddy, nginx, Pangolin и т. п.
+The hub is meant to run behind an https proxy: Traefik, Caddy, nginx, Pangolin and so on.
 
-- Прокси ведёт домен (`hub.example.com`) на контейнер `:3000`. Собственную авторизацию прокси **выключить** — авторизует сам хаб.
+- The proxy sends the domain (`hub.example.com`) to the container on `:3000`. **Turn off** the proxy's own authentication: the hub authenticates by itself.
 - `BASE_URL=https://hub.example.com`, `TRUST_PROXY=1`.
-- Сами сервисы (Jackett, qBittorrent и т. д.) наружу не публиковать: хаб ходит к ним по внутренней сети.
-- Хранилище прототипов (`window.hub.db`) принимает запросы до 50 МБ. У nginx по умолчанию `client_max_body_size 1m` —
-  поднимите его, например `client_max_body_size 50m;`, иначе большие сохранения получат 413 от прокси.
-- Если прокси с фильтрацией (CrowdSec и подобные), добавьте свой IP в allowlist: ответы 401/403 при настройке OAuth могут выглядеть как перебор.
+- Don't publish the services themselves (Jackett, qBittorrent and so on) to the outside: the hub reaches them over the internal network.
+- The prototype storage (`window.hub.db`) accepts requests up to 50 MB. nginx has `client_max_body_size 1m` by default,
+  so raise it, for example `client_max_body_size 50m;`, or large saves will get 413 from the proxy.
+- If the proxy filters traffic (CrowdSec and similar), add your IP to the allowlist: 401/403 responses during OAuth setup can look like brute force.
 
-Проверка снаружи:
+Check from outside:
 
 ```bash
-scripts/check-oauth.sh https://hub.example.com <префикс>
+scripts/check-oauth.sh https://hub.example.com <prefix>
 ```
 
-Проверка по LAN до настройки прокси: `BASE_URL=http://<ip>:3000`, `TRUST_PROXY=0`.
+Check over the LAN before the proxy is set up: `BASE_URL=http://<ip>:3000`, `TRUST_PROXY=0`.
 
-## Сеть: bridge или сеть хоста
+## Network: bridge or host network
 
-**Общая docker-сеть** — хаб подключается к той же сети, что сервисы, и обращается к ним по именам контейнеров:
+**Shared Docker network:** the hub joins the same network as the services and reaches them by container name:
 `http://qbittorrent:8080`, `http://jackett:9117`, `http://torrserve:8090`, `http://transmission:9091`, `http://paperless:8000`.
-Полный пример с Pangolin (Newt) и Watchtower — [`docker-compose.yml`](../docker-compose.yml) в корне репозитория.
+A full example with Pangolin (Newt) and Watchtower is [`docker-compose.yml`](../docker-compose.yml) in the repository root.
 
-**Сеть хоста** — если сервисы запущены на хосте или в `network_mode: host`:
+**Host network:** use it if the services run on the host or with `network_mode: host`:
 
 ```yaml
 services:
@@ -61,41 +63,41 @@ services:
     env_file: .env
     environment:
       DATABASE_PATH: /data/hub.db
-      PORT: 3245            # свободный порт на хосте
+      PORT: 3245            # a free port on the host
       TRUST_PROXY: '1'
     volumes:
       - ./data:/data
 ```
 
-Сервисы тогда указываются через `http://127.0.0.1:<порт>`. Для qBittorrent в режиме «без авторизации» достаточно галочки
-«Пропускать аутентификацию для клиентов на localhost».
+Then point the connectors at `http://127.0.0.1:<port>`. For qBittorrent in the "no authentication" mode, it is enough to tick
+"Bypass authentication for clients on localhost".
 
-## Первый вход и подключение ассистентов
+## First sign-in and connecting assistants
 
-1. `docker compose logs hub | grep "Admin panel"` — адрес админки с секретным префиксом (печатается один раз; потом префикс виден в «Настройках»).
-2. Вход по паролю → настройка 2FA (QR-код и резервные коды). Без 2FA админка не пускает.
-3. «Коннекторы» — адреса и ключи сервисов; для TorrServe ещё домашний адрес для плееров.
-4. «MCP доступ» — скопировать MCP URL, включить «Регистрацию новых клиентов».
-   - Claude → Settings → Connectors → Add custom connector → URL, OAuth-поля пустые → Connect.
-   - ChatGPT → Плагины → Добавить → Создать MCP-приложение → URL-адрес сервера, аутентификация OAuth, «Я понимаю и хочу продолжить» → Создать.
-5. Откроется страница хаба: вход, код 2FA, «Разрешить». Регистрация клиентов выключится сама.
-6. Какие клиенты вообще могут регистрироваться — карточка «Разрешённые клиенты» на том же экране.
+1. `docker compose logs hub | grep "Admin panel"` shows the admin address with the secret prefix (printed once; afterwards the prefix is visible under **Настройки** (Settings)).
+2. Sign in with the password, then set up 2FA (QR code and backup codes). The admin panel stays closed without 2FA.
+3. **Коннекторы** (Connectors): service addresses and keys; for TorrServe also the home address for players.
+4. **MCP доступ** (MCP access): copy the MCP URL and turn on "Регистрация новых клиентов" (Registration of new clients).
+   - Claude: Settings → Connectors → Add custom connector → URL, leave the OAuth fields empty → Connect.
+   - ChatGPT: Plugins → Add → Create MCP app → server URL, OAuth authentication, "I understand and want to continue" → Create.
+5. The hub page opens: sign in, enter the 2FA code, press "Разрешить" (Allow). Client registration turns off by itself.
+6. The card "Разрешённые клиенты" (Allowed clients) on the same screen shows which clients are allowed to register at all.
 
-ChatGPT надёжно читает только первые ~512 символов инструкций сервера. Для него есть «Настройки» → «Свой initialize»:
-клиент получает короткий текст, а полные правила ассистент берёт из инструмента `hub_guide`.
+ChatGPT reliably reads only the first ~512 characters of the server instructions. For it there is **Настройки** (Settings) → "Свой initialize" (Custom initialize):
+the client gets a short text, and the assistant takes the full rules from the `hub_guide` tool.
 
-## Обновление
+## Update
 
-- Вручную: `docker compose pull && docker compose up -d`. Миграции базы применяются при старте.
-- Автоматически: Watchtower из [`docker-compose.yml`](../docker-compose.yml) раз в сутки (05:00) тянет новый `latest`
-  и перезапускает только контейнеры с меткой `com.centurylinklabs.watchtower.enable=true`.
+- Manually: `docker compose pull && docker compose up -d`. Database migrations run on start.
+- Automatically: Watchtower from [`docker-compose.yml`](../docker-compose.yml) pulls a new `latest` once a day (05:00)
+  and restarts only the containers with the label `com.centurylinklabs.watchtower.enable=true`.
 
-## Бэкап
+## Backup
 
-Всё состояние — в томе `/data`: `hub.db` и папка `prototypes/`. SQLite работает в режиме WAL, поэтому копировать базу через `.backup`, а не `cp`:
+All state lives in the `/data` volume: `hub.db` and the `prototypes/` folder. SQLite runs in WAL mode, so copy the database with `.backup`, not `cp`:
 
 ```bash
 docker compose exec hub node -e "require('better-sqlite3')('/data/hub.db').backup('/data/hub-backup.db').then(()=>console.log('ok'))"
 ```
 
-`.env` бэкапить отдельно и держать в секрете: без `HUB_MASTER_KEY` пароли сервисов не расшифровать.
+Back up `.env` separately and keep it secret: without `HUB_MASTER_KEY` the service passwords can't be decrypted.

@@ -112,8 +112,6 @@ Database migrations run on start. All state lives in `./data`; backups and the r
 
 ## Documentation
 
-In Russian:
-
 - [Deployment](docs/deployment.md): reverse proxy, host network, images and versions, auto-update, backups
 - [Connectors and tools](docs/connectors.md): what each connector does, instructions, Paperless, scripts and custom tools
 - [Security](docs/security.md): how sign-in, OAuth, the prefix, secrets and prototypes are protected

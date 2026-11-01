@@ -1,56 +1,58 @@
-# Коннекторы и инструменты
+# Connectors and tools
 
-| Коннектор | Инструменты | Проверено |
+**English** · [Русский](connectors.ru.md)
+
+| Connector | Tools | Verified |
 | --- | --- | --- |
 | Jackett | `search_torrents`, `list_indexers` | ✅ |
 | qBittorrent | `torrents_status`, `torrent_add`, `torrent_stop`, `torrent_start`, `torrent_delete`, `torrent_files`, `transfer_info` | ✅ |
-| Transmission | `transmission_status`, `transmission_add`, `transmission_stop`, `transmission_start`, `transmission_delete`, `transmission_files`, `transmission_info` | ⚠️ только автотесты |
-| Paperless (ngx) | `paperless_search`, `paperless_review`, `paperless_get`, `paperless_thumbnail`, `paperless_taxonomy`, `paperless_update`, `paperless_undo`, `paperless_link` | ⚠️ только автотесты |
+| Transmission | `transmission_status`, `transmission_add`, `transmission_stop`, `transmission_start`, `transmission_delete`, `transmission_files`, `transmission_info` | ⚠️ automated tests only |
+| Paperless (ngx) | `paperless_search`, `paperless_review`, `paperless_get`, `paperless_thumbnail`, `paperless_taxonomy`, `paperless_update`, `paperless_undo`, `paperless_link` | ⚠️ automated tests only |
 | TorrServe | `torrserve_add`, `torrserve_list`, `torrserve_links`, `torrserve_remove` | ✅ |
-| mitmproxy | `mitm_status`, `mitm_hosts`, `mitm_flows`, `mitm_flow`; с моками — `mitm_mock_replace`, `mitm_mock_patch`, `mitm_mocks`, `mitm_mock_toggle`, `mitm_mock_delete`, `mitm_clear` | ⚠️ только автотесты |
-| camofox (браузер) | `browser_open`, `browser_snapshot`, `browser_links`, `browser_screenshot`, `browser_extract`, `browser_tabs`, `browser_youtube_transcript`; с действиями — `browser_act`, `browser_close`, `browser_import_cookies` | ⚠️ только автотесты |
-| Файлы | `files_list`, `files_read`, `files_search`, `files_write`, `files_edit`, `files_mkdir`, `files_move`, `files_copy`, `files_delete`, `files_link` | ⚠️ только автотесты |
-| Скрипты (встроенный) | `cron_create`, `cron_update`, `tool_create`, `tool_update`, `cron_enable`, `cron_run`, `cron_logs`, `cron_list`, `cron_get`, `cron_delete`, `script_secrets`, свои `my_*` | ✅ |
-| Прототипы (встроенный) | `prototype_publish`, `prototype_append`, `prototype_update`, `prototype_list`, `prototype_data`, `prototype_delete` | ✅ |
-| Хаб | `hub_status`, `hub_guide` (при своём initialize) | ✅ |
+| mitmproxy | `mitm_status`, `mitm_hosts`, `mitm_flows`, `mitm_flow`; with mocks: `mitm_mock_replace`, `mitm_mock_patch`, `mitm_mocks`, `mitm_mock_toggle`, `mitm_mock_delete`, `mitm_clear` | ⚠️ automated tests only |
+| camofox (browser) | `browser_open`, `browser_snapshot`, `browser_links`, `browser_screenshot`, `browser_extract`, `browser_tabs`, `browser_youtube_transcript`; with actions: `browser_act`, `browser_close`, `browser_import_cookies` | ⚠️ automated tests only |
+| Files | `files_list`, `files_read`, `files_search`, `files_write`, `files_edit`, `files_mkdir`, `files_move`, `files_copy`, `files_delete`, `files_link` | ⚠️ automated tests only |
+| Scripts (built-in) | `cron_create`, `cron_update`, `tool_create`, `tool_update`, `cron_enable`, `cron_run`, `cron_logs`, `cron_list`, `cron_get`, `cron_delete`, `script_secrets`, your own `my_*` | ✅ |
+| Prototypes (built-in) | `prototype_publish`, `prototype_append`, `prototype_update`, `prototype_list`, `prototype_data`, `prototype_delete` | ✅ |
+| Hub | `hub_status`, `hub_guide` (with a custom initialize) | ✅ |
 
-Коннекторы включаются и настраиваются в админке → «Коннекторы». Инструменты выключенного коннектора ассистент не видит,
-отдельные инструменты можно выключить в форме коннектора. qBittorrent и Transmission можно держать включёнными одновременно — у инструментов разные имена.
+Connectors are turned on and configured in the admin panel under **Коннекторы** (Connectors). The assistant doesn't see the tools of a disabled connector,
+and you can turn off individual tools in the connector form. qBittorrent and Transmission can both be enabled at the same time, because their tools have different names.
 
-## Торренты
+## Torrents
 
-Поиск идёт по всем индексаторам Jackett параллельно (25 с на всё, частичный результат вместо ошибки). Одинаковые раздачи склеиваются.
-Ассистент получает `result_id` и передаёт его в `torrent_add`, `transmission_add` или `torrserve_add` — ссылки с API-ключом Jackett
-до модели не доходят. qBittorrent поддерживает три режима входа: без авторизации (whitelist подсети хаба), API-ключ (5.2+), логин и пароль.
+Search goes through all Jackett indexers in parallel (25 s in total, a partial result instead of an error). Identical releases are merged.
+The assistant gets a `result_id` and passes it to `torrent_add`, `transmission_add` or `torrserve_add`, so links with the Jackett API key
+never reach the model. qBittorrent supports three login modes: no authentication (whitelist the hub's subnet), an API key (5.2+), or a login and password.
 
-## Инструкции для ассистента
+## Instructions for the assistant
 
-У каждого коннектора в форме есть блок «Инструкция для ассистента». Стандартный текст собирается из включённых инструментов;
-в режиме «Дополнить» к нему добавляется своё (например, «перед загрузкой найди постер на TMDB»), в режиме «Заменить» — отдаётся только своё.
-Инструкции включённых коннекторов модель получает в начале каждого чата.
+Each connector form has an **Инструкция для ассистента** (Instructions for the assistant) block. The default text is built from the enabled tools.
+In the **Дополнить** (Extend) mode your own text is added to it, in the **Заменить** (Replace) mode only your own text is sent.
+The model receives the instructions of all enabled connectors at the start of every chat.
 
-Что именно сейчас отдаётся модели — инструкции, инструменты, схемы, примерный объём в токенах — админка → «Диагностика».
-Там же видна граница 512 символов: дальше ChatGPT может не прочитать. Для него — «Настройки» → «Свой initialize» и инструмент `hub_guide`.
+To see what the model gets right now (instructions, tools, schemas, an approximate size in tokens), open the admin panel and go to **Диагностика** (Diagnostics).
+It also shows the 512-character limit: beyond it ChatGPT may not read the text. For ChatGPT use **Настройки** (Settings) → **Свой initialize** (Custom initialize) and the `hub_guide` tool.
 
 ## Paperless
 
-Ассистент ищет и читает документы (OCR-текст, превью), размечает их пачками — название, дата, корреспондент, тип, теги —
-по «правилам разметки» из настроек коннектора. Правила приходят вместе с ответами `paperless_review`, `paperless_get` и `paperless_taxonomy`.
-Пачку можно откатить (`paperless_undo`). Документы с тегом-исключением (по умолчанию `private`) ассистенту не видны.
+The assistant searches and reads documents (OCR text, previews) and labels them in batches (title, date, correspondent, type, tags)
+following the "labeling rules" from the connector settings. The rules arrive with the replies of `paperless_review`, `paperless_get` and `paperless_taxonomy`.
+A batch can be rolled back (`paperless_undo`). Documents with the exclusion tag (`private` by default) are invisible to the assistant.
 
-Ссылки на файлы — `/f/{токен}` без секретного префикса: личные (24 ч, только с входом в админку) и пересылаемые по прямой просьбе
-(один раз, 15 минут). Загрузки файлов через ассистента пока нет.
+File links look like `/f/{token}` and have no secret prefix. They are either personal (24 h, only when signed in to the admin panel) or shareable on a direct request
+(one use, 15 minutes). Uploading files through the assistant is not supported yet.
 
-## Файлы
+## Files
 
-Доступ ассистента к папкам на диске. Папку монтируют в контейнер хаба и перечисляют в настройках коннектора —
-по строке на папку, `имя | путь в контейнере | режим`:
+Gives the assistant access to folders on disk. Mount a folder into the hub container and list it in the connector settings,
+one line per folder: `name | path in the container | mode`:
 
 ```yaml
     volumes:
       - ./data:/data
       - /volume1/docs:/files/docs
-      - /volume1/photo:/files/photos:ro   # :ro — защита на уровне Docker в дополнение к режиму
+      - /volume1/photo:/files/photos:ro   # :ro — protection at the Docker level in addition to the mode
 ```
 
 ```
@@ -58,151 +60,151 @@
 Фото | /files/photos | read
 ```
 
-| Режим | Что можно |
+| Mode | What is allowed |
 | --- | --- |
-| `read` | смотреть, читать, искать (по умолчанию) |
-| `add` | ещё создавать новые файлы и папки, копировать в папку; существующее не меняется |
-| `edit` | ещё перезаписывать и править файлы, переименовывать и переносить |
-| `full` | ещё удалять (с `confirm: true`) |
+| `read` | view, read, search (default) |
+| `add` | also create new files and folders, copy into the folder; existing files are not changed |
+| `edit` | also overwrite and edit files, rename and move |
+| `full` | also delete (with `confirm: true`) |
 
-Ассистент видит пути вида `Документы/2026/счёт.txt` — без путей контейнера. `..` и символьные ссылки за пределы папки
-не пропускаются, саму папку из настроек удалить или перенести нельзя. Перенос между папками требует `edit` в исходной и `add`
-в целевой. Текст читается по строкам, картинки (png, jpg, gif, webp до 3 МБ) — как картинки; большой текст ассистент пишет частями
-(`files_write` с `mode: "append"`). Файлы создаются от пользователя контейнера — `PUID`/`PGID`, если нужен свой владелец.
+The assistant sees paths like `Документы/2026/счёт.txt`, without container paths. `..` and symbolic links pointing outside the folder
+are rejected, and a folder from the settings can't be deleted or moved. Moving between folders needs `edit` in the source
+and `add` in the target. Text is read by lines, images (png, jpg, gif, webp up to 3 MB) are returned as images. The assistant writes large text in parts
+(`files_write` with `mode: "append"`). Files are created as the container user. Set `PUID`/`PGID` if you need a specific owner.
 
-**Запрещённые файлы.** Поле в настройках коннектора, маска на строку (`*` — любые символы, `?` — один, без учёта регистра).
-Маска проверяется на каждом имени в пути, поэтому `.ssh` закрывает всю папку. Такие файлы ассистент не читает, не находит поиском,
-не копирует и не переносит, не создаёт и не получает на них ссылку `/f/`; в `files_list` видно только имя с пометкой «закрыт».
-По умолчанию закрыты ключи и пароли: `.env`, `.env.*`, `*.pem`, `*.key`, `*.p12`, `*.pfx`, `*.kdbx`, `id_rsa*`, `id_ecdsa*`,
-`id_ed25519*`, `.ssh`, `.netrc`, `.git-credentials`, `wireguard*.conf`, `*secret*`. Пустое поле снимает запреты. Это страховка,
-а не замена аккуратному выбору папок: лучше открывать ассистенту конкретные подпапки, а не весь каталог с конфигами.
+**Запрещённые файлы** (Denied files). A field in the connector settings, one mask per line (`*` matches any characters, `?` matches one, case-insensitive).
+The mask is checked against every name in the path, so `.ssh` closes the whole folder. The assistant can't read such files, find them by search,
+copy or move them, create them, or get an `/f/` link to them. `files_list` shows only the name, marked as "закрыт" (closed).
+By default keys and passwords are closed: `.env`, `.env.*`, `*.pem`, `*.key`, `*.p12`, `*.pfx`, `*.kdbx`, `id_rsa*`, `id_ecdsa*`,
+`id_ed25519*`, `.ssh`, `.netrc`, `.git-credentials`, `wireguard*.conf`, `*secret*`. An empty field removes all the bans. This is a safety net,
+not a replacement for choosing folders carefully: give the assistant specific subfolders, not a whole directory full of configs.
 
-`files_link` даёт ссылку `/f/{токен}` — такую же, как у Paperless: личную (24 ч, только с входом в админку) или пересылаемую
-(по прямой просьбе, один раз, 15 минут). PDF, картинки, видео и простой текст открываются в браузере, остальное (в том числе HTML)
-скачивается. Путь проверяется при каждом открытии: если файл перенесли или папку убрали из настроек, ссылка перестаёт работать.
+`files_link` gives an `/f/{token}` link, the same kind as in Paperless: personal (24 h, only when signed in to the admin panel) or shareable
+(on a direct request, one use, 15 minutes). PDFs, images, video and plain text open in the browser, everything else (including HTML)
+is downloaded. The path is checked on every open: if the file was moved or the folder was removed from the settings, the link stops working.
 
 ## camofox
 
-Коннектор к [camofox-browser](https://github.com/jo-inc/camofox-browser) — stealth-браузеру с REST API в соседнем контейнере
-(`http://camofox:9377`). Хаб ходит к нему с `Authorization: Bearer <CAMOFOX_ACCESS_KEY>`; сессия (cookies, профиль) одна на хаб
-и живёт под `userId` из настроек, поэтому логины сохраняются между чатами.
+A connector to [camofox-browser](https://github.com/jo-inc/camofox-browser), a stealth browser with a REST API in a neighboring container
+(`http://camofox:9377`). The hub calls it with `Authorization: Bearer <CAMOFOX_ACCESS_KEY>`. There is one session (cookies, profile) per hub,
+and it lives under the `userId` from the settings, so logins persist between chats.
 
-**Режим чтения** (по умолчанию): `browser_open` открывает страницу и возвращает снапшот — текст с ref элементов (`e1`, `e2`…),
-`browser_snapshot` листает длинные страницы через `offset` (лимит символов на ответ — в настройках), `browser_links`,
-`browser_screenshot` (до 2 МБ), `browser_extract` (данные по JSON Schema с `x-ref`), `browser_tabs`,
-`browser_youtube_transcript`.
+**Read mode** (default): `browser_open` opens a page and returns a snapshot, which is text with element refs (`e1`, `e2`…).
+`browser_snapshot` pages through long pages with `offset` (the character limit per reply is in the settings). The other tools are `browser_links`,
+`browser_screenshot` (up to 2 MB), `browser_extract` (data by JSON Schema with `x-ref`), `browser_tabs`
+and `browser_youtube_transcript`.
 
-**Действия** — переключатель «Разрешить действия»: `browser_act` (click, type, press, scroll, navigate, back, forward, refresh, wait —
-в ответе сразу свежий снапшот), `browser_close`, сброс сессии `browser_open(newSession: true)` и `browser_import_cookies`.
-Пока переключатель выключен, этих инструментов ассистент не видит. Импорт cookies появляется, только если задан API key: файл
-Netscape (`cookies.txt`) берётся из коннектора «Файлы», и только из подпапки `cookies/` (`папка/cookies/youtube.txt`), не больше 500 cookies и 5 МБ.
+**Actions** are behind the **Разрешить действия** (Allow actions) switch: `browser_act` (click, type, press, scroll, navigate, back, forward, refresh, wait;
+the reply includes a fresh snapshot right away), `browser_close`, a session reset with `browser_open(newSession: true)`, and `browser_import_cookies`.
+While the switch is off, the assistant doesn't see these tools. Cookie import appears only if an API key is set. The Netscape
+file (`cookies.txt`) is taken from the Files connector, and only from a `cookies/` subfolder (`folder/cookies/youtube.txt`), at most 500 cookies and 5 MB.
 
-Перед открытием хаб проверяет адрес: только http(s), без локальных имён (`localhost`, `*.local`, `*.internal`…), все адреса
-из DNS публичные, затем denylist и allowlist доменов (`example.com` — домен с поддоменами, `*.example.com` — только поддомены).
-camofox сам ходит по редиректам, поэтому после открытия и действий хаб проверяет итоговый адрес и закрывает вкладку, если он приватный.
-Вкладки группируются по MCP-клиенту: `browser_close(all: true)` из Claude не закрывает вкладки ChatGPT. Не больше 3 запросов к camofox
-одновременно, остальные ждут в очереди.
+Before opening, the hub checks the address: http(s) only, no local names (`localhost`, `*.local`, `*.internal`…), all addresses
+from DNS must be public, then the domain denylist and allowlist apply (`example.com` is the domain with its subdomains, `*.example.com` is subdomains only).
+camofox follows redirects itself, so after opening and after actions the hub checks the final address and closes the tab if it is private.
+Tabs are grouped by MCP client: `browser_close(all: true)` from Claude doesn't close ChatGPT's tabs. At most 3 requests to camofox
+run at the same time, the rest wait in a queue.
 
-Если вместо страницы пришла проверка Cloudflare, ассистент предложит скриншот и ссылку на noVNC из поля «Адрес VNC»: там можно
-пройти проверку или войти на сайт руками, cookies останутся в сессии. Текст, который ассистент вводит в формы, в журнал не пишется —
-только его длина.
+If a Cloudflare check comes back instead of the page, the assistant offers a screenshot and a noVNC link from the **Адрес VNC** (VNC address) field. There you can
+pass the check or sign in to the site by hand, and the cookies stay in the session. Text the assistant types into forms is not written to the log,
+only its length.
 
-Интеграционные тесты против живого camofox: `CAMOFOX_URL=http://localhost:9377 CAMOFOX_ACCESS_KEY=… pnpm vitest run tests/browser-live.test.ts`.
+Integration tests against a live camofox: `CAMOFOX_URL=http://localhost:9377 CAMOFOX_ACCESS_KEY=… pnpm vitest run tests/browser-live.test.ts`.
 
 ## mitmproxy
 
-Коннектор к [mitmproxy](https://docs.mitmproxy.org/) (контейнер `mitmweb`, веб-интерфейс `http://mitmweb:8081`). Устройства ходят
-через прокси, а ассистент видит перехваченный трафик и при желании подменяет ответы сервисов.
+A connector to [mitmproxy](https://docs.mitmproxy.org/) (the `mitmweb` container, web interface `http://mitmweb:8081`). Devices go
+through the proxy, and the assistant sees the captured traffic and, if you want, replaces service responses.
 
-**Просмотр** (всегда): `mitm_status`, `mitm_hosts` (сводка по доменам за N минут: число запросов, объём, коды; фильтр по приложению
-из User-Agent), `mitm_flows` (список запросов с короткими id), `mitm_flow` (заголовки и тела запроса и ответа, длинное — частями через
-`offset`). Хаб ходит в mitmweb с `Authorization: Bearer <пароль>` (пароль — `MITM_WEB_PASSWORD`, пусто — без пароля). Токены, пароли,
-ключи, подписи, cookie, JWT и `Bearer`-значения в заголовках, URL и телах маскируются; переключатель «Показывать токены» отключает маскировку. mitmproxy стримит тела больше
-1 МБ (`stream_large_bodies=1m`) — для них показывается «тело не сохранено (больше 1 МБ, стрим)».
+**Viewing** (always on): `mitm_status`, `mitm_hosts` (a summary by domain for the last N minutes: request count, size, status codes; filter by app
+from the User-Agent), `mitm_flows` (a list of requests with short ids), `mitm_flow` (headers and bodies of the request and response, long ones in parts via
+`offset`). The hub calls mitmweb with `Authorization: Bearer <password>` (the password is `MITM_WEB_PASSWORD`, empty means no password). Tokens, passwords,
+keys, signatures, cookies, JWTs and `Bearer` values in headers, URLs and bodies are masked. The **Показывать токены** (Show tokens) switch turns masking off. mitmproxy streams bodies larger than
+1 MB (`stream_large_bodies=1m`), and for those the reply says "тело не сохранено (больше 1 МБ, стрим)" (body not saved, larger than 1 MB, streamed).
 
-**Моки** — переключатель «Разрешить моки» (по умолчанию выключен; пока он выключен, инструменты моков и `mitm_clear` ассистент не видит):
-- `mitm_mock_replace` — ответ целиком (код, заголовки, тело; без `Content-Type` JSON-тело получит `application/json`, остальное — `text/plain`);
-  настоящий сервер не вызывается;
-- `mitm_mock_patch` — запрос уходит на сервер, а в настоящем ответе правятся поля JSON (`user.items[0].price`, `items[*].price`),
-  заголовки, код или добавляется задержка;
-- `mitm_mocks` (список и сколько раз сработал каждый, в том числе сколько раз правка JSON пропущена — ответ оказался не JSON),
-  `mitm_mock_toggle`, `mitm_mock_delete` (все сразу — только с `confirm: true`), `mitm_clear` (очистить перехваченное).
+**Mocks** are behind the **Разрешить моки** (Allow mocks) switch (off by default; while it is off, the assistant doesn't see the mock tools or `mitm_clear`):
+- `mitm_mock_replace` replaces the whole response (code, headers, body; without `Content-Type` a JSON body gets `application/json`, anything else gets `text/plain`).
+  The real server is not called.
+- `mitm_mock_patch` lets the request go to the server and edits the real response: JSON fields (`user.items[0].price`, `items[*].price`),
+  headers, the status code, or adds a delay.
+- `mitm_mocks` (the list and how many times each one fired, including how many times a JSON edit was skipped because the response wasn't JSON),
+  `mitm_mock_toggle`, `mitm_mock_delete` (all at once only with `confirm: true`), `mitm_clear` (clears captured traffic).
 
-Счётчики «сработал N раз» и «уже попадало N запросов» считаются только по запросам, которые ещё хранятся в памяти mitmweb
-(последние ~3000; `mitm_clear` их стирает), а не за всё время. Правило правят по `id` из `mitm_mocks` — id выдаёт хаб, с
-неизвестным id инструмент ответит ошибкой. Хост берётся из заголовка `Host` (в прозрачном режиме и WireGuard адрес соединения — IP).
+The counters "fired N times" and "N requests already matched" count only requests still held in mitmweb's memory
+(the last ~3000; `mitm_clear` wipes them), not all time. A rule is edited by its `id` from `mitm_mocks`. The hub assigns ids, and
+the tool returns an error for an unknown id. The host is taken from the `Host` header (in transparent mode and with WireGuard the connection address is an IP).
 
-**В mitmweb.** Запросы, на которых сработал мок, помечены в списке: 🔵 — ответ подменён целиком, 🔶 — правка настоящего ответа
-(в комментарии потока — `mock:<id>`). В командной строке mitmweb (`:`) есть команды:
-- `hub.mocks` — все правила с номерами, включённые ✓ и выключенные ✗, и сколько раз сработало каждое;
-- `hub.mock.on <номер|id>`, `hub.mock.off <номер|id>`, `hub.mock.delete <номер|id>` — включить, выключить, удалить; номер — из `hub.mocks`.
+**In mitmweb.** Requests that triggered a mock are marked in the list: 🔵 means the whole response was replaced, 🔶 means the real response was edited
+(the flow comment is `mock:<id>`). The mitmweb command line (`:`) has these commands:
+- `hub.mocks` lists all rules with numbers, enabled ✓ and disabled ✗, and how many times each fired;
+- `hub.mock.on <number|id>`, `hub.mock.off <number|id>`, `hub.mock.delete <number|id>` enable, disable and delete a rule; the number comes from `hub.mocks`.
 
-Команды действуют в прокси сразу, а в хаб попадают при ближайшей сверке (не позже чем через минуту; сразу, когда ассистент
-смотрит `mitm_mocks`). Добавлять моки из mitmweb нельзя — только через ассистента. Пока моки выключены в хабе, команды отвечают
-«Моки выключены в хабе».
+The commands take effect in the proxy at once, and reach the hub at the next sync (within a minute at most; immediately when the assistant
+runs `mitm_mocks`). You can't add mocks from mitmweb, only through the assistant. While mocks are off in the hub, the commands reply
+"Моки выключены в хабе" (Mocks are off in the hub).
 
-Шаблон: хост точный или `*.example.com`, путь со `*`, метод необязателен; query не учитывается. Правила действуют на всех устройствах
-за прокси и хранятся в хабе (SQLite). Это только данные: аддон ничего не исполняет. Если под запрос подходят несколько правил,
-срабатывает самое старое `replace`; иначе — самое старое `patch` (ответ, подменённый целиком, дальше не правится).
+Pattern: the host is exact or `*.example.com`, the path may contain `*`, the method is optional, and the query is ignored. Rules apply to all devices
+behind the proxy and are stored in the hub (SQLite). They are data only: the addon executes nothing. If several rules match a request,
+the oldest `replace` fires. Otherwise the oldest `patch` fires (a fully replaced response is not edited further).
 
-**Подключение аддона.** Моки применяет аддон `addons/mitmproxy/hub_mocks.py`:
-1. скопируйте его в `Docker/mitmproxy/scripts/` на NAS;
-2. добавьте `-s /scripts/hub_mocks.py` в `command` mitmweb и выполните `docker compose up -d`;
-3. хабу нужен доступ к контейнеру: `fw.allow.containers: "mitmweb"` (dockfw);
-4. в админке задайте пароль, включите «Разрешить моки» и нажмите «Проверить» — там видно, подключён ли аддон.
+**Connecting the addon.** Mocks are applied by the addon `addons/mitmproxy/hub_mocks.py`:
+1. copy it to `Docker/mitmproxy/scripts/` on the NAS;
+2. add `-s /scripts/hub_mocks.py` to the mitmweb `command` and run `docker compose up -d`;
+3. the hub needs access to the container: `fw.allow.containers: "mitmweb"` (dockfw);
+4. in the admin panel set the password, turn on **Разрешить моки** and press **Проверить** (Check), which shows whether the addon is connected.
 
-Хаб передаёт правила в опцию `hub_mocks` через `PUT /options` и сверяет её раз в минуту (после перезапуска mitmproxy правила вернутся
-сами). Изменения из командной строки mitmweb аддон записывает в опцию `hub_mocks_edits`, хаб применяет их к своим правилам при сверке. Если выключить коннектор или «Разрешить моки», в прокси уходит пустой список и все моки перестают действовать, а в хабе остаются.
-Если аддон не подключён, правило сохраняется, а ответ ассистента объясняет, что поправить.
+The hub passes the rules to the `hub_mocks` option via `PUT /options` and checks it once a minute (after a mitmproxy restart the rules come back
+on their own). The addon writes changes made on the mitmweb command line to the `hub_mocks_edits` option, and the hub applies them to its own rules at the next check. If you turn off the connector or **Разрешить моки**, an empty list goes to the proxy and all mocks stop working, but they stay in the hub.
+If the addon is not connected, the rule is saved, and the assistant's reply explains what to fix.
 
-## Прототипы
+## Prototypes
 
-`prototype_publish` публикует HTML по адресу `/p/{slug}` — вне секретного префикса, чтобы ссылкой можно было делиться.
-Большие страницы ассистент отправляет частями (`prototype_append`). Опционально пин (4–8 цифр) и срок жизни, до трёх версий с откатом.
-Страница отдаётся в CSP-песочнице без доступа к cookie админки.
+`prototype_publish` publishes HTML at `/p/{slug}`, outside the secret prefix, so the link can be shared.
+The assistant sends large pages in parts (`prototype_append`). Optional: a PIN (4 to 8 digits) and a lifetime, up to three versions with rollback.
+The page is served in a CSP sandbox with no access to the admin cookies.
 
-У каждого прототипа есть своё хранилище — один JSON-документ до 50 МБ, общий для всех, кто открыл страницу (`localStorage`
-в песочнице не работает). Хаб вставляет в начало страницы скрипт с `window.hub.db`:
+Each prototype has its own storage: one JSON document up to 50 MB, shared by everyone who opens the page (`localStorage`
+doesn't work in the sandbox). The hub inserts a script with `window.hub.db` at the start of the page:
 
 ```js
-const data = await hub.db.get()            // {} пока ничего не сохраняли
-await hub.db.set({ items: [] })            // перезаписать целиком
-await hub.db.update((d) => { d.items.push('новое'); return d })  // без потери чужих правок, повторяет при конфликте
+const data = await hub.db.get()            // {} until something is saved
+await hub.db.set({ items: [] })            // overwrite completely
+await hub.db.update((d) => { d.items.push('новое'); return d })  // keeps other people's edits, retries on conflict
 ```
 
-Скрипт ходит в `/p/{slug}/db` с токеном, который вшит в отданную страницу: он живёт 24 часа и перестаёт действовать после
-смены пина — тогда страницу нужно обновить. Данные открытого прототипа может читать и менять любой, у кого есть ссылка.
-Документ читается и пишется целиком, поэтому он для текста и списков, а не для картинок в base64.
-Данные не версионируются вместе с HTML: откат версии их не трогает. Посмотреть и очистить их можно в карточке прототипа
-или попросить ассистента (`prototype_data`); при удалении прототипа данные удаляются вместе с ним.
+The script calls `/p/{slug}/db` with a token embedded in the served page. The token lives for 24 hours and stops working after
+the PIN changes, so the page has to be reloaded. Anyone with the link can read and change the data of an open prototype.
+The document is read and written as a whole, so it is meant for text and lists, not for base64 images.
+The data is not versioned together with the HTML: rolling back a version doesn't touch it. You can view and clear it in the prototype card
+or ask the assistant (`prototype_data`). When a prototype is deleted, its data is deleted with it.
 
-## Cron-скрипты
+## Cron scripts
 
-Ассистент пишет JS и расписание, вы одобряете код в админке → «Скрипты», и скрипт сразу включается. Там же можно добавить скрипт вручную.
+The assistant writes the JS and the schedule, you approve the code in the admin panel under **Скрипты** (Scripts), and the script is enabled right away. You can also add a script by hand there.
 
-- Любое изменение кода снова ждёт одобрения и ставит скрипт на паузу; смена расписания одобрения не требует.
-  Отклонённый новый скрипт удаляется, отклонённое изменение откатывается к прежней версии.
-- Выключить и включить можно в админке или попросить ассистента (`cron_enable`).
-- Песочница QuickJS (WebAssembly): без доступа к файлам, процессу и базе хаба, 30 с и 64 МБ на запуск, до 20 запросов.
-- Переключатели в настройках коннектора «Скрипты»:
-  - «Без одобрения» — код ассистента включается сразу (по умолчанию выключено);
-  - «Доступ к внешним адресам» — по умолчанию включён;
-  - «Доступ к локальной сети» — по умолчанию выключен (хост, контейнеры, localhost; проверка и через DNS).
-- Секреты (например токен Telegram-бота) заводятся в админке с привязкой к хостам. В коде — заглушка `{{secret:ИМЯ}}`, хаб подставляет
-  значение только в запрос на разрешённый хост. Ни скрипт, ни ассистент значения не видят.
-- Инструменты хаба из скрипта: `await hub.tool('torrents_status', { filter: 'completed' })` — только для чтения,
-  а при включённом «Доступе к локальной сети» и с записью (`torrent_add`, `paperless_update`…).
+- Any code change waits for approval again and pauses the script. Changing the schedule needs no approval.
+  A rejected new script is deleted, a rejected change is rolled back to the previous version.
+- You can turn a script off and on in the admin panel or ask the assistant (`cron_enable`).
+- The sandbox is QuickJS (WebAssembly): no access to files, the process or the hub database, 30 s and 64 MB per run, up to 20 requests.
+- Switches in the **Скрипты** connector settings:
+  - **Без одобрения** (No approval): the assistant's code is enabled right away (off by default);
+  - **Доступ к внешним адресам** (Access to external addresses): on by default;
+  - **Доступ к локальной сети** (Access to the local network): off by default (host, containers, localhost; checked through DNS too).
+- Secrets (for example a Telegram bot token) are created in the admin panel and bound to hosts. In the code you use the placeholder `{{secret:NAME}}`, and the hub substitutes
+  the value only into a request to an allowed host. Neither the script nor the assistant sees the values.
+- Hub tools from a script: `await hub.tool('torrents_status', { filter: 'completed' })`. They are read-only,
+  and with **Доступ к локальной сети** on they can also write (`torrent_add`, `paperless_update`…).
 
-### Настройки коннекторов для скриптов
+### Connector settings for scripts
 
-«Скрипты» → «Настройки коннекторов», переключатель на коннектор. Поля становятся доступны как `{{secret:JACKETT_BASE_URL}}`,
-`{{secret:JACKETT_API_KEY}}`, `{{secret:JACKETT_MIN_SEEDERS}}` и т. п. Ключи и пароли подставляются только в запросы на адрес коннектора,
-адрес и параметры — обычные значения (адрес можно ставить в начало URL). Значения берутся из коннектора при каждом запуске,
-ассистент видит только имена. Обычно для этого нужен ещё «Доступ к локальной сети».
+Open **Скрипты** → **Настройки коннекторов** (Connector settings), with one switch per connector. The fields become available as `{{secret:JACKETT_BASE_URL}}`,
+`{{secret:JACKETT_API_KEY}}`, `{{secret:JACKETT_MIN_SEEDERS}}` and so on. Keys and passwords are substituted only into requests to the connector's address.
+The address and parameters are plain values (the address can go at the start of a URL). The values are read from the connector on every run,
+and the assistant sees only the names. This usually also needs **Доступ к локальной сети**.
 
-## Свои MCP-инструменты
+## Custom MCP tools
 
-Блок «MCP-инструменты» на экране «Скрипты». Ассистент создаёт их через `tool_create` (или вы — кнопкой «Добавить инструмент»):
-имя `my_*`, описание, параметры (строка, число, да/нет, выбор из списка), код с `args` и `return`. Одобренный инструмент ассистент
-вызывает сам, как любой другой, — в новом чате; в текущем его можно проверить через `cron_run` с `args`.
-Секреты, сеть, `hub.tool` и «Без одобрения» — общие со скриптами, лимит вызова 25 с.
+The **MCP-инструменты** (MCP tools) block on the **Скрипты** screen. The assistant creates them with `tool_create` (or you do it with the **Добавить инструмент** (Add tool) button):
+a `my_*` name, a description, parameters (string, number, yes/no, a choice from a list), and code with `args` and `return`. The assistant calls
+an approved tool by itself like any other, in a new chat. In the current chat you can test it with `cron_run` and `args`.
+Secrets, network, `hub.tool` and **Без одобрения** are shared with scripts, and a call is limited to 25 s.

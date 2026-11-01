@@ -1,48 +1,50 @@
-# Разработка
+# Development
 
-Стек: Next.js 15 (App Router, standalone), TypeScript, Tailwind + shadcn/ui, MCP SDK v2 (`mcp-handler`), better-auth с OAuth-провайдером,
-SQLite + Drizzle, `node-cron`, QuickJS для скриптов. Правила для кода и неочевидные места — [`CLAUDE.md`](../CLAUDE.md).
+**English** · [Русский](development.ru.md)
 
-## Локально
+Stack: Next.js 15 (App Router, standalone), TypeScript, Tailwind + shadcn/ui, MCP SDK v2 (`mcp-handler`), better-auth with an OAuth provider,
+SQLite + Drizzle, `node-cron`, QuickJS for scripts. Code rules and the non-obvious parts are in [`CLAUDE.md`](../CLAUDE.md).
+
+## Locally
 
 ```bash
-cp .env.example .env.local   # заполнить ключи: openssl rand -hex 32 / openssl rand -base64 32
+cp .env.example .env.local   # fill in the keys: openssl rand -hex 32 / openssl rand -base64 32
 pnpm install
-pnpm dev                     # в логе: «Admin panel: http://localhost:3000/<префикс>/login»
+pnpm dev                     # the log shows: "Admin panel: http://localhost:3000/<prefix>/login"
 ```
 
-По http MCP выключен (клиенты требуют https), админка и коннекторы работают.
+MCP is off over http (clients require https). The admin panel and connectors work.
 
-## Проверки
+## Checks
 
 ```bash
-pnpm lint && pnpm typecheck && pnpm test   # перед каждым коммитом
-pnpm db:generate                           # миграция после правки lib/db/schema.ts
+pnpm lint && pnpm typecheck && pnpm test   # before every commit
+pnpm db:generate                           # migration after editing lib/db/schema.ts
 ```
 
-`pnpm build` не запускать рядом с работающим `pnpm dev` — он перезаписывает `.next` и ломает dev-сервер.
+Don't run `pnpm build` next to a running `pnpm dev`: it overwrites `.next` and breaks the dev server.
 
-## Скриншоты и демо
+## Screenshots and demo
 
 ```bash
 pnpm build
-pnpm screenshots   # docs/screenshots/*.png для README и social preview
-pnpm demo          # demo-out/ — статическое демо для GitHub Pages
+pnpm screenshots   # docs/screenshots/*.png for the README and social preview
+pnpm demo          # demo-out/ is a static demo for GitHub Pages
 ```
 
-Оба поднимают хаб на выдуманных данных (`scripts/demo/seed.mts`) во временной папке с `HUB_DEMO=1` (без фоновых задач),
-обходят админку в Chromium и сохраняют страницы без скриптов. Демо публикует `.github/workflows/demo.yml` при каждом push в `main`;
-в настройках репозитория Pages → Source должно быть «GitHub Actions».
+Both start the hub on made-up data (`scripts/demo/seed.mts`) in a temporary folder with `HUB_DEMO=1` (no background jobs),
+walk through the admin panel in Chromium and save the pages without scripts. `.github/workflows/demo.yml` publishes the demo on every push to `main`;
+in the repository settings, Pages → Source must be "GitHub Actions".
 
-## Коннекторы
+## Connectors
 
-Коннектор — папка `lib/connectors/<name>/`, экспортирующая объект `Connector` (`id`, `name`, `configSchema`, `test`, `tools`,
-необязательный `instructions`), и одна строка в `lib/connectors/registry.ts`. Админка рисует форму по `configSchema`, поля `secret()` шифруются.
+A connector is a folder `lib/connectors/<name>/` that exports a `Connector` object (`id`, `name`, `configSchema`, `test`, `tools`,
+optional `instructions`), plus one line in `lib/connectors/registry.ts`. The admin panel draws the form from `configSchema`, and `secret()` fields are encrypted.
 
-## Релизы
+## Releases
 
-`pnpm release` (или `pnpm release minor` / `major`) поднимает версию в `package.json`, делает коммит, ставит тег `vX.Y.Z` и пушит.
-CI собирает образ, публикует `:X.Y.Z` и `:X.Y` рядом с `:latest` и создаёт GitHub Release со списком коммитов с прошлого тега.
+`pnpm release` (or `pnpm release minor` / `major`) bumps the version in `package.json`, makes a commit, creates the tag `vX.Y.Z` and pushes.
+CI builds the image, publishes `:X.Y.Z` and `:X.Y` next to `:latest`, and creates a GitHub Release with the list of commits since the previous tag.
 
-Зависимости обновляет Dependabot (`.github/dependabot.yml`) раз в неделю; better-auth и MCP SDK сгруппированы — их стоит обновлять вместе,
-обе библиотеки быстро меняются.
+Dependabot updates dependencies (`.github/dependabot.yml`) once a week. better-auth and the MCP SDK are grouped: update them together,
+both libraries change fast.
