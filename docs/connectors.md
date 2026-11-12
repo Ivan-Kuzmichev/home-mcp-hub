@@ -17,7 +17,7 @@
 | Prototypes (built-in) | `prototype_publish`, `prototype_append`, `prototype_update`, `prototype_list`, `prototype_data`, `prototype_delete` | ✅ |
 | Hub | `hub_status`, `hub_guide` (with a custom initialize) | ✅ |
 
-Connectors are turned on and configured in the admin panel under **Коннекторы** (Connectors). The assistant doesn't see the tools of a disabled connector,
+Connectors are turned on and configured in the admin panel under **Connectors**. The assistant doesn't see the tools of a disabled connector,
 and you can turn off individual tools in the connector form. qBittorrent and Transmission can both be enabled at the same time, because their tools have different names.
 
 ## Torrents
@@ -26,14 +26,17 @@ Search goes through all Jackett indexers in parallel (25 s in total, a partial r
 The assistant gets a `result_id` and passes it to `torrent_add`, `transmission_add` or `torrserve_add`, so links with the Jackett API key
 never reach the model. qBittorrent supports three login modes: no authentication (whitelist the hub's subnet), an API key (5.2+), or a login and password.
 
+**Preferred audio language** in the Jackett settings: releases with this audio go first. Codes: `en` (no preference, by seeders, the default), `ru`, `uk`, `de`, `fr`, `es`, `it`, `pl`.
+Audio is recognized by typical release markers (MVO, a Cyrillic title from a Russian tracker, GERMAN DL, VFF, Castellano, ITA, PLDUB…). The assistant can ask for another language in a call (`language`) or `any`.
+
 ## Instructions for the assistant
 
-Each connector form has an **Инструкция для ассистента** (Instructions for the assistant) block. The default text is built from the enabled tools.
-In the **Дополнить** (Extend) mode your own text is added to it, in the **Заменить** (Replace) mode only your own text is sent.
+Each connector form has an **Instructions for the assistant** block. The default text is built from the enabled tools.
+In the **Extend** mode your own text is added to it, in the **Replace** mode only your own text is sent.
 The model receives the instructions of all enabled connectors at the start of every chat.
 
-To see what the model gets right now (instructions, tools, schemas, an approximate size in tokens), open the admin panel and go to **Диагностика** (Diagnostics).
-It also shows the 512-character limit: beyond it ChatGPT may not read the text. For ChatGPT use **Настройки** (Settings) → **Свой initialize** (Custom initialize) and the `hub_guide` tool.
+To see what the model gets right now (instructions, tools, schemas, an approximate size in tokens), open the admin panel and go to **Diagnostics**.
+It also shows the 512-character limit: beyond it ChatGPT may not read the text. For ChatGPT use **Settings** → **Custom initialize** and the `hub_guide` tool.
 
 ## Paperless
 
@@ -73,8 +76,8 @@ one line per folder: `name | path in the container | mode`:
 ```
 
 ```
-Документы | /files/docs | edit
-Фото | /files/photos | read
+Documents | /files/docs | edit
+Photos | /files/photos | read
 ```
 
 | Mode | What is allowed |
@@ -84,14 +87,14 @@ one line per folder: `name | path in the container | mode`:
 | `edit` | also overwrite and edit files, rename and move |
 | `full` | also delete (with `confirm: true`) |
 
-The assistant sees paths like `Документы/2026/счёт.txt`, without container paths. `..` and symbolic links pointing outside the folder
+The assistant sees paths like `Documents/2026/invoice.txt`, without container paths. `..` and symbolic links pointing outside the folder
 are rejected, and a folder from the settings can't be deleted or moved. Moving between folders needs `edit` in the source
 and `add` in the target. Text is read by lines, images (png, jpg, gif, webp up to 3 MB) are returned as images. The assistant writes large text in parts
 (`files_write` with `mode: "append"`). Files are created as the container user. Set `PUID`/`PGID` if you need a specific owner.
 
-**Запрещённые файлы** (Denied files). A field in the connector settings, one mask per line (`*` matches any characters, `?` matches one, case-insensitive).
+**Forbidden files**. A field in the connector settings, one mask per line (`*` matches any characters, `?` matches one, case-insensitive).
 The mask is checked against every name in the path, so `.ssh` closes the whole folder. The assistant can't read such files, find them by search,
-copy or move them, create them, or get an `/f/` link to them. `files_list` shows only the name, marked as "закрыт" (closed).
+copy or move them, create them, or get an `/f/` link to them. `files_list` shows only the name, marked as "closed".
 By default keys and passwords are closed: `.env`, `.env.*`, `*.pem`, `*.key`, `*.p12`, `*.pfx`, `*.kdbx`, `id_rsa*`, `id_ecdsa*`,
 `id_ed25519*`, `.ssh`, `.netrc`, `.git-credentials`, `wireguard*.conf`, `*secret*`. An empty field removes all the bans. This is a safety net,
 not a replacement for choosing folders carefully: give the assistant specific subfolders, not a whole directory full of configs.
@@ -109,10 +112,10 @@ and it lives under the `userId` from the settings, so logins persist between cha
 **Read mode** (default): `browser_open` opens a page and returns a snapshot, which is text with element refs (`e1`, `e2`…).
 `browser_snapshot` pages through long pages with `offset` (the character limit per reply is in the settings). The other tools are `browser_links`,
 `browser_screenshot` (up to 2 MB), `browser_extract` (data by JSON Schema with `x-ref`) and `browser_tabs`.
-There is no YouTube subtitles tool: ask the assistant to make a `my_youtube_transcript` tool in **Скрипты** (Scripts) that calls the camofox plugin
+There is no YouTube subtitles tool: ask the assistant to make a `my_youtube_transcript` tool in **Scripts** that calls the camofox plugin
 `POST /youtube/transcript`. It needs the camofox settings shared with scripts and access to the local network.
 
-**Actions** are behind the **Разрешить действия** (Allow actions) switch: `browser_act` (click, type, press, scroll, navigate, back, forward, refresh, wait;
+**Actions** are behind the **Allow actions** switch: `browser_act` (click, type, press, scroll, navigate, back, forward, refresh, wait;
 the reply includes a fresh snapshot right away), `browser_close`, a session reset with `browser_open(newSession: true)`, and `browser_import_cookies`.
 While the switch is off, the assistant doesn't see these tools. Cookie import appears only if an API key is set. The Netscape
 file (`cookies.txt`) is taken from the Files connector, and only from a `cookies/` subfolder (`folder/cookies/youtube.txt`), at most 500 cookies and 5 MB.
@@ -123,7 +126,7 @@ camofox follows redirects itself, so after opening and after actions the hub che
 Tabs are grouped by MCP client: `browser_close(all: true)` from Claude doesn't close ChatGPT's tabs. At most 3 requests to camofox
 run at the same time, the rest wait in a queue.
 
-If a Cloudflare check comes back instead of the page, the assistant offers a screenshot and a noVNC link from the **Адрес VNC** (VNC address) field. There you can
+If a Cloudflare check comes back instead of the page, the assistant offers a screenshot and a noVNC link from the **VNC address** field. There you can
 pass the check or sign in to the site by hand, and the cookies stay in the session. Text the assistant types into forms is not written to the log,
 only its length.
 
@@ -137,10 +140,10 @@ through the proxy, and the assistant sees the captured traffic and, if you want,
 **Viewing** (always on): `mitm_status`, `mitm_hosts` (a summary by domain for the last N minutes: request count, size, status codes; filter by app
 from the User-Agent), `mitm_flows` (a list of requests with short ids), `mitm_flow` (headers and bodies of the request and response, long ones in parts via
 `offset`). The hub calls mitmweb with `Authorization: Bearer <password>` (the password is `MITM_WEB_PASSWORD`, empty means no password). Tokens, passwords,
-keys, signatures, cookies, JWTs and `Bearer` values in headers, URLs and bodies are masked. The **Показывать токены** (Show tokens) switch turns masking off. mitmproxy streams bodies larger than
-1 MB (`stream_large_bodies=1m`), and for those the reply says "тело не сохранено (больше 1 МБ, стрим)" (body not saved, larger than 1 MB, streamed).
+keys, signatures, cookies, JWTs and `Bearer` values in headers, URLs and bodies are masked. The **Show tokens** switch turns masking off. mitmproxy streams bodies larger than
+1 MB (`stream_large_bodies=1m`), and for those the reply says "body not saved (over 1 MB, streamed)".
 
-**Mocks** are behind the **Разрешить моки** (Allow mocks) switch (off by default; while it is off, the assistant doesn't see the mock tools or `mitm_clear`):
+**Mocks** are behind the **Allow mocks** switch (off by default; while it is off, the assistant doesn't see the mock tools or `mitm_clear`):
 - `mitm_mock_replace` replaces the whole response (code, headers, body; without `Content-Type` a JSON body gets `application/json`, anything else gets `text/plain`).
   The real server is not called.
 - `mitm_mock_patch` lets the request go to the server and edits the real response: JSON fields (`user.items[0].price`, `items[*].price`),
@@ -159,7 +162,7 @@ the tool returns an error for an unknown id. The host is taken from the `Host` h
 
 The commands take effect in the proxy at once, and reach the hub at the next sync (within a minute at most; immediately when the assistant
 runs `mitm_mocks`). You can't add mocks from mitmweb, only through the assistant. While mocks are off in the hub, the commands reply
-"Моки выключены в хабе" (Mocks are off in the hub).
+"Mocks are off in the hub".
 
 Pattern: the host is exact or `*.example.com`, the path may contain `*`, the method is optional, and the query is ignored. Rules apply to all devices
 behind the proxy and are stored in the hub (SQLite). They are data only: the addon executes nothing. If several rules match a request,
@@ -169,10 +172,10 @@ the oldest `replace` fires. Otherwise the oldest `patch` fires (a fully replaced
 1. copy it to `Docker/mitmproxy/scripts/` on the NAS;
 2. add `-s /scripts/hub_mocks.py` to the mitmweb `command` and run `docker compose up -d`;
 3. the hub needs access to the container: `fw.allow.containers: "mitmweb"` (dockfw);
-4. in the admin panel set the password, turn on **Разрешить моки** and press **Проверить** (Check), which shows whether the addon is connected.
+4. in the admin panel set the password, turn on **Allow mocks** and press **Check**, which shows whether the addon is connected.
 
 The hub passes the rules to the `hub_mocks` option via `PUT /options` and checks it once a minute (after a mitmproxy restart the rules come back
-on their own). The addon writes changes made on the mitmweb command line to the `hub_mocks_edits` option, and the hub applies them to its own rules at the next check. If you turn off the connector or **Разрешить моки**, an empty list goes to the proxy and all mocks stop working, but they stay in the hub.
+on their own). The addon writes changes made on the mitmweb command line to the `hub_mocks_edits` option, and the hub applies them to its own rules at the next check. If you turn off the connector or **Allow mocks**, an empty list goes to the proxy and all mocks stop working, but they stay in the hub.
 If the addon is not connected, the rule is saved, and the assistant's reply explains what to fix.
 
 ## Prototypes
@@ -187,7 +190,7 @@ doesn't work in the sandbox). The hub inserts a script with `window.hub.db` at t
 ```js
 const data = await hub.db.get()            // {} until something is saved
 await hub.db.set({ items: [] })            // overwrite completely
-await hub.db.update((d) => { d.items.push('новое'); return d })  // keeps other people's edits, retries on conflict
+await hub.db.update((d) => { d.items.push('new item'); return d })  // keeps other people's edits, retries on conflict
 ```
 
 The script calls `/p/{slug}/db` with a token embedded in the served page. The token lives for 24 hours and stops working after
@@ -198,34 +201,34 @@ or ask the assistant (`prototype_data`). When a prototype is deleted, its data i
 
 ## Cron scripts
 
-The assistant writes the JS and the schedule, you approve the code in the admin panel under **Скрипты** (Scripts), and the script is enabled right away. You can also add a script by hand there.
+The assistant writes the JS and the schedule, you approve the code in the admin panel under **Scripts**, and the script is enabled right away. You can also add a script by hand there.
 
 - Any code change waits for approval again and pauses the script. Changing the schedule needs no approval.
   A rejected new script is deleted, a rejected change is rolled back to the previous version.
 - You can turn a script off and on in the admin panel or ask the assistant (`cron_enable`).
 - The sandbox is QuickJS (WebAssembly): no access to files, the process or the hub database, 64 MB of memory per run.
-- Limits in the **Скрипты** connector settings, the defaults in brackets: run time of a cron script (30 s, up to 600), of a custom tool
+- Limits in the **Scripts** connector settings, the defaults in brackets: run time of a cron script (30 s, up to 600), of a custom tool
   (25 s, up to 120), one `fetch` (15 s, up to 120, never past the run's time), requests per run (20, up to 200) and the size of one response (1 MB, up to 5).
   The assistant waits for a custom tool, and the client may cut a long call off by itself, so more than a minute there is risky.
-- Switches in the **Скрипты** connector settings:
-  - **Без одобрения** (No approval): the assistant's code is enabled right away (off by default);
-  - **Доступ к внешним адресам** (Access to external addresses): on by default;
-  - **Доступ к локальной сети** (Access to the local network): off by default (host, containers, localhost; checked through DNS too).
+- Switches in the **Scripts** connector settings:
+  - **No approval**: the assistant's code is enabled right away (off by default);
+  - **Access to external addresses**: on by default;
+  - **Access to the local network**: off by default (host, containers, localhost; checked through DNS too).
 - Secrets (for example a Telegram bot token) are created in the admin panel and bound to hosts. In the code you use the placeholder `{{secret:NAME}}`, and the hub substitutes
   the value only into a request to an allowed host. Neither the script nor the assistant sees the values.
 - Hub tools from a script: `await hub.tool('torrents_status', { filter: 'completed' })`. They are read-only,
-  and with **Доступ к локальной сети** on they can also write (`torrent_add`, `paperless_update`…).
+  and with **Access to the local network** on they can also write (`torrent_add`, `paperless_update`…).
 
 ### Connector settings for scripts
 
-Open **Скрипты** → **Настройки коннекторов** (Connector settings), with one switch per connector. The fields become available as `{{secret:JACKETT_BASE_URL}}`,
+Open **Scripts** → **Connector settings**, with one switch per connector. The fields become available as `{{secret:JACKETT_BASE_URL}}`,
 `{{secret:JACKETT_API_KEY}}`, `{{secret:JACKETT_MIN_SEEDERS}}` and so on. Keys and passwords are substituted only into requests to the connector's address.
 The address and parameters are plain values (the address can go at the start of a URL). The values are read from the connector on every run,
-and the assistant sees only the names. This usually also needs **Доступ к локальной сети**.
+and the assistant sees only the names. This usually also needs **Access to the local network**.
 
 ## Custom MCP tools
 
-The **MCP-инструменты** (MCP tools) block on the **Скрипты** screen. The assistant creates them with `tool_create` (or you do it with the **Добавить инструмент** (Add tool) button):
+The **MCP tools** block on the **Scripts** screen. The assistant creates them with `tool_create` (or you do it with the **Add tool** button):
 a `my_*` name, a description, parameters (string, number, yes/no, a choice from a list), and code with `args` and `return`. The assistant calls
 an approved tool by itself like any other, in a new chat. In the current chat you can test it with `cron_run` and `args`.
-Secrets, network, `hub.tool`, **Без одобрения** and the limits are shared with scripts; a call has its own time limit (25 s by default).
+Secrets, network, `hub.tool`, **No approval** and the limits are shared with scripts; a call has its own time limit (25 s by default).

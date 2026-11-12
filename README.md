@@ -30,6 +30,7 @@ sorts your documents, publishes HTML prototypes and runs your scripts.
 
 ## Features
 
+- **English or Russian:** the admin panel, the service pages and everything the assistant reads (tool descriptions and replies) follow the language in **Settings**. English by default.
 - **Connectors:** Jackett, qBittorrent, Transmission, TorrServe, Paperless-ngx, Papra, folders on disk (read, edit and move, by access level), the camofox browser and mitmproxy traffic capture. Set them up in the admin panel and turn off the tools you don't need.
 - **camofox:** the assistant opens sites in the [camofox](https://github.com/jo-inc/camofox-browser) stealth browser from your home IP.
   It reads pages and links and takes screenshots. Read-only by default; clicks, typing and navigation are behind a switch.
@@ -96,11 +97,11 @@ docker compose logs hub | grep "Admin panel"   # the admin address with the secr
 Then:
 
 1. Open the address from the log, sign in and set up 2FA. The admin panel stays closed without it.
-2. **Коннекторы** (Connectors): enter the service addresses, for example `http://qbittorrent:8080` if the hub shares a Docker network with them.
-3. **MCP доступ** (MCP access): copy the MCP URL and turn on client registration.
+2. **Connectors**: enter the service addresses, for example `http://qbittorrent:8080` if the hub shares a Docker network with them.
+3. **MCP access**: copy the MCP URL and turn on client registration.
    - **Claude:** Settings → Connectors → Add custom connector → the URL, leave the OAuth fields empty → Connect.
    - **ChatGPT:** Apps → Add → Create MCP app → the URL, OAuth authentication → Create.
-4. Sign in, enter the 2FA code and press **Разрешить** (Allow). In a new chat, ask it to `call hub_status`.
+4. Sign in, enter the 2FA code and press **Allow**. In a new chat, ask it to `call hub_status`.
 
 ## Update
 
@@ -108,7 +109,7 @@ Then:
 docker compose pull && docker compose up -d
 ```
 
-Database migrations run on start. All state lives in `./data`; backups and the rest are in [docs/deployment.md](docs/deployment.md).
+Database migrations run on start. After updating to 0.19, pick the language in **Settings** (the hub starts in English) and, for Russian dubs first, set the Jackett audio language to `ru`. All state lives in `./data`; backups and the rest are in [docs/deployment.md](docs/deployment.md).
 
 ## Documentation
 

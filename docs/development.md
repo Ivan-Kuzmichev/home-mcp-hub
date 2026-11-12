@@ -36,6 +36,17 @@ Both start the hub on made-up data (`scripts/demo/seed.mts`) in a temporary fold
 walk through the admin panel in Chromium and save the pages without scripts. `.github/workflows/demo.yml` publishes the demo on every push to `main`;
 in the repository settings, Pages → Source must be "GitHub Actions".
 
+## Translations
+
+The code is English, and the English text is also the key. The Russian is in `ru.ts` next to the code (a connector folder, `components/ru.ts`, `lib/i18n/ru/*`),
+registered in `lib/i18n/catalog.ts`. In server code use `t`/`tr`/`trc`/`plural` from `lib/i18n`, in client components the same names from
+`components/i18n-client`. `t` is a template tag (`` t`Found ${n} ${plural(n, ['document', 'documents'])}` ``), `tr` is for fixed strings,
+`trc(context, text)` for one English word with two Russian forms. Field labels, tool and parameter descriptions stay plain English strings:
+the hub translates them where it gives them out. Never build a text at module level with `t`: the language is read at call time.
+
+`tests/i18n-coverage.test.ts` checks every connector in both languages and that no English text has two Russian translations.
+`pnpm demo` fails on Cyrillic in the English pages and on any text without Russian in a second, Russian pass.
+
 ## Connectors
 
 A connector is a folder `lib/connectors/<name>/` that exports a `Connector` object (`id`, `name`, `configSchema`, `test`, `tools`,

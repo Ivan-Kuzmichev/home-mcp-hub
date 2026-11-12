@@ -36,7 +36,7 @@ Self-hosted MCP-хаб для домашних сервисов (Jackett, qBitto
 - **qBittorrent 5.x:** эндпоинты `torrents/stop` и `torrents/start` (не `pause`/`resume` — те отдают 404), параметр добавления `stopped`
   (не `paused`), состояния `stoppedDL`/`stoppedUP`, имя cookie в 5.2 — `QBT_SID_<port>` (брать из `Set-Cookie`), заголовок `Referer` обязателен
   при логине. Три режима входа: без авторизации (whitelist подсети хаба в qBittorrent), API-ключ (5.2+), логин и пароль.
-- **Jackett:** ссылки `Link` содержат API-ключ — никогда не возвращать их Claude. Результаты поиска кладутся в кэш под `result_id`,
+- **Jackett:** настройка `audioLanguage` (`en, ru, uk, de, fr, es, it, pl`, по умолчанию `en` — без приоритета) — какая озвучка идёт первой; `detectAudio` в `parse.ts` по меткам раздач, `search_torrents.language` — код или `any`. Ссылки `Link` содержат API-ключ — никогда не возвращать их Claude. Результаты поиска кладутся в кэш под `result_id`,
   `torrent_add` / `torrserve_add` принимают `result_id`. Таймаут поиска 25 с, частичный результат вместо ошибки.
 - **Transmission:** RPC `POST /transmission/rpc` с `{method, arguments}`; первый запрос получает `409` с `X-Transmission-Session-Id` —
   повторить с этим заголовком. Метки (`labels`) вместо категорий, `torrent-add` c `filename` (magnet/URL) или `metainfo` (base64).
@@ -69,8 +69,8 @@ Self-hosted MCP-хаб для домашних сервисов (Jackett, qBitto
 - **mitmproxy (id `mitmproxy`):** REST mitmweb `http://mitmweb:8081`, `Authorization: Bearer <пароль>`; для всех не-GET нужен XSRF — cookie
   `_mitmproxy_xsrf` и такой же заголовок `X-XSRFToken` (любой hex, лишь бы совпадали); неверный пароль — `403`. Потоки: `/flows`, тела — `/flows/{id}/{request|response}/content.data`;
   не-HTTP потоки (dns/tcp) пропускать, `contentLength: null` = тело не сохранено (стрим). Моки — строки `mitm_mock`, аддон `addons/mitmproxy/hub_mocks.py` читает опцию
-  `hub_mocks` (`{allowed, rules}` — все правила с флагом `enabled`, `PUT /options`); `syncMocks` сверяет её раз в минуту (cron) и после каждого изменения, при выключенном коннекторе/`allowMocks`
-  шлёт `{"allowed":false,"rules":[]}`. Команды mitmweb `hub.mock.on|off|delete` пишут журнал (`hub.mocks` только показывает список) в опцию `hub_mocks_edits` (`{epoch, edits[{seq,op,id}]}`,
+  `hub_mocks` (`{allowed, rules, lang}` — все правила с флагом `enabled`, `PUT /options`; `lang` — язык ответов команд mitmweb, без него аддон говорит по-русски); `syncMocks` сверяет её раз в минуту (cron) и после каждого изменения, при выключенном коннекторе/`allowMocks`
+  шлёт `{"allowed":false,"rules":[],"lang":…}`. Команды mitmweb `hub.mock.on|off|delete` пишут журнал (`hub.mocks` только показывает список) в опцию `hub_mocks_edits` (`{epoch, edits[{seq,op,id}]}`,
   последние 100); `syncMocks` применяет правки новее курсора `{epoch, lastSeq}` (setting `mitm_edits_cursor`; новая epoch — все), журнал не очищает. Правки из инструментов — через `mutateMocks` (в той же очереди, после правок из mitmweb). Моки только декларативные (host/path/method + replace или patch json/заголовков), никакого кода; семантика сопоставления общая для `rules.ts` и аддона.
   Инструменты моков скрыты через `hiddenTools`, `mocks.ts` импортируется динамически (цикл с реестром). Попадания — потоки с `comment` `mock:<id>`.
 - **Файлы:** папки — строки `имя | /путь | режим` в textarea (`lib/connectors/files/folders.ts`), режимы `read` < `add` < `edit` < `full`.
@@ -103,12 +103,17 @@ instructions сервера, должна пропускать выключен�
 - `pnpm dev` — локально (`.env.local` из `.env.example`)
 - `pnpm db:generate` / `pnpm db:migrate` — Drizzle
 - `pnpm lint && pnpm typecheck && pnpm test` — перед каждым коммитом
-- `pnpm screenshots` / `pnpm demo` — картинки README и статическое демо на выдуманных данных (`scripts/demo/`, нужен `pnpm build`); новые экраны админки попадают в демо сами, если на них есть ссылка
+- `pnpm screenshots` / `pnpm demo` — картинки README и статическое демо на выдуманных данных (`scripts/demo/`, нужен `pnpm build`); новые экраны админки попадают в демо сами, если на них есть ссылка. Из worktree внутри репозитория (`.claude/worktrees`) Next берёт корнем родительский репозиторий и теряет клиентские компоненты в манифесте — собирать демо из копии вне репозитория
 - Образ собирается в GitHub Actions (`.github/workflows/docker.yml`) и публикуется в GHCR; на NAS — `docker compose pull && up -d`
 
 ## Стиль
 
 - TypeScript strict, без `any`; серверный код в route handlers и server actions, клиентские компоненты только там, где нужна интерактивность
-- Тексты интерфейса на русском, идентификаторы и комментарии в коде на английском
+- Тексты на двух языках, en и ru: в коде — английский (он же ключ каталога), русский — в `ru.ts` рядом (папка коннектора, `components/ru.ts`, `lib/i18n/ru/*`),
+  каталоги подключены в `lib/i18n/catalog.ts`. Сервер — `t`/`tr`/`trc`/`plural` из `lib/i18n`, клиентские компоненты — те же из `components/i18n-client`.
+  Подписи полей и описания инструментов/параметров — простые английские строки, переводятся при выдаче (`describeFields`, `localizeSchema`).
+  Текст не собирать через `t` на уровне модуля (язык читается при вызове). Одному английскому тексту — один русский: иначе `trc(context, …)`.
+  Язык — `setting.language` (по умолчанию `en`), `HUB_LANG` фиксирует его для тестов и демо. Пропуски ловят `tests/i18n-coverage.test.ts` и `pnpm demo`.
+  Идентификаторы и комментарии в коде — на английском
 - Ответы MCP-tools короткие и читаемые: Claude показывает их пользователю на телефоне
 - Не логировать секреты, префикс пути и HTML прототипов

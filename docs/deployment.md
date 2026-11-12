@@ -8,7 +8,7 @@ Every push to `main` builds an image in GitHub Actions and publishes it to GHCR:
 A release (`pnpm release`, see [development.md](development.md)) creates the tag `vX.Y.Z`, and CI also publishes `:X.Y.Z` and `:X.Y`.
 
 - You can run `:latest` with auto-update, or pin `:X.Y` and get only the patches of that version.
-- The image version and commit are shown in the admin panel under **Настройки** (Settings).
+- The image version and commit are shown in the admin panel under **Settings**.
 - If the GHCR package is private, run `docker login ghcr.io` once with a token that has `read:packages`. The image contains no secrets, so you can make the package public.
 
 ## Environment variables
@@ -22,7 +22,7 @@ A release (`pnpm release`, see [development.md](development.md)) creates the tag
 | `DATABASE_PATH` | SQLite file, `/data/hub.db` in the container |
 | `TRUST_PROXY` | `1`: take the client IP from `X-Forwarded-For` (the hub is behind a proxy), `0`: direct connections |
 | `PORT` | Port inside the container, 3000 by default |
-| `PUID`, `PGID` | Optional: owner of the files in `/data` and in the folders of the **Файлы** (Files) connector on the host (`id -u`, `id -g`) |
+| `PUID`, `PGID` | Optional: owner of the files in `/data` and in the folders of the **Files** connector on the host (`id -u`, `id -g`) |
 | `TZ`, `LOG_LEVEL` | Time zone for cron scripts, log level (`info`) |
 
 The image sets permissions on `/data` itself at start, so you don't need `chown` on the host.
@@ -74,17 +74,30 @@ Then point the connectors at `http://127.0.0.1:<port>`. For qBittorrent in the "
 
 ## First sign-in and connecting assistants
 
-1. `docker compose logs hub | grep "Admin panel"` shows the admin address with the secret prefix (printed once; afterwards the prefix is visible under **Настройки** (Settings)).
+1. `docker compose logs hub | grep "Admin panel"` shows the admin address with the secret prefix (printed once; afterwards the prefix is visible under **Settings**).
 2. Sign in with the password, then set up 2FA (QR code and backup codes). The admin panel stays closed without 2FA.
-3. **Коннекторы** (Connectors): service addresses and keys; for TorrServe also the home address for players.
-4. **MCP доступ** (MCP access): copy the MCP URL and turn on "Регистрация новых клиентов" (Registration of new clients).
+3. **Connectors**: service addresses and keys; for TorrServe also the home address for players.
+4. **MCP access**: copy the MCP URL and turn on "New client registration (DCR)".
    - Claude: Settings → Connectors → Add custom connector → URL, leave the OAuth fields empty → Connect.
    - ChatGPT: Plugins → Add → Create MCP app → server URL, OAuth authentication, "I understand and want to continue" → Create.
-5. The hub page opens: sign in, enter the 2FA code, press "Разрешить" (Allow). Client registration turns off by itself.
-6. The card "Разрешённые клиенты" (Allowed clients) on the same screen shows which clients are allowed to register at all.
+5. The hub page opens: sign in, enter the 2FA code, press "Allow". Client registration turns off by itself.
+6. The card "Allowed clients" on the same screen shows which clients are allowed to register at all.
 
-ChatGPT reliably reads only the first ~512 characters of the server instructions. For it there is **Настройки** (Settings) → "Свой initialize" (Custom initialize):
+ChatGPT reliably reads only the first ~512 characters of the server instructions. For it there is **Settings** → "Custom initialize":
 the client gets a short text, and the assistant takes the full rules from the `hub_guide` tool.
+
+## Language
+
+The hub speaks English or Russian: **Settings** → **Language**. One language for the whole hub, English by default, also after an update.
+
+- The admin panel and the service pages switch at once; tool replies change from the next call.
+- Tool descriptions and the hub instructions reach the assistant at the start of a chat, so they change in a new chat.
+- Scripts that read the text of `hub.tool` replies may break after a switch: the replies change language too.
+- Your own texts stay as you wrote them: labeling rules, custom instructions, scripts and their descriptions. The activity log keeps the language it was written in.
+- `HUB_LANG=en|ru` fixes the language and makes the switch read-only (the tests and the demo use it).
+
+The preferred audio language for torrent search is a separate setting of the Jackett connector (`en` by default: no preference, by seeders).
+The mitmproxy addon answers its mitmweb commands in the hub language from version 0.19 on: copy the new `hub_mocks.py` to keep it in step.
 
 ## Update
 
