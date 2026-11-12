@@ -11,6 +11,13 @@ const plurals = new Map<string, RuForms>()
 const missing = new Set<string>()
 const conflicts: string[] = []
 
+/** HUB_I18N_LOG_MISSING=1 prints each key without Russian once (the demo's Russian pass reads them). */
+function noteMissing(key: string): void {
+  if (missing.has(key)) return
+  missing.add(key)
+  if (typeof process !== 'undefined' && process.env?.HUB_I18N_LOG_MISSING === '1') console.warn(`i18n-missing: ${JSON.stringify(key)}`)
+}
+
 /** One English text maps to one Russian across all catalogs; a second, different Russian is a conflict. */
 export function registerCatalog(entries: Record<string, string>, pluralForms: Record<string, RuForms> = {}): void {
   for (const [en, ru] of Object.entries(entries)) {
@@ -48,7 +55,7 @@ export function translateTemplate(lang: Lang, strings: readonly string[], values
   const key = templateKey(strings)
   const template = texts.get(key)
   if (template === undefined) {
-    missing.add(key)
+    noteMissing(key)
     return interpolate(strings, values)
   }
   return template.replace(/\{(\d+)\}/g, (_, i: string) => String(values[Number(i)]))
@@ -61,7 +68,7 @@ export function translateText(lang: Lang, text: string): string {
   if (lang === 'en') return text
   const ru = texts.get(text)
   if (ru === undefined) {
-    if (!NOT_TEXT.test(text)) missing.add(text)
+    if (!NOT_TEXT.test(text)) noteMissing(text)
     return text
   }
   return ru
@@ -73,7 +80,7 @@ export function translateInContext(lang: Lang, context: string, text: string): s
   const key = `${context}|${text}`
   const ru = texts.get(key)
   if (ru === undefined) {
-    missing.add(key)
+    noteMissing(key)
     return text
   }
   return ru
@@ -88,18 +95,14 @@ function ruPlural(n: number, forms: RuForms): string {
   return forms[2]
 }
 
-/**
- * [one, other] in English; Russian forms come from the catalog by `one`.
- * Three forms are the old Russian call, kept as is until its module is translated.
- */
-export function pluralFor(lang: Lang, n: number, forms: [string, string] | RuForms, context?: string): string {
-  if (forms.length === 3) return ruPlural(n, forms)
+/** [one, other] in English; the Russian forms come from the catalog by `one`. */
+export function pluralFor(lang: Lang, n: number, forms: [string, string], context?: string): string {
   if (lang === 'en') return n === 1 ? forms[0] : forms[1]
   // A context picks another Russian case for the same English word: «for 3 documents» = «для 3 документов».
   const key = context ? `${context}|${forms[0]}` : forms[0]
   const ru = plurals.get(key)
   if (!ru) {
-    missing.add(`plural:${key}`)
+    noteMissing(`plural:${key}`)
     return n === 1 ? forms[0] : forms[1]
   }
   return ruPlural(n, ru)

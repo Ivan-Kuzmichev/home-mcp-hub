@@ -473,7 +473,7 @@ export const files = defineConnector<Config>({
 
     tool({
       name: 'files_copy',
-      title: 'Copy',
+      title: 'Copy file',
       description: 'Copy a file or a whole folder, also between folders. If to is an existing folder, puts the copy inside. Does not overwrite what exists.',
       annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
       inputSchema: z.object({

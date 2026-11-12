@@ -20,7 +20,7 @@ export function useT() {
       lang,
       t: (strings: TemplateStringsArray, ...values: unknown[]) => translateTemplate(lang, strings, values),
       tr: (text: string) => translateText(lang, text),
-      plural: (n: number, forms: [string, string] | [string, string, string]) => pluralFor(lang, n, forms),
+      plural: (n: number, forms: [string, string], context?: string) => pluralFor(lang, n, forms, context),
       localeTag: localeTagFor(lang),
     }),
     [lang],

@@ -37,7 +37,7 @@ export function LanguageForm({ current, fixedByEnv }: { current: Lang; fixedByEn
               c.value === current && 'bg-secondary text-foreground',
             )}
           >
-            {c.label}
+            <span lang={c.value}>{c.label}</span>
           </button>
         ))}
       </div>

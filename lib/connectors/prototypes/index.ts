@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { t, tr } from '../../i18n'
+import { localeTag, t, tr } from '../../i18n'
 import {
   appendDraft,
   commitDraft,
@@ -28,11 +28,12 @@ const configSchema = z.object({})
 type Config = z.output<typeof configSchema>
 const tool = toolFor<Config>()
 
-const dayMonth = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'short' })
+/** «12 нояб» in Russian (without the dot), «Nov 12» in English. */
+const dayMonth = (d: Date) => new Intl.DateTimeFormat(localeTag(), { day: 'numeric', month: 'short' }).format(d).replace('.', '')
 
 export function expiryText(p: Pick<Prototype, 'expiresAt'>): string {
   if (!p.expiresAt) return t`no expiry`
-  return isExpired(p) ? t`expired ${dayMonth.format(p.expiresAt).replace('.', '')}` : t`until ${dayMonth.format(p.expiresAt).replace('.', '')}`
+  return isExpired(p) ? t`expired ${dayMonth(p.expiresAt)}` : t`until ${dayMonth(p.expiresAt)}`
 }
 
 const expiresInput = z.enum(['never', '7d', '30d']).describe('Lifetime: never — no expiry, 7d or 30d')

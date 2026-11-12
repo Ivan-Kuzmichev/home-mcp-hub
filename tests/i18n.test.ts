@@ -37,12 +37,6 @@ describe('i18n core', () => {
     expect(missingKeys().filter((k) => ['http://jackett:9117', 'org_…', 'en'].includes(k))).toEqual([])
   })
 
-  it('legacy three Russian forms stay Russian in both languages until their module is translated', () => {
-    const legacy = (n: number) => plural(n, ['торрент', 'торрента', 'торрентов'])
-    expect(runWithLang('en', () => legacy(3))).toBe('торрента')
-    expect(runWithLang('ru', () => legacy(5))).toBe('торрентов')
-  })
-
   it('a context separates the same English word', () => {
     registerCatalog({ 'filter|stopped': 'остановлены', stopped: 'остановлен' })
     expect(runWithLang('ru', () => [trc('filter', 'stopped'), tr('stopped')])).toEqual(['остановлены', 'остановлен'])

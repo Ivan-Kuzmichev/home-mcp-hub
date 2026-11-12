@@ -14,6 +14,7 @@ import { mitmMock, prototype, script, scriptSecret, toolCall } from '@/lib/db/sc
 import { oauthClient, oauthConsent, oauthRefreshToken, user } from '@/lib/db/auth-schema'
 import { redactArgs, summarize } from '@/lib/journal'
 import { savePrefix } from '@/lib/prefix'
+import { setSetting } from '@/lib/settings'
 import { publish } from '@/lib/prototypes/store'
 import { approveScript, createScript, createTool, recordRun, setScriptEnabled } from '@/lib/scripts/store'
 
@@ -27,13 +28,15 @@ const ago = (ms: number) => new Date(now - ms)
 const db = getDb()
 migrate(db, { migrationsFolder: path.join(process.cwd(), 'lib/db/migrations') })
 savePrefix(DEMO_PREFIX)
+// The demo and the README screenshots are English.
+setSetting('language', 'en')
 
 // --- Admin with 2FA and a session for the browser ---------------------------------------------
 
 const EMAIL = 'admin@example.com'
 const PASSWORD = 'demo password 2026'
 const ctx = await getAuth().$context
-const admin = await ctx.internalAdapter.createUser({ email: EMAIL, name: 'Админ', emailVerified: true }, { method: 'email-password' })
+const admin = await ctx.internalAdapter.createUser({ email: EMAIL, name: 'Admin', emailVerified: true }, { method: 'email-password' })
 await ctx.internalAdapter.linkAccount({ userId: admin.id, providerId: 'credential', accountId: admin.id, password: await ctx.password.hash(PASSWORD) })
 const signIn = await getAuth().api.signInEmail({ body: { email: EMAIL, password: PASSWORD }, asResponse: true })
 const cookies = signIn.headers.getSetCookie().map((c) => {
@@ -56,19 +59,19 @@ function connect(id: string, raw: Record<string, unknown>, check: { ok: boolean;
   db.run(`UPDATE connector SET last_check_at = ${now - checkedAgo} WHERE id = '${id}'`)
 }
 
-connect('jackett', { baseUrl: 'http://jackett:9117', apiKey: 'demo', minSeeders: 3 }, { ok: true, summary: '4 индексатора' })
+connect('jackett', { baseUrl: 'http://jackett:9117', apiKey: 'demo', minSeeders: 3 }, { ok: true, summary: '4 indexers' })
 connect('qbittorrent', { baseUrl: 'http://qbittorrent:8080', authMode: 'none' }, { ok: true, summary: 'qBittorrent v5.2.1', details: ['WebAPI 2.12.1'] })
 connect('torrserve', { baseUrl: 'http://torrserve:8090', streamUrl: 'https://tv.example.com' }, { ok: true, summary: 'TorrServe MatriX.136' })
-connect('paperless', { baseUrl: 'http://paperless:8000', apiToken: 'demo', webUrl: 'https://docs.example.com' }, { ok: true, summary: '1284 документа' })
+connect('paperless', { baseUrl: 'http://paperless:8000', apiToken: 'demo', webUrl: 'https://docs.example.com' }, { ok: true, summary: '1284 documents' })
 connect(
   'files',
-  { folders: 'Фильмы | /files/movies | add\nСериалы | /files/tv | add\nДокументы | /files/docs | edit\nЗагрузки | /files/downloads | full' },
-  { ok: true, summary: '4 папки' },
+  { folders: 'Movies | /files/movies | add\nTV | /files/tv | add\nDocuments | /files/docs | edit\nDownloads | /files/downloads | full' },
+  { ok: true, summary: '4 folders' },
 )
 connect('browser', { baseUrl: 'http://camofox:9377', accessKey: 'demo' }, { ok: true, summary: 'camofox 1.6.2' })
-connect('mitmproxy', { baseUrl: 'http://mitmweb:8081', password: 'demo', allowMocks: true }, { ok: true, summary: 'mitmproxy 12.3.0', details: ['аддон hub_mocks подключён'] })
-connect('prototypes', {}, { ok: true, summary: '3 прототипа' }, 6 * MIN)
-connect('scripts', {}, { ok: true, summary: '4 скрипта' }, 6 * MIN)
+connect('mitmproxy', { baseUrl: 'http://mitmweb:8081', password: 'demo', allowMocks: true }, { ok: true, summary: 'mitmproxy 12.3.0', details: ['hub_mocks addon loaded'] })
+connect('prototypes', {}, { ok: true, summary: '3 prototypes' }, 6 * MIN)
+connect('scripts', {}, { ok: true, summary: '4 scripts' }, 6 * MIN)
 setDisabledTools('qbittorrent', ['torrent_delete'])
 
 // --- OAuth clients: Claude and ChatGPT are connected ----------------------------------------------
@@ -92,22 +95,22 @@ const chatgpt = client('ChatGPT', 'https://chatgpt.com/connector_platform_oauth_
 type Call = [agoMs: number, tool: string, connectorId: string, args: unknown, result: string | { error: string }, ms: number, who?: string]
 
 const calls: Call[] = [
-  [26 * HOUR, 'hub_status', 'hub', {}, 'Хаб v0.15 · 9 коннекторов', 140],
-  [25 * HOUR, 'paperless_review', 'paperless', { scope: 'unlabeled', limit: 20 }, '7 неразмеченных документов', 1900],
-  [25 * HOUR - 3 * MIN, 'paperless_update', 'paperless', { changes: [{ id: 812 }, { id: 815 }, { id: 816 }] }, 'Изменено 3 документа', 1300],
-  [22 * HOUR, 'search_torrents', 'jackett', { query: 'Big Buck Bunny', type: 'movie' }, '6 результатов', 4200],
-  [22 * HOUR - MIN, 'torrserve_add', 'torrserve', { result_id: 'r_2' }, 'Добавлено в TorrServe', 1100],
-  [20 * HOUR, 'browser_open', 'browser', { url: 'https://news.ycombinator.com' }, 'Hacker News · 30 ссылок', 3800, 'chatgpt'],
-  [19 * HOUR, 'mitm_hosts', 'mitmproxy', { minutes: 10 }, '14 хостов', 600],
-  [19 * HOUR - 2 * MIN, 'mitm_mock_patch', 'mitmproxy', { host: 'api.example.com', path: '/v1/profile', json: [{ path: 'isPremium', value: true }] }, 'Мок #2 включён', 500],
-  [6 * HOUR, 'files_list', 'files', { path: 'Загрузки' }, '18 файлов', 90],
-  [5 * HOUR, 'search_torrents', 'jackett', { query: 'Sintel', type: 'movie', year: 2010 }, '4 результата', 3900],
-  [5 * HOUR - MIN, 'torrent_add', 'qbittorrent', { result_id: 'r_1', category: 'movies' }, 'Добавлено: Sintel (2010) 1080p', 1200],
-  [3 * HOUR, 'torrserve_add', 'torrserve', { result_id: 'r_4' }, { error: 'Таймаут 25 с' }, 25_000],
-  [2 * HOUR, 'prototype_publish', 'prototypes', { title: 'План поездки в Стамбул', html: '<!doctype html>…' }, 'Опубликовано', 1100],
-  [70 * MIN, 'my_weather', 'scripts', { city: 'Москва' }, 'Москва: +4°, облачно', 700],
-  [35 * MIN, 'paperless_search', 'paperless', { query: 'страховка', correspondent: 'Ингосстрах' }, '3 документа', 800],
-  [14 * MIN, 'torrents_status', 'qbittorrent', { filter: 'active' }, '2 активных · 18,4 МБ/с', 300],
+  [26 * HOUR, 'hub_status', 'hub', {}, 'Hub v0.15 · 9 connectors', 140],
+  [25 * HOUR, 'paperless_review', 'paperless', { scope: 'unlabeled', limit: 20 }, '7 unlabeled documents', 1900],
+  [25 * HOUR - 3 * MIN, 'paperless_update', 'paperless', { changes: [{ id: 812 }, { id: 815 }, { id: 816 }] }, 'Updated 3 documents', 1300],
+  [22 * HOUR, 'search_torrents', 'jackett', { query: 'Big Buck Bunny', type: 'movie' }, '6 results', 4200],
+  [22 * HOUR - MIN, 'torrserve_add', 'torrserve', { result_id: 'r_2' }, 'Added to TorrServe', 1100],
+  [20 * HOUR, 'browser_open', 'browser', { url: 'https://news.ycombinator.com' }, 'Hacker News · 30 links', 3800, 'chatgpt'],
+  [19 * HOUR, 'mitm_hosts', 'mitmproxy', { minutes: 10 }, '14 hosts', 600],
+  [19 * HOUR - 2 * MIN, 'mitm_mock_patch', 'mitmproxy', { host: 'api.example.com', path: '/v1/profile', json: [{ path: 'isPremium', value: true }] }, 'Mock #2 enabled', 500],
+  [6 * HOUR, 'files_list', 'files', { path: 'Downloads' }, '18 files', 90],
+  [5 * HOUR, 'search_torrents', 'jackett', { query: 'Sintel', type: 'movie', year: 2010 }, '4 results', 3900],
+  [5 * HOUR - MIN, 'torrent_add', 'qbittorrent', { result_id: 'r_1', category: 'movies' }, 'Added: Sintel (2010) 1080p', 1200],
+  [3 * HOUR, 'torrserve_add', 'torrserve', { result_id: 'r_4' }, { error: 'Timeout 25 s' }, 25_000],
+  [2 * HOUR, 'prototype_publish', 'prototypes', { title: 'Istanbul trip plan', html: '<!doctype html>…' }, 'Published', 1100],
+  [70 * MIN, 'my_weather', 'scripts', { city: 'Lisbon' }, 'Lisbon: +17°, cloudy', 700],
+  [35 * MIN, 'paperless_search', 'paperless', { query: 'insurance', correspondent: 'Allianz' }, '3 documents', 800],
+  [14 * MIN, 'torrents_status', 'qbittorrent', { filter: 'active' }, '2 active · 18.4 MB/s', 300],
 ]
 
 for (const [agoMs, tool, connectorId, args, result, ms, who] of calls) {
@@ -139,31 +142,31 @@ const page = (title: string, body: string) => `<!doctype html><html lang="ru"><h
 <body><main><h1>${title}</h1>${body}</main></body></html>`
 
 const day = (n: number, title: string, items: string[]) =>
-  `<div class="card"><b>День ${n} · ${title}</b><ul>${items.map((i) => `<li>${i}</li>`).join('')}</ul></div>`
+  `<div class="card"><b>Day ${n} · ${title}</b><ul>${items.map((i) => `<li>${i}</li>`).join('')}</ul></div>`
 
 const trip = await publish({
-  title: 'План поездки в Стамбул',
+  title: 'Istanbul trip plan',
   pin: '2468',
   html: page(
-    'План поездки в Стамбул',
-    `<p class="sub">12–16 мая · 2 человека</p>${day(1, 'Султанахмет', ['Айя-София утром, до очередей', 'Голубая мечеть', 'Обед: кёфте в Sultanahmet Köftecisi'])}${day(2, 'Босфор', ['Паром от Эминёню до Анадолу Кавагы', 'Ужин в Ортакёе'])}${day(3, 'Бейоглу', ['Галатская башня', 'Истикляль и Карабаш', 'Кофе на крыше'])}`,
+    'Istanbul trip plan',
+    `<p class="sub">May 12–16 · 2 people</p>${day(1, 'Sultanahmet', ['Hagia Sophia in the morning, before the lines', 'Blue Mosque', 'Lunch: köfte at Sultanahmet Köftecisi'])}${day(2, 'Bosphorus', ['Ferry from Eminönü to Anadolu Kavağı', 'Dinner in Ortaköy'])}${day(3, 'Beyoğlu', ['Galata Tower', 'İstiklal and Karaköy', 'Coffee on a rooftop'])}`,
   ),
 })
 const shop = await publish({
-  title: 'Покупки на неделю',
+  title: 'Weekly groceries',
   expiry: '7d',
   html: page(
-    'Покупки на неделю',
-    `<p class="sub">Собрано из рецептов на 5 ужинов</p>${['Овощи · томаты, цукини, лук, чеснок', 'Мясо · курица 1 кг, фарш 500 г', 'Молочное · сыр, йогурт, молоко', 'Бакалея · рис, паста, нут']
+    'Weekly groceries',
+    `<p class="sub">Collected from the recipes of 5 dinners</p>${['Vegetables · tomatoes, zucchini, onion, garlic', 'Meat · chicken 1 kg, ground beef 500 g', 'Dairy · cheese, yogurt, milk', 'Pantry · rice, pasta, chickpeas']
       .map((l) => `<div class="card row"><span>${l.split(' · ')[1]}</span><span class="muted">${l.split(' · ')[0]}</span></div>`)
       .join('')}`,
   ),
 })
 const mortgage = await publish({
-  title: 'Калькулятор ипотеки',
+  title: 'Mortgage calculator',
   html: page(
-    'Калькулятор ипотеки',
-    `<p class="sub">Аннуитетный платёж, досрочное погашение</p><div class="card row"><span>Платёж в месяц</span><b>87 340 ₽</b></div><div class="card row"><span>Переплата</span><b>9,4 млн ₽</b></div><div class="card row"><span>С досрочным 20 000 ₽ в месяц</span><b>−6 лет 2 мес.</b></div>`,
+    'Mortgage calculator',
+    `<p class="sub">Annuity payment, early repayment</p><div class="card row"><span>Monthly payment</span><b>$2,340</b></div><div class="card row"><span>Total interest</span><b>$251,000</b></div><div class="card row"><span>With $500 extra a month</span><b>−6 years 2 months</b></div>`,
   ),
 })
 for (const [p, createdAgo, views] of [[trip, 2 * HOUR, 14], [shop, 2 * 24 * HOUR, 6], [mortgage, 9 * 24 * HOUR, 31]] as const) {
@@ -173,31 +176,31 @@ for (const [p, createdAgo, views] of [[trip, 2 * HOUR, 14], [shop, 2 * 24 * HOUR
 // --- Scripts ----------------------------------------------------------------------------------
 
 db.insert(scriptSecret)
-  .values({ name: 'TELEGRAM_BOT_TOKEN', valueEnc: encryptSecret('demo'), hosts: ['api.telegram.org'], description: 'Бот для уведомлений', updatedAt: ago(10 * 24 * HOUR) })
+  .values({ name: 'TELEGRAM_BOT_TOKEN', valueEnc: encryptSecret('demo'), hosts: ['api.telegram.org'], description: 'Notification bot', updatedAt: ago(10 * 24 * HOUR) })
   .run()
 
 const episodes = await createScript({
-  name: 'Новые серии в Telegram',
-  description: 'Каждый вечер ищет новые серии отслеживаемых сериалов и пишет в Telegram',
+  name: 'New episodes to Telegram',
+  description: 'Every evening looks for new episodes of the watched shows and posts to Telegram',
   schedule: '0 20 * * *',
   code: `const shows = ['Severance', 'The Last of Us']\nfor (const q of shows) {\n  const r = await hub.tool('search_torrents', { query: q, type: 'tv' })\n  log(r)\n}\nawait fetch('https://api.telegram.org/bot{{secret:TELEGRAM_BOT_TOKEN}}/sendMessage', { method: 'POST' })\n`,
 })
 const disk = await createScript({
-  name: 'Место на диске',
-  description: 'Раз в час проверяет свободное место в «Загрузках»',
+  name: 'Disk space',
+  description: 'Checks the free space in Downloads every hour',
   schedule: '0 * * * *',
-  code: `const r = await hub.tool('files_list', { path: 'Загрузки' })\nreturn r\n`,
+  code: `const r = await hub.tool('files_list', { path: 'Downloads' })\nreturn r\n`,
 })
 const backup = await createScript({
-  name: 'Бэкап настроек Paperless',
-  description: 'Еженедельно сохраняет теги и корреспондентов в JSON',
+  name: 'Paperless settings backup',
+  description: 'Saves the tags and correspondents to JSON every week',
   schedule: '0 3 * * 1',
   code: `const t = await hub.tool('paperless_taxonomy', {})\nstate.set('last', t)\n`,
 })
 const weather = await createTool({
   name: 'my_weather',
-  description: 'Погода в городе на сегодня',
-  params: [{ name: 'city', type: 'string', description: 'Город', required: true }],
+  description: 'Today\'s weather in a city',
+  params: [{ name: 'city', type: 'string', description: 'City', required: true }],
   readOnly: true,
   code: `const r = await fetch('https://wttr.in/' + encodeURIComponent(args.city) + '?format=j1')\nreturn (await r.json()).current_condition[0]\n`,
 })
@@ -205,15 +208,15 @@ for (const s of [episodes, disk, weather]) {
   approveScript(s.id, s.codeHash)
   setScriptEnabled({ ...s, approvedHash: s.codeHash }, true)
 }
-recordRun(episodes, 'cron', { ok: true, output: 'Новых серий: 1 · сообщение отправлено', logs: [], durationMs: 5200 })
-recordRun(disk, 'cron', { ok: true, output: 'Свободно 1,2 ТБ из 4 ТБ', logs: [], durationMs: 300 })
+recordRun(episodes, 'cron', { ok: true, output: 'New episodes: 1 · message sent', logs: [], durationMs: 5200 })
+recordRun(disk, 'cron', { ok: true, output: 'Free 1.2 TB of 4 TB', logs: [], durationMs: 300 })
 db.update(script).set({ createdAt: ago(3 * HOUR) }).where(eq(script.id, backup.id)).run()
 
 // --- mitmproxy mocks --------------------------------------------------------------------------
 
 const mocks = [
-  { name: 'Премиум в профиле', kind: 'patch', match: { host: 'api.example.com', path: '/v1/profile', method: 'GET' }, json: [{ path: 'isPremium', value: true }] },
-  { name: 'Пустая лента', kind: 'replace', match: { host: 'api.example.com', path: '/v1/feed' }, status: 200, headers: { 'content-type': 'application/json' }, body: '{"items":[]}' },
+  { name: 'Premium in the profile', kind: 'patch', match: { host: 'api.example.com', path: '/v1/profile', method: 'GET' }, json: [{ path: 'isPremium', value: true }] },
+  { name: 'Empty feed', kind: 'replace', match: { host: 'api.example.com', path: '/v1/feed' }, status: 200, headers: { 'content-type': 'application/json' }, body: '{"items":[]}' },
 ]
 mocks.forEach((m, i) => {
   db.insert(mitmMock).values({ id: `m${i + 1}`, name: m.name, enabled: i === 0, ruleJson: JSON.stringify(m), createdAt: ago((i + 1) * 20 * HOUR), updatedAt: ago((i + 1) * 20 * HOUR) }).run()

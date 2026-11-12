@@ -27,16 +27,29 @@ const env = {
   BETTER_AUTH_SECRET: randomBytes(32).toString('hex'),
   HUB_DEMO: '1',
   LOG_LEVEL: 'warn',
-  TZ: 'Europe/Moscow',
+  TZ: 'Europe/Lisbon',
 }
 
 const seed = spawnSync('node_modules/.bin/tsx', ['scripts/demo/seed.mts'], { env, stdio: 'inherit' })
 if (seed.status !== 0) process.exit(1)
 const cookies = JSON.parse(fs.readFileSync(path.join(tmp, 'cookies.json'), 'utf8'))
 
-const server = spawn('node_modules/.bin/next', ['start', '-p', String(PORT)], { env, stdio: ['ignore', 'inherit', 'inherit'] })
-const stop = () => server.kill()
+let server = null
+/** The hub on PORT; with `log` its stderr is collected (the Russian pass reads missing keys from it). */
+function startServer(extraEnv = {}, log = null) {
+  server = spawn('node_modules/.bin/next', ['start', '-p', String(PORT)], { env: { ...env, ...extraEnv }, stdio: ['ignore', 'inherit', log ? 'pipe' : 'inherit'] })
+  if (log) server.stderr.on('data', (chunk) => log.push(String(chunk)))
+}
+async function stopServer() {
+  if (!server) return
+  const done = new Promise((r) => server.once('exit', r))
+  server.kill()
+  await done
+  server = null
+}
+const stop = () => server?.kill()
 process.on('exit', stop)
+startServer()
 
 async function waitForServer() {
   for (let i = 0; i < 60; i++) {
@@ -67,7 +80,7 @@ function toStatic(html) {
     .replace(/(["'(])\/_next\/static\//g, `$1${BASE}/_next/static/`)
     .replace(
       '</body>',
-      `<div style="position:fixed;bottom:12px;left:50%;transform:translateX(-50%);z-index:100;padding:8px 14px;border-radius:999px;background:#7FA7FF;color:#0E1014;font:500 13px system-ui,sans-serif;box-shadow:0 4px 16px #0006">Демо Home MCP Hub: данные выдуманы, кнопки не работают · <a href="https://github.com/Ivan-Kuzmichev/home-mcp-hub" style="color:inherit">GitHub</a></div></body>`,
+      `<div style="position:fixed;bottom:12px;left:50%;transform:translateX(-50%);z-index:100;padding:8px 14px;border-radius:999px;background:#7FA7FF;color:#0E1014;font:500 13px system-ui,sans-serif;box-shadow:0 4px 16px #0006">Home MCP Hub demo: made-up data, buttons do nothing · <a href="https://github.com/Ivan-Kuzmichev/home-mcp-hub" style="color:inherit">GitHub</a></div></body>`,
     )
 }
 
@@ -76,6 +89,16 @@ function write(rel, content) {
   fs.mkdirSync(path.dirname(file), { recursive: true })
   fs.writeFileSync(file, content)
 }
+
+/** Visible text of the page without elements marked with another language (the «Русский» choice). */
+const visibleText = (page) =>
+  page.evaluate(() => {
+    const body = document.body.cloneNode(true)
+    for (const el of body.querySelectorAll('[lang]:not([lang="en"])')) el.remove()
+    return body.innerText
+  })
+
+const cyrillicFound = []
 
 async function buildDemo(context) {
   fs.rmSync(OUT, { recursive: true, force: true })
@@ -99,6 +122,9 @@ async function buildDemo(context) {
       write(`${staticPath(adminPath)}index.html`, await (await context.request.get(`${ORIGIN}/${PREFIX}${adminPath}`)).text())
       continue
     }
+    // The demo data is English, so any Cyrillic on a page is a text without a translation.
+    const ru = (await visibleText(page)).match(/[\u0400-\u04FF][\u0400-\u04FF\s.,:;!?«»—-]*/g)
+    if (ru) cyrillicFound.push(`${adminPath}: ${[...new Set(ru.map((x) => x.trim()))].slice(0, 5).join(' | ')}`)
     write(`${staticPath(adminPath)}index.html`, toStatic(await page.content()))
   }
   for (const asset of assets) {
@@ -116,13 +142,30 @@ async function buildDemo(context) {
     if (css.endsWith('.css')) fs.writeFileSync(css, fs.readFileSync(css, 'utf8').replaceAll('/_next/static/', `${BASE}/_next/static/`))
   }
   // Links the demo has no page for (CSV export) land here.
-  write('404.html', `<!doctype html><meta charset="utf-8"><title>Демо Home MCP Hub</title><body style="background:#0E1014;color:#E8EAF0;font:16px system-ui,sans-serif;padding:48px">В демо этого нет. <a href="${BASE}/" style="color:#7FA7FF">На дашборд</a></body>`)
+  write('404.html', `<!doctype html><meta charset="utf-8"><title>Home MCP Hub demo</title><body style="background:#0E1014;color:#E8EAF0;font:16px system-ui,sans-serif;padding:48px">Not in the demo. <a href="${BASE}/" style="color:#7FA7FF">To the dashboard</a></body>`)
   fs.writeFileSync(path.join(OUT, '.nojekyll'), '')
   console.log(`demo: ${seen.size} pages in ${path.relative(process.cwd(), OUT)}`)
+  return [...seen]
+}
+
+/** The same pages in Russian: every text without a Russian translation is logged by the hub. */
+async function checkRussian(browser, pages) {
+  await stopServer()
+  const log = []
+  startServer({ HUB_LANG: 'ru', HUB_I18N_LOG_MISSING: '1' }, log)
+  await waitForServer()
+  const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, locale: 'ru-RU' })
+  await context.addCookies(cookies.map((c) => ({ ...c, domain: 'localhost', path: '/', secure: true })))
+  const page = await context.newPage()
+  for (const adminPath of pages) await page.goto(`${ORIGIN}/${PREFIX}${adminPath}`, { waitUntil: 'networkidle' })
+  await context.close()
+  const missing = [...new Set(log.join('').split('\n').filter((l) => l.startsWith('i18n-missing: ')))]
+  if (missing.length) throw new Error(`Texts without Russian:\n${missing.join('\n')}`)
+  console.log(`russian: ${pages.length} pages, every text translated`)
 }
 
 async function shoot(browser, name, adminPath, viewport, scale = 2) {
-  const context = await browser.newContext({ viewport, deviceScaleFactor: scale, locale: 'ru-RU', timezoneId: 'Europe/Moscow', colorScheme: 'dark' })
+  const context = await browser.newContext({ viewport, deviceScaleFactor: scale, locale: 'en-US', timezoneId: 'Europe/Lisbon', colorScheme: 'dark' })
   await context.addCookies(cookies.map((c) => ({ ...c, domain: 'localhost', path: '/', secure: true })))
   const page = await context.newPage()
   await page.goto(`${ORIGIN}/${PREFIX}${adminPath}`, { waitUntil: 'networkidle' })
@@ -150,10 +193,11 @@ async function socialPreview(browser) {
 try {
   await waitForServer()
   const browser = await chromium.launch()
-  const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, locale: 'ru-RU', timezoneId: 'Europe/Moscow' })
+  const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, locale: 'en-US', timezoneId: 'Europe/Lisbon' })
   await context.addCookies(cookies.map((c) => ({ ...c, domain: 'localhost', path: '/', secure: true })))
-  await buildDemo(context)
+  const pages = await buildDemo(context)
   await context.close()
+  if (cyrillicFound.length) throw new Error(`Russian text on English pages (missing translations):\n${cyrillicFound.join('\n')}`)
 
   if (withShots) {
     fs.mkdirSync(SHOTS, { recursive: true })
@@ -169,8 +213,9 @@ try {
     await socialPreview(browser)
     console.log(`screenshots: ${path.relative(process.cwd(), SHOTS)}`)
   }
+  await checkRussian(browser, pages)
   await browser.close()
 } finally {
-  stop()
+  await stopServer()
   fs.rmSync(tmp, { recursive: true, force: true })
 }

@@ -62,7 +62,7 @@ export function ReviewCard({ data }: { data: ReviewData }) {
       )}
       <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-subtle">
         <span>
-          {t`Secrets:`} {data.secretsUsed.length ? <span className="font-mono text-muted-foreground">{data.secretsUsed.join(', ')}</span> : t`none`}
+          {t`Secrets:`} {data.secretsUsed.length ? <span className="font-mono text-muted-foreground">{data.secretsUsed.join(', ')}</span> : t`not used`}
         </span>
         <span>
           {t`Requests to:`} {data.hosts.length ? <span className="font-mono text-muted-foreground">{data.hosts.join(', ')}</span> : t`not visible in the code`}

@@ -22,7 +22,7 @@ export function trc(context: string, text: string): string {
   return translateInContext(current, context, text)
 }
 
-export function plural(n: number, forms: [string, string] | [string, string, string], context?: string): string {
+export function plural(n: number, forms: [string, string], context?: string): string {
   return pluralFor(current, n, forms, context)
 }
 
