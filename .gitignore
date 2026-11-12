@@ -13,3 +13,7 @@ __pycache__/
 
 # static demo, built by pnpm demo
 /demo-out
+
+# Local agent worktrees and plan workspaces
+.claude/worktrees/
+.superpowers/
