@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { findCyrillic, missingKeys, plural, registerCatalog, runWithLang, t, tr } from '@/lib/i18n'
+import { findCyrillic, missingKeys, plural, registerCatalog, runWithLang, t, tr, trc } from '@/lib/i18n'
 import { formatAgo, formatWhen } from '@/lib/format'
 import { formatEta, formatSize } from '@/lib/connectors/format'
 
@@ -41,6 +41,13 @@ describe('i18n core', () => {
     const legacy = (n: number) => plural(n, ['торрент', 'торрента', 'торрентов'])
     expect(runWithLang('en', () => legacy(3))).toBe('торрента')
     expect(runWithLang('ru', () => legacy(5))).toBe('торрентов')
+  })
+
+  it('a context separates the same English word', () => {
+    registerCatalog({ 'filter|stopped': 'остановлены', stopped: 'остановлен' })
+    expect(runWithLang('ru', () => [trc('filter', 'stopped'), tr('stopped')])).toEqual(['остановлены', 'остановлен'])
+    expect(runWithLang('en', () => trc('filter', 'stopped'))).toBe('stopped')
+    expect(runWithLang('ru', () => trc('filter', 'unknown'))).toBe('unknown')
   })
 
   it('finds Cyrillic', () => {

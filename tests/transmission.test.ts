@@ -103,3 +103,17 @@ describe('registry', () => {
     expect(names).not.toContain('hub_status')
   })
 })
+
+describe('Transmission in English', () => {
+  it('metadata and replies', async () => {
+    const { connectorLanguageGaps } = await import('./helpers')
+    const { runWithLang } = await import('@/lib/i18n')
+    expect(await connectorLanguageGaps(transmission, cfg)).toEqual({ cyrillic: null, missing: [] })
+    trServer()
+    const text = await runWithLang('en', () => runTool(transmission, 'transmission_status', cfg, { filter: 'all' }))
+    expect(text).toContain('2 torrents (all)')
+    expect(text).toContain('Severance.S02.1080p — 62% · ↓ 8.4 MB/s · 14 min left · peers 12/40')
+    expect(text).toContain('Dune.Part.Two.2160p — 100% · peers 12/40 · 18.6 GB · done')
+    expect(await runWithLang('en', () => runTool(transmission, 'transmission_status', cfg, { filter: 'downloading' }))).toContain('1 torrent (downloading)')
+  })
+})

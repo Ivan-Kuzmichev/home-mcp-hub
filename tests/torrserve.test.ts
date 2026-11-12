@@ -72,3 +72,14 @@ describe('TorrServe', () => {
     expect(JSON.parse(String(calls.at(-1)!.body))).toEqual({ action: 'rem', hash: HASH })
   })
 })
+
+describe('TorrServe in English', () => {
+  it('metadata and replies', async () => {
+    const { connectorLanguageGaps } = await import('./helpers')
+    const { runWithLang } = await import('@/lib/i18n')
+    expect(await connectorLanguageGaps(torrserve, cfg)).toEqual({ cyrillic: null, missing: [] })
+    tsServer()
+    expect(await runWithLang('en', () => runTool(torrserve, 'torrserve_links', cfg, { hash: 'abcdef01' }))).toContain(`Playlist: http://192.168.1.10:8090/stream/Dune%20Part%20Two.m3u?link=${HASH}&m3u`)
+    await expect(runWithLang('en', () => runTool(torrserve, 'torrserve_remove', cfg, { hash: 'nothing-like-this' }))).rejects.toThrow('TorrServe has no “nothing-like-this” — check torrserve_list')
+  })
+})

@@ -1,5 +1,6 @@
 import { expectOk, serviceFetch } from '../http'
 import { ToolError } from '../types'
+import { t } from '../../i18n'
 
 export type QbAuthMode = 'none' | 'apikey' | 'password'
 
@@ -61,18 +62,18 @@ export class QbClient {
 
   private async login(): Promise<string> {
     const { username, password, baseUrl } = this.cfg
-    if (!username || !password) throw new ToolError(`${SERVICE}: не заданы логин и пароль`)
+    if (!username || !password) throw new ToolError(t`${SERVICE}: username and password are not set`)
     const res = await serviceFetch(SERVICE, this.url('auth/login'), {
       method: 'POST',
       // Referer (or Origin) is mandatory, otherwise qBittorrent answers 401.
       headers: { 'Content-Type': 'application/x-www-form-urlencoded', Referer: baseUrl, Origin: baseUrl },
       body: new URLSearchParams({ username, password }),
     })
-    if (res.status === 403) throw new ToolError(`${SERVICE}: IP хаба забанен за неудачные входы — подожди или сними бан в настройках`)
+    if (res.status === 403) throw new ToolError(t`${SERVICE}: the hub's IP is banned after failed sign-ins — wait or lift the ban in the settings`)
     const text = await res.text()
-    if (!res.ok || text.trim() === 'Fails.') throw new ToolError(`${SERVICE}: неверный логин или пароль`)
+    if (!res.ok || text.trim() === 'Fails.') throw new ToolError(t`${SERVICE}: wrong username or password`)
     const cookie = pickSessionCookie(res.headers.getSetCookie())
-    if (!cookie) throw new ToolError(`${SERVICE}: вход без cookie сессии — проверь версию qBittorrent`)
+    if (!cookie) throw new ToolError(t`${SERVICE}: sign-in returned no session cookie — check the qBittorrent version`)
     return cookie
   }
 
@@ -93,7 +94,7 @@ export class QbClient {
       case 'none':
         return {}
       case 'apikey':
-        if (!this.cfg.apiKey) throw new ToolError(`${SERVICE}: не задан API-ключ`)
+        if (!this.cfg.apiKey) throw new ToolError(t`${SERVICE}: API key is not set`)
         return { Authorization: `Bearer ${this.cfg.apiKey}` }
       case 'password':
         return { Cookie: await this.session(), Referer: this.cfg.baseUrl }
@@ -126,11 +127,11 @@ export class QbClient {
   }
 
   async version(): Promise<string> {
-    return (await (await this.request('app/version', {}, 'версия')).text()).trim()
+    return (await (await this.request('app/version', {}, t`version`)).text()).trim()
   }
 
   async webapiVersion(): Promise<string> {
-    return (await (await this.request('app/webapiVersion', {}, 'версия API')).text()).trim()
+    return (await (await this.request('app/webapiVersion', {}, t`API version`)).text()).trim()
   }
 
   torrents(params: { filter?: string; category?: string; hashes?: string[]; sort?: string; reverse?: boolean } = {}): Promise<QbTorrent[]> {
@@ -140,7 +141,7 @@ export class QbClient {
     if (params.hashes?.length) q.set('hashes', params.hashes.join('|'))
     if (params.sort) q.set('sort', params.sort)
     if (params.reverse) q.set('reverse', 'true')
-    return this.json(`torrents/info?${q}`, 'список торрентов')
+    return this.json(`torrents/info?${q}`, t`torrent list`)
   }
 
   async add(input: {
@@ -157,34 +158,34 @@ export class QbClient {
     if (input.savePath) form.set('savepath', input.savePath)
     // qBittorrent 5.x: `stopped`, not `paused`.
     if (input.stopped !== undefined) form.set('stopped', String(input.stopped))
-    const res = await this.request('torrents/add', { method: 'POST', body: form }, 'добавление')
+    const res = await this.request('torrents/add', { method: 'POST', body: form }, t`adding`)
     const text = (await res.text()).trim()
-    if (text === 'Fails.') throw new ToolError(`${SERVICE} не принял торрент: он уже в списке или ссылка битая`)
+    if (text === 'Fails.') throw new ToolError(t`${SERVICE} did not accept the torrent: it is already in the list or the link is broken`)
   }
 
   // 5.x renamed pause/resume to stop/start; the old endpoints answer 404.
   async stop(hashes: string[] | 'all'): Promise<void> {
-    await this.form('torrents/stop', { hashes: hashes === 'all' ? 'all' : hashes.join('|') }, 'остановка')
+    await this.form('torrents/stop', { hashes: hashes === 'all' ? 'all' : hashes.join('|') }, t`stopping`)
   }
 
   async start(hashes: string[] | 'all'): Promise<void> {
-    await this.form('torrents/start', { hashes: hashes === 'all' ? 'all' : hashes.join('|') }, 'запуск')
+    await this.form('torrents/start', { hashes: hashes === 'all' ? 'all' : hashes.join('|') }, t`starting`)
   }
 
   async delete(hashes: string[], deleteFiles: boolean): Promise<void> {
-    await this.form('torrents/delete', { hashes: hashes.join('|'), deleteFiles: String(deleteFiles) }, 'удаление')
+    await this.form('torrents/delete', { hashes: hashes.join('|'), deleteFiles: String(deleteFiles) }, t`deleting`)
   }
 
   files(hash: string): Promise<QbFile[]> {
-    return this.json(`torrents/files?hash=${encodeURIComponent(hash)}`, 'файлы торрента')
+    return this.json(`torrents/files?hash=${encodeURIComponent(hash)}`, t`torrent files`)
   }
 
   transferInfo(): Promise<QbTransferInfo> {
-    return this.json('transfer/info', 'статистика')
+    return this.json('transfer/info', t`statistics`)
   }
 
   async freeSpace(): Promise<number | null> {
-    const data = await this.json<{ server_state?: { free_space_on_disk?: number } }>('sync/maindata', 'состояние')
+    const data = await this.json<{ server_state?: { free_space_on_disk?: number } }>('sync/maindata', t`state`)
     return data.server_state?.free_space_on_disk ?? null
   }
 }

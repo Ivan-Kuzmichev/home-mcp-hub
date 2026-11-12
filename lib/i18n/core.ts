@@ -52,6 +52,18 @@ export function translateText(lang: Lang, text: string): string {
   return ru
 }
 
+/** Same English word, different Russian (a state «stopped» vs a filter «stopped»): the key carries a context. */
+export function translateInContext(lang: Lang, context: string, text: string): string {
+  if (lang === 'en') return text
+  const key = `${context}|${text}`
+  const ru = texts.get(key)
+  if (ru === undefined) {
+    missing.add(key)
+    return text
+  }
+  return ru
+}
+
 /** The Russian rule: 1 документ, 3 документа, 5 документов. */
 function ruPlural(n: number, forms: RuForms): string {
   const mod10 = n % 10

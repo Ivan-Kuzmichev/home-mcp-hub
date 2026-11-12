@@ -167,3 +167,16 @@ describe('qBittorrent tools', () => {
     expect(await qbittorrent.test(none)).toMatchObject({ ok: false, summary: 'qBittorrent недоступен: соединение отклонено' })
   })
 })
+
+describe('qBittorrent in English', () => {
+  it('metadata and replies', async () => {
+    const { connectorLanguageGaps } = await import('./helpers')
+    const { runWithLang } = await import('@/lib/i18n')
+    expect(await connectorLanguageGaps(qbittorrent, none)).toEqual({ cyrillic: null, missing: [] })
+    qbServer()
+    const text = await runWithLang('en', () => runTool(qbittorrent, 'torrents_status', none, { filter: 'all' }))
+    expect(text).toContain('2 torrents (all)')
+    expect(text).toContain('Severance.S02.1080p.WEB-DL — 62% · ↓ 8.4 MB/s · 14 min left')
+    await expect(runWithLang('en', () => runTool(qbittorrent, 'torrent_delete', none, { hashes: ['all'], delete_files: true }))).rejects.toThrow('Deleting “all” is not allowed')
+  })
+})

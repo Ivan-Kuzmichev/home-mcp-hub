@@ -66,3 +66,28 @@ export async function setupTempDb(): Promise<() => void> {
   migrate(getDb(), { migrationsFolder: path.join(process.cwd(), 'lib/db/migrations') })
   return () => fs.rmSync(dir, { recursive: true, force: true })
 }
+
+/**
+ * Everything of a connector the user or the model reads before any call: in English no Cyrillic,
+ * in Russian no text without a catalog entry. Returns both findings for one expect.
+ */
+export async function connectorLanguageGaps(c: RegisteredConnector, config: unknown): Promise<{ cyrillic: string | null; missing: string[] }> {
+  const { clearMissingKeys, findCyrillic, missingKeys, runWithLang } = await import('@/lib/i18n')
+  const { describeFields, describeTools } = await import('@/lib/connectors/form')
+  const { localizedJsonSchema } = await import('@/lib/i18n/schema')
+  const { tr } = await import('@/lib/i18n')
+  const tools = c.tools.map((x) => x.name)
+  const dump = () =>
+    JSON.stringify([
+      tr(c.name),
+      tr(c.description),
+      describeFields(c, undefined),
+      describeTools(c),
+      c.tools.map((x) => [tr(x.description), localizedJsonSchema(x.inputSchema)]),
+      c.instructions?.(config, { tools }) ?? null,
+    ])
+  const cyrillic = findCyrillic(runWithLang('en', dump))
+  clearMissingKeys()
+  runWithLang('ru', dump)
+  return { cyrillic, missing: missingKeys() }
+}

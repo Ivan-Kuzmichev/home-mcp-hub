@@ -1,5 +1,6 @@
 import { expectOk, serviceFetch } from '../http'
 import { ToolError } from '../types'
+import { t } from '../../i18n'
 
 export type TsConfig = { baseUrl: string; authMode: 'none' | 'basic'; username?: string; password?: string }
 
@@ -22,7 +23,7 @@ export class TsClient {
 
   private headers(): Record<string, string> {
     if (this.cfg.authMode !== 'basic') return {}
-    if (!this.cfg.username || !this.cfg.password) throw new ToolError(`${SERVICE}: не заданы логин и пароль`)
+    if (!this.cfg.username || !this.cfg.password) throw new ToolError(t`${SERVICE}: username and password are not set`)
     return { Authorization: `Basic ${Buffer.from(`${this.cfg.username}:${this.cfg.password}`).toString('base64')}` }
   }
 
@@ -38,11 +39,11 @@ export class TsClient {
   }
 
   async version(): Promise<string> {
-    return (await (await this.call('/echo', {}, 'версия')).text()).trim()
+    return (await (await this.call('/echo', {}, t`version`)).text()).trim()
   }
 
   add(input: { link: string; title?: string; poster?: string; saveToDb: boolean }): Promise<TsTorrent> {
-    return this.torrents({ action: 'add', link: input.link, title: input.title ?? '', poster: input.poster ?? '', save_to_db: input.saveToDb }, 'добавление')
+    return this.torrents({ action: 'add', link: input.link, title: input.title ?? '', poster: input.poster ?? '', save_to_db: input.saveToDb }, t`adding`)
   }
 
   async upload(input: { data: Uint8Array; filename: string; title?: string; poster?: string; saveToDb: boolean }): Promise<TsTorrent> {
@@ -51,18 +52,18 @@ export class TsClient {
     if (input.title) form.set('title', input.title)
     if (input.poster) form.set('poster', input.poster)
     form.set('save', String(input.saveToDb))
-    return (await (await this.call('/torrent/upload', { method: 'POST', body: form }, 'загрузка .torrent')).json()) as TsTorrent
+    return (await (await this.call('/torrent/upload', { method: 'POST', body: form }, t`uploading .torrent`)).json()) as TsTorrent
   }
 
   async list(): Promise<TsTorrent[]> {
-    return (await this.torrents<TsTorrent[] | null>({ action: 'list' }, 'список')) ?? []
+    return (await this.torrents<TsTorrent[] | null>({ action: 'list' }, t`list`)) ?? []
   }
 
   get(hash: string): Promise<TsTorrent> {
-    return this.torrents({ action: 'get', hash }, 'торрент')
+    return this.torrents({ action: 'get', hash }, t`torrent`)
   }
 
   async remove(hash: string): Promise<void> {
-    await this.torrents({ action: 'rem', hash }, 'удаление')
+    await this.torrents({ action: 'rem', hash }, t`deleting`)
   }
 }
