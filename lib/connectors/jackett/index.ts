@@ -107,6 +107,8 @@ export const jackett = defineConnector<Config>({
         year: z.number().int().min(1900).max(2100).optional().describe('Release year — narrows the search'),
         language: z
           .string()
+          .trim()
+          .toLowerCase()
           .refine((v) => v === 'any' || isAudioLang(v), { error: () => t`Language: one of ${LANG_LIST} or any` })
           .optional()
           .describe('Audio language to put first (en, ru, uk, de, fr, es, it, pl) or any; by default from the hub settings'),

@@ -34,6 +34,8 @@ export function getLang(): Lang {
 
 /** The settings switch. With HUB_LANG set it would change nothing visible, so it says so. */
 export function changeLanguage(lang: Lang): { ok: true } | { error: string } {
+  // A server action argument is untrusted: only a known language gets stored.
+  if (!isLang(lang)) return { error: translateText(getLang(), 'Unknown language') }
   if (langFromEnv()) return { error: translateText(getLang(), 'The language is fixed by HUB_LANG') }
   setLang(lang)
   return { ok: true }

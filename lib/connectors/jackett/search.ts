@@ -73,7 +73,8 @@ export function dedupe(releases: Release[]): Release[] {
       seenHash.add(r.infoHash)
     }
     const quality = parseQuality(r.title)
-    const group = `${r.tracker}|${quality.resolution ?? '?'}|${quality.source ?? '?'}|${r.russian ? 'ru' : ''}`
+    // Audio is part of the group: a German release must survive next to an English one for rank() to boost it.
+    const group = `${r.tracker}|${quality.resolution ?? '?'}|${quality.source ?? '?'}|${detectAudio(r.title).join('+')}`
     if (seenGroup.has(group)) continue
     seenGroup.add(group)
     out.push(r)
