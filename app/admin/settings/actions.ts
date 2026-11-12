@@ -1,8 +1,16 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { changeLanguage, type Lang } from '@/lib/i18n'
 import { setCustomInstructions } from '@/lib/settings'
 import { requireAdmin } from '@/lib/session'
+
+export async function setLanguageAction(lang: Lang): Promise<{ ok: true } | { error: string }> {
+  await requireAdmin()
+  const r = changeLanguage(lang)
+  if ('ok' in r) revalidatePath('/', 'layout')
+  return r
+}
 
 export type InitializeState = { ok?: string; error?: string }
 

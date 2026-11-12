@@ -1,3 +1,4 @@
+import { getLang } from '../i18n'
 import type { McpServer } from '@modelcontextprotocol/server'
 import { createMcpHandler } from 'mcp-handler'
 import { z } from 'zod'
@@ -226,12 +227,14 @@ function registerCustomTools(server: McpServer, registered: Set<string>): void {
   }
 }
 
-const globalForMcp = globalThis as unknown as { __hubMcp?: { instructions: string; handler: (req: Request) => Promise<Response> } }
+const globalForMcp = globalThis as unknown as { __hubMcp?: { key: string; handler: (req: Request) => Promise<Response> } }
 
 /** The handler is rebuilt only when the instructions change (a connector or its notes changed). */
 export function getMcpHandler(): (req: Request) => Promise<Response> {
   const instructions = buildInstructions()
-  if (globalForMcp.__hubMcp?.instructions !== instructions) {
+  // The language is part of the key: tool descriptions follow it even when the instructions read the same.
+  const key = `${getLang()}\n${instructions}`
+  if (globalForMcp.__hubMcp?.key !== key) {
     // title and icons (MCP Implementation) let clients show the hub's name and logo.
     const serverInfo = { name: 'home-mcp-hub', title: 'Home Hub', version: HUB_VERSION, icons: [
         // PNG first: clients take the first icon they can draw, and ChatGPT draws PNG only.
@@ -239,7 +242,7 @@ export function getMcpHandler(): (req: Request) => Promise<Response> {
         { src: LOGO_DATA_URI, mimeType: 'image/svg+xml', sizes: ['any'] },
       ],
     }
-    globalForMcp.__hubMcp = { instructions, handler: createMcpHandler(initializeServer, { serverInfo, instructions }) }
+    globalForMcp.__hubMcp = { key, handler: createMcpHandler(initializeServer, { serverInfo, instructions }) }
   }
   return globalForMcp.__hubMcp.handler
 }

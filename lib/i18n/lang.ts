@@ -1,6 +1,6 @@
 import { AsyncLocalStorage } from 'node:async_hooks'
 import { getSetting, setSetting } from '../settings'
-import { isLang, type Lang } from './core'
+import { isLang, translateText, type Lang } from './core'
 
 const SETTING = 'language'
 
@@ -20,10 +20,23 @@ export function getLang(): Lang {
   const env = langFromEnv()
   if (env) return env
   if (globalForLang.__hubLang === undefined) {
-    const stored = getSetting(SETTING)
+    let stored: string | null
+    try {
+      stored = getSetting(SETTING)
+    } catch {
+      // No database (the build prerenders pages): English, and ask again next time.
+      return 'en'
+    }
     globalForLang.__hubLang = isLang(stored) ? stored : 'en'
   }
   return globalForLang.__hubLang
+}
+
+/** The settings switch. With HUB_LANG set it would change nothing visible, so it says so. */
+export function changeLanguage(lang: Lang): { ok: true } | { error: string } {
+  if (langFromEnv()) return { error: translateText(getLang(), 'The language is fixed by HUB_LANG') }
+  setLang(lang)
+  return { ok: true }
 }
 
 export function setLang(lang: Lang): void {

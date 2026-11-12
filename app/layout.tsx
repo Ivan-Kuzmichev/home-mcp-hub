@@ -7,6 +7,8 @@ import '@fontsource/ibm-plex-sans/500.css'
 import '@fontsource/ibm-plex-sans/600.css'
 import '@fontsource-variable/jetbrains-mono'
 import './globals.css'
+import { LangProvider } from '@/components/i18n-provider'
+import { getLang } from '@/lib/i18n'
 
 export const metadata: Metadata = {
   title: 'Home Hub',
@@ -22,9 +24,12 @@ export const viewport: Viewport = {
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  const lang = getLang()
   return (
-    <html lang="ru">
-      <body className="min-h-dvh">{children}</body>
+    <html lang={lang}>
+      <body className="min-h-dvh">
+        <LangProvider lang={lang}>{children}</LangProvider>
+      </body>
     </html>
   )
 }

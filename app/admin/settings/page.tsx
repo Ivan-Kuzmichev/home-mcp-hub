@@ -3,6 +3,7 @@ import { PrefixForm } from '@/components/access/prefix-form'
 import { PageHeader } from '@/components/admin/page-header'
 import { BackupCodesRow, PasswordRow, SessionsRow, SettingsRow } from '@/components/settings/account'
 import { InitializeForm } from '@/components/settings/initialize-form'
+import { LanguageForm } from '@/components/settings/language-form'
 import { Card } from '@/components/ui/card'
 import { Pill } from '@/components/ui/pill'
 import { StatusDot } from '@/components/ui/pill'
@@ -14,6 +15,7 @@ import { formatAgo, formatWhen } from '@/lib/format'
 import { JOURNAL_RETENTION_DAYS } from '@/lib/journal'
 import { fingerprint, jwksStatus, secretsStatus } from '@/lib/keys'
 import { defaultCustomInstructions, INSTRUCTIONS_HEAD } from '@/lib/mcp/server'
+import { getLang, langFromEnv, tr } from '@/lib/i18n'
 import { getPrefix } from '@/lib/prefix'
 import { getCustomInstructions } from '@/lib/settings'
 import { requireAdmin } from '@/lib/session'
@@ -56,6 +58,19 @@ export default async function SettingsPage() {
   return (
     <>
       <PageHeader title="Настройки" subtitle="Аккаунт, секретный префикс, ключи и обслуживание хаба." />
+
+      <Card className="flex flex-col gap-3 p-4 md:p-5">
+        <div className="flex flex-col gap-0.5">
+          <h2 className="text-[15px]">{tr('Language')}</h2>
+          <span className="text-xs text-subtle">
+            {tr(
+              'The admin panel and pages switch at once, tool replies from the next call. Tool descriptions and the hub instructions reach the assistant at the start of a chat, so they change in a new chat.',
+            )}
+          </span>
+        </div>
+        <LanguageForm current={getLang()} fixedByEnv={langFromEnv() !== null} />
+        <p className="text-xs text-warn">{tr('Scripts that read the text of hub.tool replies may break after a switch: the replies change language too.')}</p>
+      </Card>
 
       <Card className="flex flex-col gap-4 p-4 md:p-5">
         <div className="flex items-center justify-between gap-3">
