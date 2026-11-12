@@ -44,7 +44,6 @@ function camofox(opts: Opts = {}) {
     if (p.endsWith('/links')) return Response.json({ links: [{ text: 'A', href: 'https://a.example/' }, { text: 'A again', href: 'https://a.example/' }, { text: '', href: 'https://b.example/' }] })
     if (p.endsWith('/extract')) return Response.json({ ok: true, data: { title: 'Show HN' } })
     if (c.method === 'DELETE') return Response.json({ ok: true, closed: 2 })
-    if (p === '/youtube/transcript') return Response.json({ status: 'ok', transcript: 'привет мир', video_title: 'Видео', language: 'ru', total_words: 2, available_languages: [{ code: 'ru' }, { code: 'en' }] })
     if (p.startsWith('/sessions/') && p.endsWith('/cookies')) return Response.json({ ok: true, count: 1 })
     if (c.method === 'POST' && p.startsWith('/tabs/')) return Response.json({ ok: true })
     return new Response('nope', { status: 500 })
@@ -158,13 +157,11 @@ describe('Browser connector', () => {
     await expect(runTool(browser, 'browser_screenshot', cfg(), { tab: 't1' })).rejects.toThrow('больше 2 МБ')
   })
 
-  it('links are deduplicated, extract returns JSON, transcript shows the language', async () => {
+  it('links are deduplicated, extract returns JSON', async () => {
     camofox()
     expect(await runTool(browser, 'browser_links', cfg(), { tab: 't1' })).toBe('2 ссылки:\n• A — https://a.example/\n• (без текста) — https://b.example/')
     const schema = { type: 'object', properties: { title: { type: 'string', 'x-ref': 'e1' } } }
     expect(JSON.parse(await runTool(browser, 'browser_extract', cfg(), { tab: 't1', schema }))).toEqual({ title: 'Show HN' })
-    expect(await runTool(browser, 'browser_youtube_transcript', cfg(), { url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' })).toBe('«Видео» · язык ru · 2 слов\nЕсть ещё: en\n\nпривет мир')
-    await expect(runTool(browser, 'browser_youtube_transcript', cfg(), { url: 'https://vimeo.com/1' })).rejects.toThrow('YouTube')
   })
 })
 

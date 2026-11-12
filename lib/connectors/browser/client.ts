@@ -150,22 +150,6 @@ export class CamofoxClient {
   async importCookies(cookies: unknown[]): Promise<number> {
     return (await this.json<{ count?: number }>('POST', `/sessions/${encodeURIComponent(this.userId)}/cookies`, { auth: 'api', body: { cookies } })).count ?? cookies.length
   }
-
-  youtubeTranscript(url: string, languages: string[]): Promise<YoutubeTranscript> {
-    return this.json('POST', '/youtube/transcript', { body: { url, languages } })
-  }
-}
-
-export type YoutubeTranscript = {
-  status: string
-  transcript?: string
-  video_title?: string
-  language?: string
-  total_words?: number
-  available_languages?: { code: string; name?: string }[]
-  code?: string | number
-  message?: string
-  error?: string
 }
 
 async function errorReason(res: Response): Promise<string> {

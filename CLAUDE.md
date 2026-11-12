@@ -63,7 +63,7 @@ Self-hosted MCP-хаб для домашних сервисов (Jackett, qBitto
   лимит вызова — настройка `toolTimeSec` (25 с). Лимиты времени, запросов и ответа — в настройках коннектора scripts (`lib/scripts/limits.ts`, по умолчанию прежние значения, с потолками), память 64 МБ фиксирована. Новые инструменты клиент видит в новом чате (сервер stateless, `listChanged` не шлём).
 - **camofox (браузер, id `browser`):** REST `http://camofox:9377`, `Authorization: Bearer <access key>` везде кроме `/health`; версии в `/health` нет —
   её берём из `/openapi.json`. Тела: `type` — `{ref, text, submit, clear}`, `wait` — `{selector, timeout}`, `scroll` — только up/down,
-  скриншот — бинарный PNG, субтитры YouTube — плагин `POST /youtube/transcript` (берёт первый язык). Адрес проверяет `checkUrl`
+  скриншот — бинарный PNG. Субтитров YouTube в коннекторе нет намеренно — это делается своим инструментом `my_*` через плагин `POST /youtube/transcript`. Адрес проверяет `checkUrl`
   (`lib/connectors/browser/url.ts`) до открытия, итоговый — после (редиректы). Действия скрываются через `hiddenTools(config)`
   коннектора — общий механизм: `enabledTools()` в `lib/connectors/active.ts` учитывает и выключенные админом, и скрытые настройками.
 - **mitmproxy (id `mitmproxy`):** REST mitmweb `http://mitmweb:8081`, `Authorization: Bearer <пароль>`; для всех не-GET нужен XSRF — cookie

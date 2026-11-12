@@ -11,7 +11,7 @@
 | Papra (26.5+) | `papra_search`, `papra_review`, `papra_get`, `papra_preview`, `papra_tags`, `papra_update`, `papra_undo`, `papra_rotate`, `papra_link` | ⚠️ automated tests only |
 | TorrServe | `torrserve_add`, `torrserve_list`, `torrserve_links`, `torrserve_remove` | ✅ |
 | mitmproxy | `mitm_status`, `mitm_hosts`, `mitm_flows`, `mitm_flow`; with mocks: `mitm_mock_replace`, `mitm_mock_patch`, `mitm_mocks`, `mitm_mock_toggle`, `mitm_mock_delete`, `mitm_clear` | ⚠️ automated tests only |
-| camofox (browser) | `browser_open`, `browser_snapshot`, `browser_links`, `browser_screenshot`, `browser_extract`, `browser_tabs`, `browser_youtube_transcript`; with actions: `browser_act`, `browser_close`, `browser_import_cookies` | ⚠️ automated tests only |
+| camofox (browser) | `browser_open`, `browser_snapshot`, `browser_links`, `browser_screenshot`, `browser_extract`, `browser_tabs`; with actions: `browser_act`, `browser_close`, `browser_import_cookies` | ⚠️ automated tests only |
 | Files | `files_list`, `files_read`, `files_search`, `files_write`, `files_edit`, `files_mkdir`, `files_move`, `files_copy`, `files_delete`, `files_link` | ⚠️ automated tests only |
 | Scripts (built-in) | `cron_create`, `cron_update`, `tool_create`, `tool_update`, `cron_enable`, `cron_run`, `cron_logs`, `cron_list`, `cron_get`, `cron_delete`, `script_secrets`, your own `my_*` | ✅ |
 | Prototypes (built-in) | `prototype_publish`, `prototype_append`, `prototype_update`, `prototype_list`, `prototype_data`, `prototype_delete` | ✅ |
@@ -108,8 +108,9 @@ and it lives under the `userId` from the settings, so logins persist between cha
 
 **Read mode** (default): `browser_open` opens a page and returns a snapshot, which is text with element refs (`e1`, `e2`…).
 `browser_snapshot` pages through long pages with `offset` (the character limit per reply is in the settings). The other tools are `browser_links`,
-`browser_screenshot` (up to 2 MB), `browser_extract` (data by JSON Schema with `x-ref`), `browser_tabs`
-and `browser_youtube_transcript`.
+`browser_screenshot` (up to 2 MB), `browser_extract` (data by JSON Schema with `x-ref`) and `browser_tabs`.
+There is no YouTube subtitles tool: ask the assistant to make a `my_youtube_transcript` tool in **Скрипты** (Scripts) that calls the camofox plugin
+`POST /youtube/transcript`. It needs the camofox settings shared with scripts and access to the local network.
 
 **Actions** are behind the **Разрешить действия** (Allow actions) switch: `browser_act` (click, type, press, scroll, navigate, back, forward, refresh, wait;
 the reply includes a fresh snapshot right away), `browser_close`, a session reset with `browser_open(newSession: true)`, and `browser_import_cookies`.

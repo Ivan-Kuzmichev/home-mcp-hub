@@ -35,11 +35,6 @@ describe.skipIf(!url)('camofox live', { timeout: 120_000 }, () => {
     await expect(runTool(browser, 'browser_snapshot', cfg(), { tab })).rejects.toThrow(TAB_GONE)
   })
 
-  it('YouTube transcript of a public video', async () => {
-    const text = await runTool(browser, 'browser_youtube_transcript', cfg(), { url: 'https://www.youtube.com/watch?v=jNQXAC9IVRw', languages: ['en'] })
-    expect(text).toMatch(/^«.+» · язык en/)
-  })
-
   it('a wrong access key is a 401', async () => {
     await expect(runTool(browser, 'browser_tabs', configOf(browser, { baseUrl: url, accessKey: 'wrong' }))).rejects.toThrow('неверный access key (401)')
   })

@@ -32,8 +32,8 @@ sorts your documents, publishes HTML prototypes and runs your scripts.
 
 - **Connectors:** Jackett, qBittorrent, Transmission, TorrServe, Paperless-ngx, Papra, folders on disk (read, edit and move, by access level), the camofox browser and mitmproxy traffic capture. Set them up in the admin panel and turn off the tools you don't need.
 - **camofox:** the assistant opens sites in the [camofox](https://github.com/jo-inc/camofox-browser) stealth browser from your home IP.
-  It reads pages, links and YouTube subtitles and takes screenshots. Read-only by default; clicks, typing and navigation are behind a switch.
-  For example: "open news.ycombinator.com and sum up the top five headlines", "what does this video say: <YouTube link>".
+  It reads pages and links and takes screenshots. Read-only by default; clicks, typing and navigation are behind a switch.
+  For example: "open news.ycombinator.com and sum up the top five headlines".
 - **mitmproxy:** the assistant sees where the apps on your home devices go, and behind a switch replaces service responses
   (the `hub_mocks.py` addon; rules are data, never code). For example: "where did the Bank app go in the last 10 minutes",
   "replace the api.example.com/v1/profile response: isPremium = true", "turn the mock off".

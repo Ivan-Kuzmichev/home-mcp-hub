@@ -11,7 +11,7 @@
 | Papra (26.5+) | `papra_search`, `papra_review`, `papra_get`, `papra_preview`, `papra_tags`, `papra_update`, `papra_undo`, `papra_rotate`, `papra_link` | ⚠️ только автотесты |
 | TorrServe | `torrserve_add`, `torrserve_list`, `torrserve_links`, `torrserve_remove` | ✅ |
 | mitmproxy | `mitm_status`, `mitm_hosts`, `mitm_flows`, `mitm_flow`; с моками — `mitm_mock_replace`, `mitm_mock_patch`, `mitm_mocks`, `mitm_mock_toggle`, `mitm_mock_delete`, `mitm_clear` | ⚠️ только автотесты |
-| camofox (браузер) | `browser_open`, `browser_snapshot`, `browser_links`, `browser_screenshot`, `browser_extract`, `browser_tabs`, `browser_youtube_transcript`; с действиями — `browser_act`, `browser_close`, `browser_import_cookies` | ⚠️ только автотесты |
+| camofox (браузер) | `browser_open`, `browser_snapshot`, `browser_links`, `browser_screenshot`, `browser_extract`, `browser_tabs`; с действиями — `browser_act`, `browser_close`, `browser_import_cookies` | ⚠️ только автотесты |
 | Файлы | `files_list`, `files_read`, `files_search`, `files_write`, `files_edit`, `files_mkdir`, `files_move`, `files_copy`, `files_delete`, `files_link` | ⚠️ только автотесты |
 | Скрипты (встроенный) | `cron_create`, `cron_update`, `tool_create`, `tool_update`, `cron_enable`, `cron_run`, `cron_logs`, `cron_list`, `cron_get`, `cron_delete`, `script_secrets`, свои `my_*` | ✅ |
 | Прототипы (встроенный) | `prototype_publish`, `prototype_append`, `prototype_update`, `prototype_list`, `prototype_data`, `prototype_delete` | ✅ |
@@ -109,8 +109,9 @@
 
 **Режим чтения** (по умолчанию): `browser_open` открывает страницу и возвращает снапшот — текст с ref элементов (`e1`, `e2`…),
 `browser_snapshot` листает длинные страницы через `offset` (лимит символов на ответ — в настройках), `browser_links`,
-`browser_screenshot` (до 2 МБ), `browser_extract` (данные по JSON Schema с `x-ref`), `browser_tabs`,
-`browser_youtube_transcript`.
+`browser_screenshot` (до 2 МБ), `browser_extract` (данные по JSON Schema с `x-ref`), `browser_tabs`.
+Инструмента для субтитров YouTube нет: попросите ассистента сделать в «Скриптах» инструмент `my_youtube_transcript`, который вызывает плагин camofox
+`POST /youtube/transcript`. Для него нужно открыть скриптам настройки camofox и доступ к локальной сети.
 
 **Действия** — переключатель «Разрешить действия»: `browser_act` (click, type, press, scroll, navigate, back, forward, refresh, wait —
 в ответе сразу свежий снапшот), `browser_close`, сброс сессии `browser_open(newSession: true)` и `browser_import_cookies`.

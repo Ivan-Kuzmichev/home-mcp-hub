@@ -324,30 +324,6 @@ export const browser = defineConnector<Config>({
     }),
 
     tool({
-      name: 'browser_youtube_transcript',
-      title: 'Субтитры YouTube',
-      description: 'Текст субтитров видео YouTube, вкладка не нужна. languages — предпочтительные языки, первый найденный.',
-      annotations: { readOnlyHint: true, openWorldHint: true },
-      inputSchema: z.object({
-        url: z.string().min(1).describe('Ссылка на видео YouTube'),
-        languages: z.array(z.string().min(2).max(10)).min(1).max(5).default(['ru', 'en']),
-        offset: z.number().int().min(0).optional().describe('С какого символа продолжить длинный текст'),
-      }),
-      async run({ url, languages, offset = 0 }, { config }) {
-        const u = await checkUrl(url, lists(config))
-        if (!/(^|\.)(youtube\.com|youtu\.be)$/i.test(u.hostname)) throw new ToolError('Нужна ссылка на видео YouTube')
-        const r = await client(config).youtubeTranscript(url, languages)
-        if (r.status !== 'ok' || !r.transcript) throw new ToolError(`Субтитров нет (${r.message ?? r.error ?? r.code ?? r.status})`)
-        const head = `«${truncate(r.video_title ?? '', 100)}» · язык ${r.language ?? '?'} · ${r.total_words ?? '?'} слов`
-        const other = r.available_languages?.map((l) => l.code).filter((code) => code !== r.language) ?? []
-        const end = offset + config.snapshotLimit
-        const lines = [head, ...(other.length ? [`Есть ещё: ${other.slice(0, 15).join(', ')}`] : []), '', r.transcript.slice(offset, end)]
-        if (r.transcript.length > end) lines.push(`… (offset для продолжения: ${end})`)
-        return lines.join('\n')
-      },
-    }),
-
-    tool({
       name: 'browser_act',
       title: 'Действие на странице',
       description:
