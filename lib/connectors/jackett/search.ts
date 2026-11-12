@@ -2,7 +2,8 @@ import { magnetInfoHash } from '../bencode'
 import { formatDate, formatSize, truncate } from '../format'
 import type { CachedResult } from '../../mcp/result-cache'
 import { stripApiKey, type Indexer, type JackettClient, type JackettResult } from './client'
-import { hasRussianAudio, matchesSeason, parseQuality, qualityTags } from './parse'
+import { detectAudio, hasRussianAudio, matchesSeason, parseQuality, qualityTags, type AudioLang } from './parse'
+import { t } from '../../i18n'
 
 export const SEARCH_DEADLINE_MS = 25_000
 
@@ -16,7 +17,7 @@ export type SearchParams = {
   season?: number
   episode?: number
   year?: number
-  language: 'ru' | 'any'
+  language: AudioLang | 'any'
   minSeeders: number
   limit: number
 }
@@ -80,9 +81,12 @@ export function dedupe(releases: Release[]): Release[] {
   return out
 }
 
-export function rank(releases: Release[], language: 'ru' | 'any'): Release[] {
+/** The preferred audio language first, then seeders. English and «any» rank by seeders only. */
+export function rank(releases: Release[], language: AudioLang | 'any'): Release[] {
+  const boost = language !== 'any' && language !== 'en'
+  const has = (r: Release) => detectAudio(r.title).includes(language as AudioLang)
   return [...releases].sort((a, b) => {
-    if (language === 'ru' && a.russian !== b.russian) return a.russian ? -1 : 1
+    if (boost && has(a) !== has(b)) return has(a) ? -1 : 1
     return b.seeders - a.seeders
   })
 }
@@ -101,7 +105,7 @@ export async function searchAll(client: JackettClient, indexers: Indexer[], p: S
       } catch (e) {
         const reason = deadline.aborted ? 'timeout' : 'error'
         failed.push({ name: ix.name, reason })
-        indexerHealth.set(ix.id, { ok: false, at: new Date(), note: reason === 'timeout' ? 'не ответил за 25 с' : e instanceof Error ? e.message.slice(0, 80) : 'ошибка' })
+        indexerHealth.set(ix.id, { ok: false, at: new Date(), note: reason === 'timeout' ? t`did not respond in 25 s` : e instanceof Error ? e.message.slice(0, 80) : t`error` })
         return []
       }
     }),
@@ -123,5 +127,5 @@ export function toCached(r: Release): CachedResult {
 
 export function formatRelease(id: string, r: Release): string {
   const tags = r.tags.length ? ` · ${r.tags.join(', ')}` : ''
-  return `${id} · ${truncate(r.title, 90)} · ${formatSize(r.size)} · сиды ${r.seeders} · ${r.tracker}${r.date ? ` · ${r.date}` : ''}${tags}`
+  return t`${id} · ${truncate(r.title, 90)} · ${formatSize(r.size)} · seeders ${r.seeders} · ${r.tracker}${r.date ? ` · ${r.date}` : ''}${tags}`
 }

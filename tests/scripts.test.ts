@@ -144,7 +144,7 @@ describe('cron scripts: connector settings for scripts', () => {
     const { connectorValues, setConnectorShared, describeConnectorSharing } = await import('@/lib/scripts/connector-secrets')
     saveConfig(getConnector('jackett')!, { baseUrl: 'http://jackett:9117', apiKey: 'jk-1', minSeeders: 2 })
     expect(connectorValues()).toEqual([])
-    expect(describeConnectorSharing().find((c) => c.id === 'jackett')?.entries.map((e) => e.name)).toEqual(['JACKETT_BASE_URL', 'JACKETT_API_KEY', 'JACKETT_MIN_SEEDERS'])
+    expect(describeConnectorSharing().find((c) => c.id === 'jackett')?.entries.map((e) => e.name)).toEqual(['JACKETT_BASE_URL', 'JACKETT_API_KEY', 'JACKETT_MIN_SEEDERS', 'JACKETT_AUDIO_LANGUAGE'])
 
     setConnectorShared('jackett', true)
     const values = connectorValues()

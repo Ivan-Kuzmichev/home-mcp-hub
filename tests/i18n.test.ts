@@ -32,6 +32,11 @@ describe('i18n core', () => {
     expect(missingKeys()).toContain('No key')
   })
 
+  it('addresses and codes are not reported as missing', () => {
+    runWithLang('ru', () => [tr('http://jackett:9117'), tr('org_…'), tr('en')])
+    expect(missingKeys().filter((k) => ['http://jackett:9117', 'org_…', 'en'].includes(k))).toEqual([])
+  })
+
   it('legacy three Russian forms stay Russian in both languages until their module is translated', () => {
     const legacy = (n: number) => plural(n, ['торрент', 'торрента', 'торрентов'])
     expect(runWithLang('en', () => legacy(3))).toBe('торрента')

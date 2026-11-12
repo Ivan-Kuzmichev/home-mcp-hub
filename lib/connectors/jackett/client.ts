@@ -1,5 +1,6 @@
 import { expectOk, serviceFetch } from '../http'
 import { ToolError } from '../types'
+import { t } from '../../i18n'
 
 export type JackettConfig = { baseUrl: string; apiKey: string }
 
@@ -33,10 +34,10 @@ export class JackettClient {
   /** Configured indexers via Torznab t=indexers (works with the API key alone). */
   async indexers(): Promise<Indexer[]> {
     const res = await serviceFetch(SERVICE, this.url('indexers/all/results/torznab/api', { t: 'indexers', configured: 'true' }))
-    if (res.status === 401 || res.status === 403) throw new ToolError('Jackett: неверный API-ключ')
-    await expectOk(SERVICE, res, 'список индексаторов')
+    if (res.status === 401 || res.status === 403) throw new ToolError(t`Jackett: wrong API key`)
+    await expectOk(SERVICE, res, t`indexer list`)
     const xml = await res.text()
-    if (/<error\b/.test(xml)) throw new ToolError(`Jackett: ${/description="([^"]+)"/.exec(xml)?.[1] ?? 'ошибка API'}`)
+    if (/<error\b/.test(xml)) throw new ToolError(`Jackett: ${/description="([^"]+)"/.exec(xml)?.[1] ?? t`API error`}`)
     return [...xml.matchAll(/<indexer\s+id="([^"]+)"[^>]*>\s*<title>([^<]*)<\/title>/g)].map((m) => ({ id: m[1]!, name: decodeXml(m[2]!) }))
   }
 
@@ -55,7 +56,7 @@ export class JackettClient {
     const params: Record<string, string | string[]> = { Query: query }
     if (categories.length) params['Category[]'] = categories.map(String)
     const res = await serviceFetch(SERVICE, this.url(`indexers/${encodeURIComponent(indexerId)}/results`, params), { signal, timeoutMs: 60_000 })
-    await expectOk(SERVICE, res, `поиск (${indexerId})`)
+    await expectOk(SERVICE, res, t`search (${indexerId})`)
     const data = (await res.json()) as { Results?: JackettResult[]; Indexers?: { Status?: number; Error?: string | null }[] }
     const err = data.Indexers?.find((i) => i.Error)?.Error
     if (err && !data.Results?.length) throw new Error(err)

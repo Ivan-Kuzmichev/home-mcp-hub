@@ -39,11 +39,14 @@ export function translateTemplate(lang: Lang, strings: readonly string[], values
   return template.replace(/\{(\d+)\}/g, (_, i: string) => String(values[Number(i)]))
 }
 
+/** Addresses, codes and placeholders like «http://jackett:9117» or «org_…»: same in every language. */
+const NOT_TEXT = /^(?:[a-z0-9_.:/\-@…#+=?&%]+|[a-z][a-z0-9+.-]*:\/\/\S*)$/
+
 export function translateText(lang: Lang, text: string): string {
   if (lang === 'en') return text
   const ru = texts.get(text)
   if (ru === undefined) {
-    missing.add(text)
+    if (!NOT_TEXT.test(text)) missing.add(text)
     return text
   }
   return ru

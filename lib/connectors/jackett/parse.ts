@@ -1,4 +1,5 @@
 // Release title parsing: quality tags, audio, season matching. Pure, easy to test.
+import { tr } from '../../i18n'
 
 export type Quality = { resolution?: string; source?: string; hdr?: boolean; audio: string[] }
 
@@ -19,13 +20,14 @@ const SOURCES: [RegExp, string][] = [
   [/\b(camrip|ts|telesync|cam)\b/i, 'CAM'],
 ]
 
+// Names are English; qualityTags translates them for the reply.
 const AUDIO: [RegExp, string][] = [
-  [/(дубляж|\bdub\b|\bd\b(?=[\s,)|]))/i, 'дубляж'],
-  [/(\bmvo\b|многоголос)/i, 'многоголосый'],
-  [/(\bdvo\b|двухголос)/i, 'двухголосый'],
-  [/(\bavo\b|авторск)/i, 'авторский'],
-  [/(оригинал|\boriginal\b|\beng\b)/i, 'оригинал'],
-  [/(субтитр|\bsub(s)?\b)/i, 'субтитры'],
+  [/(дубляж|\bdub\b|\bd\b(?=[\s,)|]))/i, 'dub'],
+  [/(\bmvo\b|многоголос)/i, 'multi-voice'],
+  [/(\bdvo\b|двухголос)/i, 'two-voice'],
+  [/(\bavo\b|авторск)/i, 'single-voice'],
+  [/(оригинал|\boriginal\b|\beng\b)/i, 'original'],
+  [/(субтитр|\bsub(s)?\b)/i, 'subtitles'],
 ]
 
 const RUSSIAN_AUDIO = /(дубляж|\bdub\b|\bmvo\b|\bdvo\b|\bavo\b|многоголос|двухголос|авторск|\brus\b|lostfilm|hdrezka|newstudio|кубик|пифагор|jaskier|red head sound|tvshows)/i
@@ -41,7 +43,29 @@ export function parseQuality(title: string): Quality {
 }
 
 export function qualityTags(q: Quality): string[] {
-  return [q.resolution, q.source, q.hdr && 'HDR', ...q.audio].filter((t): t is string => !!t)
+  return [q.resolution, q.source, q.hdr && 'HDR', ...q.audio.map(tr)].filter((t): t is string => !!t)
+}
+
+/** Audio languages the search can prefer. English is the trackers' default and gets no boost. */
+export const AUDIO_LANGS = ['en', 'ru', 'uk', 'de', 'fr', 'es', 'it', 'pl'] as const
+export type AudioLang = (typeof AUDIO_LANGS)[number]
+
+// Typical scene and tracker markers. Dots, dashes and underscores separate words in release names.
+const AUDIO_MARKERS: [Exclude<AudioLang, 'en' | 'ru'>, RegExp][] = [
+  ['uk', /(^|[\s._\-\[(])(ukr|ua|ukrainian)(?=$|[\s._\-\])])|укр|україн/i],
+  ['de', /(^|[\s._\-\[(])(german|ger|deutsch)(?=$|[\s._\-\])])/i],
+  ['fr', /(^|[\s._\-\[(])(french|truefrench|vff|vfq|vfi|vf2?|fra)(?=$|[\s._\-\])])/i],
+  ['es', /(^|[\s._\-\[(])(spanish|castellano|latino|esp|spa)(?=$|[\s._\-\])])/i],
+  ['it', /(^|[\s._\-\[(])(italian|ita)(?=$|[\s._\-\])])/i],
+  ['pl', /(^|[\s._\-\[(])(polish|pldub|plsub|lektor|pl)(?=$|[\s._\-\])])/i],
+]
+
+/** Audio languages a release title points to (English is not detected: it is the default). */
+export function detectAudio(title: string): AudioLang[] {
+  const out: AudioLang[] = []
+  if (hasRussianAudio(title)) out.push('ru')
+  for (const [lang, re] of AUDIO_MARKERS) if (re.test(title)) out.push(lang)
+  return out
 }
 
 /** Russian audio: explicit voice-over markers, or a Cyrillic title from a Russian tracker. */

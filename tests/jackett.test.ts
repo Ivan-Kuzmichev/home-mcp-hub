@@ -159,3 +159,87 @@ describe('result_id resolution', () => {
     expect(stripApiKey(`${BASE}/dl/x/?jackett_apikey=${KEY}&path=p&file=f`)).toBe(`${BASE}/dl/x/?path=p&file=f`)
   })
 })
+
+describe('audio language preference', () => {
+  it('detects common release markers per language', async () => {
+    const { detectAudio } = await import('@/lib/connectors/jackett/parse')
+    const has = (title: string, lang: string) => detectAudio(title).includes(lang as never)
+    expect(has('Severance.S02.1080p.WEB-DL.MVO', 'ru')).toBe(true)
+    expect(has('Разделение / Severance [2025, WEB-DL 1080p]', 'ru')).toBe(true)
+    expect(has('Severance.S02.1080p.WEB-DL.UKR.ENG', 'uk')).toBe(true)
+    expect(has('Severance.S02.German.DL.1080p.WEB.h264', 'de')).toBe(true)
+    expect(has('Severance.S02.GERMAN.1080p.WEB', 'de')).toBe(true)
+    expect(has('Severance.S02.FRENCH.1080p.WEB', 'fr')).toBe(true)
+    expect(has('Severance.S02.MULTi.VFF.1080p.WEB', 'fr')).toBe(true)
+    expect(has('Severance.S02.SPANISH.1080p.WEB', 'es')).toBe(true)
+    expect(has('Severance.S02.Castellano.1080p', 'es')).toBe(true)
+    expect(has('Severance.S02.ITA.ENG.1080p.WEB', 'it')).toBe(true)
+    expect(has('Severance.S02.iTALiAN.1080p', 'it')).toBe(true)
+    expect(has('Severance.S02.PLDUB.1080p.WEB', 'pl')).toBe(true)
+    expect(has('Severance.S02.POLISH.1080p', 'pl')).toBe(true)
+    expect(detectAudio('Severance.S02.1080p.WEB-DL.x265')).toEqual([])
+  })
+
+  it('ranks the preferred language first; en and any rank by seeders only', async () => {
+    const { rank } = await import('@/lib/connectors/jackett/search')
+    const r = (title: string, seeders: number) => ({ title, tracker: 'T', size: 1, seeders, date: '', tags: [], russian: false })
+    const list = [r('A.1080p.WEB', 90), r('A.GERMAN.1080p.WEB', 10), r('A.MVO.1080p.WEB', 50)]
+    expect(rank(list, 'de').map((x) => x.seeders)).toEqual([10, 90, 50])
+    expect(rank(list, 'ru').map((x) => x.seeders)).toEqual([50, 90, 10])
+    expect(rank(list, 'en').map((x) => x.seeders)).toEqual([90, 50, 10])
+    expect(rank(list, 'any').map((x) => x.seeders)).toEqual([90, 50, 10])
+  })
+
+  it('the setting defaults to en, an old config without it still parses, unknown codes are refused', () => {
+    expect(configOf(jackett, { baseUrl: BASE, apiKey: KEY })).toMatchObject({ audioLanguage: 'en' })
+    expect(configOf(jackett, { baseUrl: BASE, apiKey: KEY, audioLanguage: ' DE ' })).toMatchObject({ audioLanguage: 'de' })
+    const bad = jackett.parseConfig({ baseUrl: BASE, apiKey: KEY, audioLanguage: 'jp' })
+    expect(bad.ok).toBe(false)
+    expect(bad.ok === false && bad.errors.audioLanguage).toContain('en, ru, uk, de, fr, es, it, pl')
+  })
+
+  it('search_torrents uses the setting unless the call names a language', async () => {
+    jackettServer()
+    // An English release with the most seeders: only a Russian preference puts the Russian one above it.
+    RESULTS.rutracker!.push(result({ Title: 'Severance.S02.1080p.AMZN.WEB-DL.x264', MagnetUri: `magnet:?xt=urn:btih:${hash('d')}`, Seeders: 500 }))
+    try {
+      const first = async (extra: Record<string, unknown>, args: Record<string, unknown> = {}) =>
+        (await runTool(jackett, 'search_torrents', configOf(jackett, { baseUrl: BASE, apiKey: KEY, minSeeders: '1', ...extra }), { query: 'Severance', type: 'tv', season: 2, ...args })).split('\n')[1]!
+      expect(await first({ audioLanguage: 'ru' })).toContain('Разделение')
+      expect(await first({})).toContain('Severance.S02.1080p.AMZN')
+      expect(await first({}, { language: 'ru' })).toContain('Разделение')
+      expect(await first({ audioLanguage: 'ru' }, { language: 'any' })).toContain('Severance.S02.1080p.AMZN')
+    } finally {
+      RESULTS.rutracker!.pop()
+    }
+    const tool = jackett.tools.find((x) => x.name === 'search_torrents')!
+    expect(tool.inputSchema.safeParse({ query: 'x', language: 'de' }).success).toBe(true)
+    expect(tool.inputSchema.safeParse({ query: 'x', language: 'any' }).success).toBe(true)
+    expect(tool.inputSchema.safeParse({ query: 'x', language: 'jp' }).success).toBe(false)
+  })
+})
+
+describe('Jackett in English', () => {
+  it('metadata, instructions and replies have no Russian', async () => {
+    const { findCyrillic, missingKeys, runWithLang } = await import('@/lib/i18n')
+    const { describeFields, describeTools } = await import('@/lib/connectors/form')
+    const { localizedJsonSchema } = await import('@/lib/i18n/schema')
+    const meta = () =>
+      JSON.stringify([
+        describeFields(jackett, undefined),
+        describeTools(jackett),
+        jackett.tools.map((x) => [x.description, localizedJsonSchema(x.inputSchema)]),
+        jackett.instructions!(cfg, { tools: ['search_torrents', 'torrent_add', 'torrserve_add'] }),
+      ])
+    expect(findCyrillic(runWithLang('en', meta))).toBeNull()
+    runWithLang('ru', meta)
+    expect(missingKeys().filter((k) => /indexer|seeders|Jackett|torrent|release/i.test(k))).toEqual([])
+
+    jackettServer()
+    const text = await runWithLang('en', () => runTool(jackett, 'search_torrents', cfg, { query: 'Severance', type: 'tv', season: 2, language: 'ru' }))
+    expect(text).toMatch(/^Found 2, showing the best 2:/)
+    expect(text).toContain('1080p, WEB-DL, multi-voice')
+    expect(text).toContain('seeders 120')
+    await expect(runWithLang('en', () => runTool(jackett, 'search_torrents', configOf(jackett, { baseUrl: BASE, apiKey: KEY }), { query: 'x', language: 'jp' }))).rejects.toThrow('Language: one of en, ru, uk, de, fr, es, it, pl or any')
+  })
+})
