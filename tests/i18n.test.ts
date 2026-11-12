@@ -50,6 +50,12 @@ describe('i18n core', () => {
     expect(runWithLang('ru', () => trc('filter', 'unknown'))).toBe('unknown')
   })
 
+  it('a plural context gives another Russian case', () => {
+    registerCatalog({}, { 'genitive|document': ['документа', 'документов', 'документов'] })
+    expect(runWithLang('ru', () => [plural(1, ['document', 'documents'], 'genitive'), plural(3, ['document', 'documents'], 'genitive'), plural(3, ['document', 'documents'])])).toEqual(['документа', 'документов', 'документа'])
+    expect(runWithLang('en', () => plural(3, ['document', 'documents'], 'genitive'))).toBe('documents')
+  })
+
   it('finds Cyrillic', () => {
     expect(findCyrillic('ok Привет мир')).toBe('Привет мир')
     expect(findCyrillic('all English')).toBeNull()

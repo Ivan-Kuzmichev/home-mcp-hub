@@ -1,5 +1,6 @@
 import { expectOk, serviceFetch } from '../http'
 import { ToolError } from '../types'
+import { t } from '../../i18n'
 
 export type PlConfig = { baseUrl: string; apiToken?: string }
 
@@ -31,7 +32,7 @@ export class PlClient {
   constructor(private readonly cfg: PlConfig) {}
 
   private headers(extra: Record<string, string> = {}): Record<string, string> {
-    if (!this.cfg.apiToken) throw new ToolError(`${SERVICE}: не задан API-токен`)
+    if (!this.cfg.apiToken) throw new ToolError(t`${SERVICE}: API token is not set`)
     return { Authorization: `Token ${this.cfg.apiToken}`, Accept: 'application/json', ...extra }
   }
 
@@ -45,9 +46,9 @@ export class PlClient {
   private async send(path: string, init: RequestInit & { params?: Record<string, string | number | undefined> } = {}, what = path): Promise<Response> {
     const { params, ...rest } = init
     const res = await serviceFetch(SERVICE, this.url(path, params), { ...rest, headers: this.headers(rest.headers as Record<string, string>) })
-    if (res.status === 401) throw new ToolError(`${SERVICE}: неверный API-токен`)
-    if (res.status === 403) throw new ToolError(`${SERVICE}: у пользователя токена нет прав на это действие`)
-    if (res.status === 404) throw new ToolError(`${SERVICE}: не найдено (${what})`)
+    if (res.status === 401) throw new ToolError(t`${SERVICE}: wrong API token`)
+    if (res.status === 403) throw new ToolError(t`${SERVICE}: the token's user has no permission for this`)
+    if (res.status === 404) throw new ToolError(t`${SERVICE}: not found (${what})`)
     return expectOk(SERVICE, res, what)
   }
 
@@ -57,22 +58,22 @@ export class PlClient {
 
   /** Server version from the X-Version header (paperless-ngx sets it on API responses). */
   async ping(): Promise<{ version: string | null; documents: number }> {
-    const res = await this.send('documents/', { params: { page_size: 1 } }, 'список документов')
+    const res = await this.send('documents/', { params: { page_size: 1 } }, t`document list`)
     const data = (await res.json()) as { count: number }
     return { version: res.headers.get('x-version'), documents: data.count }
   }
 
   async documents(params: Record<string, string | number | undefined>): Promise<{ count: number; results: PlDocument[] }> {
-    return this.json('documents/', params, 'поиск документов')
+    return this.json('documents/', params, t`document search`)
   }
 
   document(id: number): Promise<PlDocument> {
-    return this.json(`documents/${id}/`, undefined, `документ ${id}`)
+    return this.json(`documents/${id}/`, undefined, t`document ${id}`)
   }
 
   async suggestions(id: number): Promise<PlSuggestions | null> {
     try {
-      const s = await this.json<Partial<PlSuggestions>>(`documents/${id}/suggestions/`, undefined, 'подсказки')
+      const s = await this.json<Partial<PlSuggestions>>(`documents/${id}/suggestions/`, undefined, t`suggestions`)
       return { correspondents: s.correspondents ?? [], tags: s.tags ?? [], document_types: s.document_types ?? [], dates: s.dates ?? [] }
     } catch {
       // The classifier may not be trained yet; suggestions are a bonus.
@@ -81,24 +82,24 @@ export class PlClient {
   }
 
   async thumbnail(id: number): Promise<{ data: Buffer; mimeType: string }> {
-    const res = await this.send(`documents/${id}/thumb/`, {}, 'превью')
+    const res = await this.send(`documents/${id}/thumb/`, {}, t`thumbnail`)
     return { data: Buffer.from(await res.arrayBuffer()), mimeType: res.headers.get('content-type')?.split(';')[0] ?? 'image/webp' }
   }
 
   /** Streams the archived PDF (default) or the original file. */
   download(id: number, original: boolean): Promise<Response> {
-    return this.send(`documents/${id}/download/`, { params: original ? { original: 'true' } : undefined }, 'скачивание')
+    return this.send(`documents/${id}/download/`, { params: original ? { original: 'true' } : undefined }, t`download`)
   }
 
   async update(id: number, patch: Record<string, unknown>): Promise<PlDocument> {
     const body = (p: Record<string, unknown>) => ({ method: 'PATCH', body: JSON.stringify(p), headers: { 'Content-Type': 'application/json' } })
     try {
-      return (await (await this.send(`documents/${id}/`, body(patch), `изменение документа ${id}`)).json()) as PlDocument
+      return (await (await this.send(`documents/${id}/`, body(patch), t`updating document ${id}`)).json()) as PlDocument
     } catch (e) {
       // Older API versions take the date as created_date.
       if ('created' in patch && e instanceof ToolError && /created/.test(e.message)) {
         const { created, ...rest } = patch
-        return (await (await this.send(`documents/${id}/`, body({ ...rest, created_date: created }), `изменение документа ${id}`)).json()) as PlDocument
+        return (await (await this.send(`documents/${id}/`, body({ ...rest, created_date: created }), t`updating document ${id}`)).json()) as PlDocument
       }
       throw e
     }
@@ -120,7 +121,7 @@ export class PlClient {
   }
 
   async create(kind: PlKind, name: string): Promise<PlNamed> {
-    const res = await this.send(`${kind}/`, { method: 'POST', body: JSON.stringify({ name }), headers: { 'Content-Type': 'application/json' } }, `создание ${name}`)
+    const res = await this.send(`${kind}/`, { method: 'POST', body: JSON.stringify({ name }), headers: { 'Content-Type': 'application/json' } }, t`creating ${name}`)
     return (await res.json()) as PlNamed
   }
 }

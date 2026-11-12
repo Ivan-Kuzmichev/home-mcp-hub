@@ -16,8 +16,8 @@ export function trc(context: string, text: string): string {
   return translateInContext(getLang(), context, text)
 }
 
-export function plural(n: number, forms: [string, string] | [string, string, string]): string {
-  return pluralFor(getLang(), n, forms)
+export function plural(n: number, forms: [string, string] | [string, string, string], context?: string): string {
+  return pluralFor(getLang(), n, forms, context)
 }
 
 export function localeTag(): 'en-US' | 'ru-RU' {

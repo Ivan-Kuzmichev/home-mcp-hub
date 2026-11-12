@@ -1,4 +1,5 @@
 import { ToolError } from '../types'
+import { t } from '../../i18n'
 
 // PDF and image work. The libraries are heavy and native, so they load only when a tool needs them.
 
@@ -20,7 +21,7 @@ async function openPdf(data: Buffer) {
     // A copy: pdf.js takes ownership of the buffer it is given.
     return await getDocumentProxy(new Uint8Array(data))
   } catch {
-    throw new ToolError('PDF не открывается: файл повреждён или защищён паролем')
+    throw new ToolError(t`The PDF does not open: the file is damaged or password-protected`)
   }
 }
 
@@ -41,7 +42,7 @@ async function previewJpeg(input: Buffer, angle: Angle): Promise<Buffer> {
     const out = await sharp(input).autoOrient().rotate(angle).resize({ width: PREVIEW_LONG_SIDE, height: PREVIEW_LONG_SIDE, fit: 'inside', withoutEnlargement: true }).jpeg({ quality }).toBuffer()
     if (out.length <= MAX_PREVIEW_BYTES) return out
   }
-  throw new ToolError('Страница не помещается в 2 МБ даже в низком качестве')
+  throw new ToolError(t`The page does not fit in 2 MB even at low quality`)
 }
 
 export async function preview(data: Buffer, mimeType: string, page: number, angle: Angle): Promise<{ data: Buffer; mimeType: string; pages: number | null }> {
@@ -50,7 +51,7 @@ export async function preview(data: Buffer, mimeType: string, page: number, angl
     return { data: await previewJpeg(data, angle), mimeType: 'image/jpeg', pages: null }
   }
   const pdf = await openPdf(data)
-  if (page > pdf.numPages) throw new ToolError(`В документе ${pdf.numPages} стр., страницы ${page} нет`)
+  if (page > pdf.numPages) throw new ToolError(t`The document has ${pdf.numPages} pages, there is no page ${page}`)
   const { png } = await renderPage(pdf, page, { longSide: PREVIEW_LONG_SIDE, maxScale: 4 })
   return { data: await previewJpeg(png, angle), mimeType: 'image/jpeg', pages: pdf.numPages }
 }
@@ -70,13 +71,13 @@ async function rotateImage(data: Buffer, mimeType: string, angle: Angle): Promis
  */
 async function rotatePdf(data: Buffer, angle: Angle, pages: number[] | undefined, dropText: boolean): Promise<Buffer> {
   const pdf = await openPdf(data)
-  if (pdf.numPages > MAX_ROTATE_PAGES) throw new ToolError(`В документе ${pdf.numPages} стр.: поворачиваю не больше ${MAX_ROTATE_PAGES}`)
-  for (const n of pages ?? []) if (n > pdf.numPages) throw new ToolError(`В документе ${pdf.numPages} стр., страницы ${n} нет`)
+  if (pdf.numPages > MAX_ROTATE_PAGES) throw new ToolError(t`The document has ${pdf.numPages} pages: I rotate at most ${MAX_ROTATE_PAGES}`)
+  for (const n of pages ?? []) if (n > pdf.numPages) throw new ToolError(t`The document has ${pdf.numPages} pages, there is no page ${n}`)
 
   const { extractText } = await import('unpdf')
   const { text } = await extractText(pdf, { mergePages: true })
   if (text.trim() && !dropText) {
-    throw new ToolError('В PDF есть текстовый слой: после поворота страницы станут картинками, а текст заново распознает OCR Papra. Если это скан с плохим распознаванием — повтори с drop_text: true')
+    throw new ToolError(t`The PDF has a text layer: after rotating, the pages become images and the Papra OCR reads the text again. If this is a scan with bad OCR, repeat with drop_text: true`)
   }
 
   const [{ PDFDocument }, { default: sharp }] = await Promise.all([import('pdf-lib'), import('sharp')])

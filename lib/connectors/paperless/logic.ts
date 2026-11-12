@@ -6,11 +6,12 @@ import { createLink as createDownloadLink } from '../../download-links'
 import { truncate } from '../format'
 import { ToolError } from '../types'
 import type { PlClient, PlDocument, PlKind, PlNamed, PlSuggestions, Taxonomy } from './client'
+import { localeTag, t } from '../../i18n'
 
 // ---------------------------------------------------------------------------
 // Taxonomy: names ⇄ ids, case-insensitive, creating what is missing.
 
-const norm = (s: string) => s.trim().toLocaleLowerCase('ru')
+const norm = (s: string) => s.trim().toLocaleLowerCase(localeTag())
 
 export class TaxonomyIndex {
   private readonly byId: Record<PlKind, Map<number, PlNamed>>
@@ -46,7 +47,7 @@ export class TaxonomyIndex {
     const found = this.find(kind, name)
     if (found) return found
     const clean = name.trim()
-    if (!clean) throw new ToolError('Пустое имя тега, корреспондента или типа')
+    if (!clean) throw new ToolError(t`Empty tag, correspondent or type name`)
     const item: PlNamed = dryRun ? { id: -1 - this.created.length, name: clean } : await client.create(kind, clean)
     this.byId[kind].set(item.id, item)
     this.byName[kind].set(norm(item.name), item)
@@ -59,7 +60,8 @@ export class TaxonomyIndex {
   }
 }
 
-export const KIND_LABELS: Record<PlKind, string> = { tags: 'тег', correspondents: 'корреспондент', document_types: 'тип' }
+/** English; translated where shown (tr). */
+export const KIND_LABELS: Record<PlKind, string> = { tags: 'tag', correspondents: 'correspondent', document_types: 'type' }
 
 // ---------------------------------------------------------------------------
 // Access: documents with the exclusion tag are invisible to the assistant.
@@ -71,7 +73,7 @@ export function excludedTagId(index: TaxonomyIndex, excludeTag: string | undefin
 
 export function assertVisible(doc: PlDocument, excludedId: number | null, excludeTag: string | undefined): void {
   if (excludedId !== null && doc.tags.includes(excludedId)) {
-    throw new ToolError(`Документ #${doc.id} недоступен ассистенту (тег «${excludeTag}»)`)
+    throw new ToolError(t`Document #${doc.id} is not available to the assistant (tag “${excludeTag}”)`)
   }
 }
 
@@ -91,7 +93,7 @@ export type DocFilter = {
 
 function dayShift(date: string, days: number): string {
   const d = new Date(`${date}T00:00:00Z`)
-  if (Number.isNaN(d.getTime())) throw new ToolError(`Дата «${date}» — нужен формат ГГГГ-ММ-ДД`)
+  if (Number.isNaN(d.getTime())) throw new ToolError(t`Date “${date}” — the format is YYYY-MM-DD`)
   d.setUTCDate(d.getUTCDate() + days)
   return d.toISOString().slice(0, 10)
 }
@@ -104,22 +106,22 @@ export function filterParams(f: DocFilter, index: TaxonomyIndex, excludedId: num
   const p: Record<string, string | number | undefined> = { ordering: '-added', truncate_content: 'true' }
   if (f.query) p.query = f.query
   if (f.tags?.length) {
-    const ids = f.tags.map((t) => {
-      const tag = index.find('tags', t)
-      if (!tag) throw new ToolError(`Тега «${t}» нет — посмотри paperless_taxonomy`)
+    const ids = f.tags.map((item) => {
+      const tag = index.find('tags', item)
+      if (!tag) throw new ToolError(t`No tag “${item}” — check paperless_taxonomy`)
       return tag.id
     })
     p.tags__id__all = ids.join(',')
   }
   if (f.correspondent) {
     const c = index.find('correspondents', f.correspondent)
-    if (!c) throw new ToolError(`Корреспондента «${f.correspondent}» нет — посмотри paperless_taxonomy`)
+    if (!c) throw new ToolError(t`No correspondent “${f.correspondent}” — check paperless_taxonomy`)
     p.correspondent__id = c.id
   }
   if (f.documentType) {
-    const t = index.find('document_types', f.documentType)
-    if (!t) throw new ToolError(`Типа «${f.documentType}» нет — посмотри paperless_taxonomy`)
-    p.document_type__id = t.id
+    const item = index.find('document_types', f.documentType)
+    if (!item) throw new ToolError(t`No type “${f.documentType}” — check paperless_taxonomy`)
+    p.document_type__id = item.id
   }
   if (f.addedAfter) p.added__date__gt = dayShift(f.addedAfter, -1)
   if (f.addedBefore) p.added__date__lt = dayShift(f.addedBefore, 1)
@@ -147,7 +149,7 @@ export async function reviewDocuments(
   if (scope === 'all') variants.push({})
   if (scope === 'inbox' || scope === 'unlabeled') {
     if (inbox.length) variants.push({ tags__id__in: inbox.join(',') })
-    else if (scope === 'inbox') throw new ToolError('В Paperless нет тега «входящие» (inbox tag)')
+    else if (scope === 'inbox') throw new ToolError(t`Paperless has no inbox tag`)
   }
   if (scope === 'unlabeled') variants.push({ correspondent__isnull: 'true' }, { document_type__isnull: 'true' })
 
@@ -184,23 +186,23 @@ export function docLine(d: PlDocument, index: TaxonomyIndex): string {
 
 export function metaLine(d: PlDocument, index: TaxonomyIndex): string {
   return [
-    `название «${d.title}»`,
-    `дата ${day(d.created)}`,
-    `корр. ${index.name('correspondents', d.correspondent) ?? '—'}`,
-    `тип ${index.name('document_types', d.document_type) ?? '—'}`,
-    `теги [${index.names('tags', d.tags).join(', ')}]`,
+    t`title “${d.title}”`,
+    t`date ${day(d.created)}`,
+    t`corr. ${index.name('correspondents', d.correspondent) ?? '—'}`,
+    t`type ${index.name('document_types', d.document_type) ?? '—'}`,
+    t`tags [${index.names('tags', d.tags).join(', ')}]`,
   ].join(' · ')
 }
 
 export function suggestionLine(s: PlSuggestions | null, index: TaxonomyIndex): string | null {
   if (!s) return null
   const parts = [
-    s.correspondents.length ? `корр. ${index.names('correspondents', s.correspondents.slice(0, 2)).join(' / ')}` : null,
-    s.document_types.length ? `тип ${index.names('document_types', s.document_types.slice(0, 2)).join(' / ')}` : null,
-    s.tags.length ? `теги ${index.names('tags', s.tags.slice(0, 6)).join(', ')}` : null,
-    s.dates.length ? `даты ${s.dates.slice(0, 3).join(', ')}` : null,
+    s.correspondents.length ? t`corr. ${index.names('correspondents', s.correspondents.slice(0, 2)).join(' / ')}` : null,
+    s.document_types.length ? t`type ${index.names('document_types', s.document_types.slice(0, 2)).join(' / ')}` : null,
+    s.tags.length ? t`tags ${index.names('tags', s.tags.slice(0, 6)).join(', ')}` : null,
+    s.dates.length ? t`dates ${s.dates.slice(0, 3).join(', ')}` : null,
   ].filter(Boolean)
-  return parts.length ? `Подсказки Paperless: ${parts.join(' · ')}` : null
+  return parts.length ? t`Paperless suggestions: ${parts.join(' · ')}` : null
 }
 
 // ---------------------------------------------------------------------------
@@ -245,12 +247,12 @@ export async function plan(
 ): Promise<Snapshot> {
   const next = snapshot(doc)
   if (change.title !== undefined) {
-    const t = change.title.trim()
-    if (!t) throw new ToolError(`#${doc.id}: пустое название`)
-    next.title = t.slice(0, 128)
+    const item = change.title.trim()
+    if (!item) throw new ToolError(t`#${doc.id}: empty title`)
+    next.title = item.slice(0, 128)
   }
   if (change.created !== undefined) {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(change.created)) throw new ToolError(`#${doc.id}: дата «${change.created}» — нужен ГГГГ-ММ-ДД`)
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(change.created)) throw new ToolError(t`#${doc.id}: date “${change.created}” — needs YYYY-MM-DD`)
     next.created = change.created
   }
   if (change.correspondent !== undefined) next.correspondent = change.correspondent === null ? null : (await index.ensure('correspondents', change.correspondent, client, opts.dryRun)).id
@@ -281,20 +283,20 @@ export function patchOf(before: Snapshot, after: Snapshot): Record<string, unkno
 
 export function diffLine(id: number, before: Snapshot, after: Snapshot, index: TaxonomyIndex): string {
   const parts: string[] = []
-  if (before.title !== after.title) parts.push(`название «${truncate(before.title, 40)}» → «${truncate(after.title, 60)}»`)
-  if (before.created !== after.created) parts.push(`дата ${before.created} → ${after.created}`)
+  if (before.title !== after.title) parts.push(t`title “${truncate(before.title, 40)}” → “${truncate(after.title, 60)}”`)
+  if (before.created !== after.created) parts.push(t`date ${before.created} → ${after.created}`)
   if (before.correspondent !== after.correspondent) {
-    parts.push(`корр. ${index.name('correspondents', before.correspondent) ?? '—'} → ${index.name('correspondents', after.correspondent) ?? '—'}`)
+    parts.push(t`corr. ${index.name('correspondents', before.correspondent) ?? '—'} → ${index.name('correspondents', after.correspondent) ?? '—'}`)
   }
   if (before.document_type !== after.document_type) {
-    parts.push(`тип ${index.name('document_types', before.document_type) ?? '—'} → ${index.name('document_types', after.document_type) ?? '—'}`)
+    parts.push(t`type ${index.name('document_types', before.document_type) ?? '—'} → ${index.name('document_types', after.document_type) ?? '—'}`)
   }
   const added = after.tags.filter((t) => !before.tags.includes(t))
   const removed = before.tags.filter((t) => !after.tags.includes(t))
   if (added.length || removed.length) {
-    parts.push(`теги ${[...index.names('tags', added).map((n) => `+${n}`), ...index.names('tags', removed).map((n) => `−${n}`)].join(' ')}`)
+    parts.push(t`tags ${[...index.names('tags', added).map((n) => `+${n}`), ...index.names('tags', removed).map((n) => `−${n}`)].join(' ')}`)
   }
-  return `#${id}: ${parts.length ? parts.join('; ') : 'без изменений'}`
+  return `#${id}: ${parts.length ? parts.join('; ') : t`no changes`}`
 }
 
 export function recordChange(batchId: string, documentId: number, before: Snapshot, after: Snapshot): void {

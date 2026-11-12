@@ -208,3 +208,19 @@ describe('/f/{token}', () => {
     expect((await get(token)).status).toBe(410)
   })
 })
+
+describe('Paperless in English', () => {
+  it('metadata and replies', async () => {
+    const { connectorLanguageGaps } = await import('./helpers')
+    const { runWithLang } = await import('@/lib/i18n')
+    expect(await connectorLanguageGaps(paperless, cfg)).toEqual({ cyrillic: null, missing: [] })
+    server()
+    const found = await runWithLang('en', () => runTool(paperless, 'paperless_search', cfg, { added_after: '2026-09-20' }))
+    expect(found).toMatch(/^Found 1 document:/)
+    // Tag names are compared without case in English too.
+    expect(await runWithLang('en', () => runTool(paperless, 'paperless_search', cfg, { tags: ['БАНК'] }))).toContain('#50')
+    await expect(runWithLang('en', () => runTool(paperless, 'paperless_get', cfg, { id: 119 }))).rejects.toThrow('Document #119 is not available to the assistant (tag “private”)')
+    const plan = await runWithLang('en', () => runTool(paperless, 'paperless_update', cfg, { dry_run: true, changes: [{ id: 118, add_tags: ['банк', 'выписки'] }] }))
+    expect(plan).toContain('Plan for 1 document (nothing changed):')
+  })
+})

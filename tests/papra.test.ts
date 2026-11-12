@@ -516,3 +516,17 @@ describe('/f/{token} for Papra', () => {
     expect((await get(createLink('doc_scan', { shareable: true }).token)).status).toBe(404)
   })
 })
+
+describe('Papra in English', () => {
+  it('metadata and replies', async () => {
+    const { connectorLanguageGaps } = await import('./helpers')
+    const { runWithLang } = await import('@/lib/i18n')
+    expect(await connectorLanguageGaps(papra, cfg)).toEqual({ cyrillic: null, missing: [] })
+    server()
+    const plan = await runWithLang('en', () => runTool(papra, 'papra_update', cfg, { dry_run: true, changes: [{ id: 'doc_scan', name: 'New', add_tags: ['банк', 'выписки'] }] }))
+    expect(plan).toContain('Plan for 1 document (nothing changed):')
+    expect(plan).toContain('doc_scan: title “scan_0912” → “New”')
+    expect(plan).toContain('Tags to be created: «выписки»')
+    await expect(runWithLang('en', () => runTool(papra, 'papra_rotate', cfg, { id: 'doc_july', angle: 90 }))).rejects.toThrow('confirm: true is required')
+  })
+})

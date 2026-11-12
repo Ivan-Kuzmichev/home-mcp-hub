@@ -77,12 +77,14 @@ function ruPlural(n: number, forms: RuForms): string {
  * [one, other] in English; Russian forms come from the catalog by `one`.
  * Three forms are the old Russian call, kept as is until its module is translated.
  */
-export function pluralFor(lang: Lang, n: number, forms: [string, string] | RuForms): string {
+export function pluralFor(lang: Lang, n: number, forms: [string, string] | RuForms, context?: string): string {
   if (forms.length === 3) return ruPlural(n, forms)
   if (lang === 'en') return n === 1 ? forms[0] : forms[1]
-  const ru = plurals.get(forms[0])
+  // A context picks another Russian case for the same English word: «for 3 documents» = «для 3 документов».
+  const key = context ? `${context}|${forms[0]}` : forms[0]
+  const ru = plurals.get(key)
   if (!ru) {
-    missing.add(`plural:${forms[0]}`)
+    missing.add(`plural:${key}`)
     return n === 1 ? forms[0] : forms[1]
   }
   return ruPlural(n, ru)

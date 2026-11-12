@@ -6,6 +6,7 @@ import { createLink as createDownloadLink } from '../../download-links'
 import { truncate } from '../format'
 import { ToolError } from '../types'
 import type { PaClient, PaDocument, PaTag } from './client'
+import { t } from '../../i18n'
 
 // Papra requires a color for a new tag; the assistant does not pick one.
 const NEW_TAG_COLOR = '#64748B'
@@ -47,7 +48,7 @@ export class TagIndex {
     const found = this.find(name)
     if (found) return found
     const clean = name.trim()
-    if (!clean) throw new ToolError('Пустое имя тега')
+    if (!clean) throw new ToolError(t`Empty tag name`)
     const tag: PaTag = dryRun ? { id: `new:${clean}`, name: clean } : await client.createTag(clean, NEW_TAG_COLOR)
     this.remember(tag)
     this.created.push(tag.name)
@@ -65,8 +66,8 @@ export function isVisible(doc: PaDocument, excludeTag: string | undefined): bool
 }
 
 export function assertVisible(doc: PaDocument, excludeTag: string | undefined): void {
-  if (doc.isDeleted) throw new ToolError(`Документ ${doc.id} в корзине`)
-  if (!isVisible(doc, excludeTag)) throw new ToolError(`Документ ${doc.id} недоступен ассистенту (тег «${excludeTag}»)`)
+  if (doc.isDeleted) throw new ToolError(t`Document ${doc.id} is in the trash`)
+  if (!isVisible(doc, excludeTag)) throw new ToolError(t`Document ${doc.id} is not available to the assistant (tag “${excludeTag}”)`)
 }
 
 // ---------------------------------------------------------------------------
@@ -83,7 +84,7 @@ export type DocFilter = {
 
 export function checkedDay(date: string): string {
   const d = /^\d{4}-\d{2}-\d{2}$/.test(date) ? new Date(`${date}T00:00:00Z`) : null
-  if (!d || Number.isNaN(d.getTime()) || d.toISOString().slice(0, 10) !== date) throw new ToolError(`Дата «${date}» — нужен формат ГГГГ-ММ-ДД`)
+  if (!d || Number.isNaN(d.getTime()) || d.toISOString().slice(0, 10) !== date) throw new ToolError(t`Date “${date}” — the format is YYYY-MM-DD`)
   return date
 }
 
@@ -109,7 +110,7 @@ export function searchQuery(f: DocFilter, index: TagIndex, excludeTag: string | 
   if (scoped) parts.push(scoped)
   for (const name of f.tags ?? []) {
     const tag = index.find(name)
-    if (!tag) throw new ToolError(`Тега «${name}» нет — посмотри papra_tags`)
+    if (!tag) throw new ToolError(t`No tag “${name}” — check papra_tags`)
     parts.push(`tag:${tag.id}`)
   }
   if (f.addedAfter) parts.push(`created:>=${checkedDay(f.addedAfter)}`)
@@ -134,11 +135,11 @@ export function docLine(d: PaDocument): string {
 }
 
 export function metaLine(d: PaDocument): string {
-  return [`название «${d.name}»`, `дата ${day(d.documentDate)}`, `теги [${tagNames(d)}]`, d.notes ? `заметки: ${truncate(d.notes, 300)}` : null].filter(Boolean).join(' · ')
+  return [t`title “${d.name}”`, t`date ${day(d.documentDate)}`, t`tags [${tagNames(d)}]`, d.notes ? t`notes: ${truncate(d.notes, 300)}` : null].filter(Boolean).join(' · ')
 }
 
 export function headLine(d: PaDocument): string {
-  return `${d.id} · добавлен ${day(d.createdAt)}${d.originalName ? ` · файл ${d.originalName}` : ''} · ${d.mimeType}`
+  return t`${d.id} · added ${day(d.createdAt)}${d.originalName ? t` · file ${d.originalName}` : ''} · ${d.mimeType}`
 }
 
 // ---------------------------------------------------------------------------
@@ -179,7 +180,7 @@ export async function plan(doc: PaDocument, change: Change, index: TagIndex, cli
   const next = snapshot(doc)
   if (change.name !== undefined) {
     const n = change.name.trim()
-    if (!n) throw new ToolError(`${doc.id}: пустое название`)
+    if (!n) throw new ToolError(t`${doc.id}: empty title`)
     next.name = n.slice(0, 255)
   }
   if (change.date !== undefined) next.documentDate = change.date === null ? null : checkedDay(change.date)
@@ -235,16 +236,16 @@ export function hasChanges(before: Snapshot, after: Snapshot): boolean {
 
 export function diffLine(id: string, before: Snapshot, after: Snapshot, index: TagIndex): string {
   const parts: string[] = []
-  if (before.name !== after.name) parts.push(`название «${truncate(before.name, 40)}» → «${truncate(after.name, 60)}»`)
-  if (day(before.documentDate) !== day(after.documentDate)) parts.push(`дата ${day(before.documentDate)} → ${day(after.documentDate)}`)
-  if (before.notes !== after.notes) parts.push(after.notes ? `заметки: ${truncate(after.notes, 60)}` : 'заметки убраны')
-  if (after.content !== undefined && before.content !== after.content) parts.push(`текст: ${before.content?.length ?? 0} → ${after.content.length} симв.`)
+  if (before.name !== after.name) parts.push(t`title “${truncate(before.name, 40)}” → “${truncate(after.name, 60)}”`)
+  if (day(before.documentDate) !== day(after.documentDate)) parts.push(t`date ${day(before.documentDate)} → ${day(after.documentDate)}`)
+  if (before.notes !== after.notes) parts.push(after.notes ? t`notes: ${truncate(after.notes, 60)}` : t`notes removed`)
+  if (after.content !== undefined && before.content !== after.content) parts.push(t`text: ${before.content?.length ?? 0} → ${after.content.length} chars`)
   const added = after.tags.filter((t) => !before.tags.includes(t))
   const removed = before.tags.filter((t) => !after.tags.includes(t))
   if (added.length || removed.length) {
-    parts.push(`теги ${[...index.names(added).map((n) => `+${n}`), ...index.names(removed).map((n) => `−${n}`)].join(' ')}`)
+    parts.push(t`tags ${[...index.names(added).map((n) => `+${n}`), ...index.names(removed).map((n) => `−${n}`)].join(' ')}`)
   }
-  return `${id}: ${parts.length ? parts.join('; ') : 'без изменений'}`
+  return `${id}: ${parts.length ? parts.join('; ') : t`no changes`}`
 }
 
 export function recordChange(batchId: string, documentId: string, before: Snapshot, after: Snapshot): void {
