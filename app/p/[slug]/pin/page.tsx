@@ -5,6 +5,7 @@ import { PinForm } from '@/components/prototypes/pin-form'
 import { accessCookieName, verifyAccess } from '@/lib/prototypes/access'
 import { SLUG_PATTERN } from '@/lib/prototypes/http'
 import { getBySlug, isExpired } from '@/lib/prototypes/store'
+import { t } from '../../../../lib/i18n'
 
 export const dynamic = 'force-dynamic'
 
@@ -13,7 +14,7 @@ type Props = { params: Promise<{ slug: string }> }
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params
   const p = SLUG_PATTERN.test(slug) ? getBySlug(slug) : undefined
-  return { title: p ? `${p.title} — пинкод` : 'Прототип', robots: { index: false, follow: false } }
+  return { title: p ? t`${p.title} — PIN` : t`Prototype`, robots: { index: false, follow: false } }
 }
 
 export default async function PinPage({ params }: Props) {

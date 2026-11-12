@@ -1,6 +1,7 @@
 import { connectorStates, type ConnectorState } from './active'
 import { recordCheck } from './store'
 import type { TestResult } from './types'
+import { t } from '../i18n'
 
 export type ActiveState = Extract<ConnectorState, { status: 'active' }>
 
@@ -8,7 +9,7 @@ export type ActiveState = Extract<ConnectorState, { status: 'active' }>
 export async function checkConnector(state: ActiveState, timeoutMs: number): Promise<TestResult> {
   let timer: ReturnType<typeof setTimeout> | undefined
   const timeout = new Promise<TestResult>((resolve) => {
-    timer = setTimeout(() => resolve({ ok: false, summary: `не ответил за ${Math.round(timeoutMs / 1000)} с`, details: [] }), timeoutMs)
+    timer = setTimeout(() => resolve({ ok: false, summary: t`did not respond in ${Math.round(timeoutMs / 1000)} s`, details: [] }), timeoutMs)
   })
   const result = await Promise.race([state.connector.test(state.config).catch((e: unknown) => ({ ok: false, summary: String(e), details: [] })), timeout])
   clearTimeout(timer)

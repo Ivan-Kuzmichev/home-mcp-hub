@@ -9,6 +9,7 @@ import { ToolError } from '@/lib/connectors/types'
 import { claimLink, getLink } from '@/lib/download-links'
 import { logger } from '@/lib/logger'
 import { PUBLIC_HEADERS, simplePage } from '@/lib/prototypes/http'
+import { t } from '../../../lib/i18n'
 
 export const dynamic = 'force-dynamic'
 
@@ -24,15 +25,15 @@ const INLINE = /^(application\/pdf|image\/(png|jpeg|gif|webp))$/
 export async function GET(req: Request, { params }: { params: Promise<{ token: string }> }): Promise<Response> {
   const { token } = await params
   const link = TOKEN.test(token) ? getLink(token) : undefined
-  if (!link) return simplePage(404, 'Ссылка не найдена', 'Возможно, в ней опечатка.')
-  if (link.expiresAt.getTime() < Date.now()) return simplePage(410, 'Ссылка устарела', 'Попроси ассистента сделать новую.')
+  if (!link) return simplePage(404, t`Link not found`, t`There may be a typo in it.`)
+  if (link.expiresAt.getTime() < Date.now()) return simplePage(410, t`Link expired`, t`Ask the assistant for a new one.`)
 
   if (link.shareable) {
-    if (!claimLink(token)) return simplePage(410, 'Ссылка уже использована', 'Одноразовая ссылка открывается только один раз.')
+    if (!claimLink(token)) return simplePage(410, t`Link already used`, t`A one-time link opens only once.`)
   } else {
     const session = await getAuth().api.getSession({ headers: await headers() })
     if (!session?.user.twoFactorEnabled) {
-      return simplePage(403, 'Личная ссылка', 'Она открывается только в браузере, где выполнен вход в админку хаба.')
+      return simplePage(403, t`Personal link`, t`It opens only in a browser signed in to the hub admin panel.`)
     }
   }
 
@@ -40,7 +41,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ token: s
   if (link.connectorId === 'papra') return papraResponse(link.path ?? '', link.shareable)
 
   const config = activeConfig(link.connectorId) as { baseUrl: string; apiToken?: string } | null
-  if (!config) return simplePage(503, 'Paperless выключен', 'Коннектор Paperless отключён в админке хаба.')
+  if (!config) return simplePage(503, t`Paperless is off`, t`The Paperless connector is turned off in the hub admin panel.`)
 
   try {
     const upstream = await new PlClient(config).download(link.documentId, link.original)
@@ -60,7 +61,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ token: s
     })
   } catch (e) {
     logger.warn({ err: e instanceof Error ? e.message : String(e) }, 'document download failed')
-    return simplePage(502, 'Не получилось скачать', 'Paperless не отдал файл. Попробуй позже.')
+    return simplePage(502, t`Download failed`, t`Paperless did not return the file. Try again later.`)
   }
 }
 
@@ -72,11 +73,11 @@ const SANDBOX = { 'Content-Security-Policy': 'sandbox', 'Cache-Control': 'privat
  */
 async function papraResponse(id: string, shareable: boolean): Promise<Response> {
   const config = activeConfig('papra') as (PaConfig & { excludeTag?: string }) | null
-  if (!config) return simplePage(503, 'Papra выключен', 'Коннектор Papra отключён в админке хаба.')
+  if (!config) return simplePage(503, t`Papra is off`, t`The Papra connector is turned off in the hub admin panel.`)
   try {
     const client = new PaClient(config)
     const doc = await client.document(id)
-    if (doc.isDeleted || !isVisible(doc, config.excludeTag)) return simplePage(404, 'Документ недоступен', 'Его удалили или закрыли от ассистента.')
+    if (doc.isDeleted || !isVisible(doc, config.excludeTag)) return simplePage(404, t`Document unavailable`, t`It was deleted or hidden from the assistant.`)
     const upstream = await client.file(id)
     const inline = INLINE.test(doc.mimeType)
     const disposition = upstream.headers.get('content-disposition') ?? `attachment; filename="${id}"`
@@ -92,22 +93,22 @@ async function papraResponse(id: string, shareable: boolean): Promise<Response> 
     })
   } catch (e) {
     logger.warn({ err: e instanceof Error ? e.message : String(e) }, 'papra download failed')
-    return simplePage(502, 'Не получилось скачать', 'Papra не отдал файл. Попробуй позже.')
+    return simplePage(502, t`Download failed`, t`Papra did not return the file. Try again later.`)
   }
 }
 
 /** One-time links ignore Range: the second request of a video player would find the link used. */
 async function fileResponse(shown: string, range: string | null): Promise<Response> {
   const config = activeConfig('files') as { folders: string; deny?: string } | null
-  if (!config) return simplePage(503, 'Файлы выключены', 'Коннектор «Файлы» отключён в админке хаба.')
+  if (!config) return simplePage(503, t`Files is off`, t`The Files connector is turned off in the hub admin panel.`)
   try {
     const file = await openFile(config.folders, shown, range, config.deny)
     if (!range) logger.info({ connector: 'files' }, 'file downloaded')
     return new Response(file.body, { status: file.status, headers: { ...PUBLIC_HEADERS, ...file.headers, ...SANDBOX } })
   } catch (e) {
-    if (e instanceof ToolError) return simplePage(404, 'Файл недоступен', 'Папку убрали из настроек или закрыли доступ к ней.')
+    if (e instanceof ToolError) return simplePage(404, t`File unavailable`, t`The folder was removed from the settings or access to it was closed.`)
     const code = (e as { code?: string }).code
     logger.warn({ code }, 'file download failed')
-    return code === 'ENOENT' ? simplePage(404, 'Файл не найден', 'Его переместили или удалили.') : simplePage(500, 'Не получилось открыть файл', 'Попробуй позже.')
+    return code === 'ENOENT' ? simplePage(404, t`File not found`, t`It was moved or deleted.`) : simplePage(500, t`Could not open the file`, t`Try again later.`)
   }
 }

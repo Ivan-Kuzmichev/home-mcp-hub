@@ -13,17 +13,18 @@ import {
 import { injectDataScript } from '@/lib/prototypes/data'
 import { PROTOTYPE_CSP, PUBLIC_HEADERS, SLUG_PATTERN, simplePage } from '@/lib/prototypes/http'
 import { getBySlug, isExpired, readHtml, recordView, verifyPin } from '@/lib/prototypes/store'
+import { t } from '../../../lib/i18n'
 
 export const dynamic = 'force-dynamic'
 
 type Ctx = { params: Promise<{ slug: string }> }
 
 function notFound(): Response {
-  return simplePage(404, 'Прототип не найден', 'Ссылка неверная или прототип удалён.')
+  return simplePage(404, t`Prototype not found`, t`The link is wrong or the prototype was deleted.`)
 }
 
 function gone(): Response {
-  return simplePage(410, 'Срок истёк', 'Этот прототип больше недоступен. Попроси прислать новую ссылку.')
+  return simplePage(410, t`Expired`, t`This prototype is no longer available. Ask for a new link.`)
 }
 
 export async function GET(_req: Request, { params }: Ctx): Promise<Response> {
@@ -33,7 +34,7 @@ export async function GET(_req: Request, { params }: Ctx): Promise<Response> {
   if (!p) return notFound()
   if (isExpired(p)) return gone()
   // Chunked upload still in progress.
-  if (p.version === 0) return simplePage(404, 'Страница ещё загружается', 'Прототип публикуется по частям. Обнови страницу через минуту.')
+  if (p.version === 0) return simplePage(404, t`The page is still uploading`, t`The prototype is published in parts. Reload the page in a minute.`)
 
   if (p.pinHash) {
     const cookie = (await cookies()).get(accessCookieName(slug))?.value

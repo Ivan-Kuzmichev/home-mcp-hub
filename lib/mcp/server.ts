@@ -1,4 +1,4 @@
-import { getLang, tr } from '../i18n'
+import { getLang, t, tr } from '../i18n'
 import { localizeSchema } from '../i18n/schema'
 import type { McpServer } from '@modelcontextprotocol/server'
 import { createMcpHandler } from 'mcp-handler'
@@ -37,8 +37,8 @@ export function buildGuide(): string {
   const tools = visibleTools(states)
   const active = states.filter((s) => s.status === 'active')
   const lines = [
-    'Home Hub — домашний хаб пользователя. Отвечай коротко: он читает с телефона.',
-    'Перед удалением с файлами и другими необратимыми действиями переспроси. Если что-то не работает — hub_status.',
+    t`Home Hub is the user's home hub. Keep answers short: they read on a phone.`,
+    t`Ask before deleting with files and other irreversible actions. If something does not work, call hub_status.`,
     ...active.map((s) => connectorInstructions(s.connector, s.row, s.config, tools).text),
   ]
   return lines.filter((l): l is string => !!l).join('\n')
@@ -56,9 +56,9 @@ export function defaultCustomInstructions(): string {
     .filter((s) => s.status === 'active')
     .map((s) => s.connector.name)
   return [
-    `Home Hub — домашний хаб пользователя${names.length ? `: ${names.join(', ')}` : ''}.`,
-    'Полные правила работы с хабом — вызови hub_guide перед первым действием с ним в этом чате.',
-    'Отвечай коротко: пользователь читает с телефона. Перед удалением и другими необратимыми действиями переспроси.',
+    t`Home Hub is the user's home hub${names.length ? `: ${names.join(', ')}` : ''}.`,
+    t`For the full rules of the hub, call hub_guide before the first action with it in this chat.`,
+    t`Keep answers short: the user reads on a phone. Ask before deleting and other irreversible actions.`,
   ].join('\n')
 }
 
@@ -67,10 +67,10 @@ const STATUS_CHECK_TIMEOUT_MS = 8_000
 
 function formatUptime(ms: number): string {
   const min = Math.floor(ms / 60_000)
-  if (min < 60) return `${min} мин`
+  if (min < 60) return t`${min} min`
   const h = Math.floor(min / 60)
-  if (h < 48) return `${h} ч ${min % 60} мин`
-  return `${Math.floor(h / 24)} дн`
+  if (h < 48) return t`${h} h ${min % 60} min`
+  return t`${Math.floor(h / 24)} d`
 }
 
 /**
@@ -111,9 +111,9 @@ async function runLogged(name: string, connectorId: string, args: unknown, fn: (
   } catch (error) {
     let message: string
     if (error instanceof ToolError) message = error.message
-    else if (error instanceof z.ZodError) message = `Неверные параметры: ${error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ')}`
+    else if (error instanceof z.ZodError) message = t`Invalid parameters: ${error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ')}`
     else {
-      message = `Внутренняя ошибка хаба: ${scrub(error instanceof Error ? error.message : String(error))}`
+      message = t`Hub internal error: ${scrub(error instanceof Error ? error.message : String(error))}`
       logger.error({ tool: name, err: message }, 'tool failed')
     }
     log(false, message)
@@ -137,20 +137,20 @@ async function hubStatus(): Promise<string> {
       const name = s.connector.name
       switch (s.status) {
         case 'unconfigured':
-          return `• ${name}: не настроен`
+          return t`• ${name}: not set up`
         case 'disabled':
-          return `• ${name}: выключен в админке`
+          return t`• ${name}: off in the admin panel`
         case 'invalid':
-          return `• ${name}: настройки неполные — открой админку`
+          return t`• ${name}: settings incomplete — open the admin panel`
         case 'active': {
           const r = await checkConnector(s, STATUS_CHECK_TIMEOUT_MS)
           const tools = enabledTools(s).length
-          return r.ok ? `• ${name}: OK · ${r.summary} · ${tools} инстр.` : `• ${name}: ошибка — ${r.summary}`
+          return r.ok ? t`• ${name}: OK · ${r.summary} · ${tools} tools` : t`• ${name}: error — ${r.summary}`
         }
       }
     }),
   )
-  return [`Home Hub v${HUB_VERSION} · аптайм ${formatUptime(Date.now() - startedAt)}`, ...lines].join('\n')
+  return [t`Home Hub v${HUB_VERSION} · uptime ${formatUptime(Date.now() - startedAt)}`, ...lines].join('\n')
 }
 
 /** Called for every MCP request: tools reflect the current connector settings. */
@@ -158,8 +158,8 @@ function initializeServer(server: McpServer): void {
   server.registerTool(
     'hub_status',
     {
-      title: 'Статус хаба',
-      description: 'Версия хаба и состояние сервисов: какие подключены, отвечают ли, версии. Первый инструмент для отладки.',
+      title: t`Hub status`,
+      description: t`Hub version and service state: what is connected, whether it responds, versions. The first tool for debugging.`,
       inputSchema: z.object({}),
       annotations: { readOnlyHint: true, openWorldHint: false },
       _meta: AUTH_META,
@@ -172,8 +172,8 @@ function initializeServer(server: McpServer): void {
     server.registerTool(
       'hub_guide',
       {
-        title: 'Правила хаба',
-        description: 'Полные правила работы с Home Hub: как искать и качать, что выбирать, Paperless, прототипы, скрипты и заметки пользователя. Вызови перед первым действием с хабом в чате.',
+        title: t`Hub rules`,
+        description: t`Full rules for Home Hub: how to search and download, what to pick, Paperless, prototypes, scripts and the user's notes. Call before the first action with the hub in a chat.`,
         inputSchema: z.object({}),
         annotations: { readOnlyHint: true, openWorldHint: false },
         _meta: AUTH_META,
@@ -221,8 +221,8 @@ function registerCustomTools(server: McpServer, registered: Set<string>): void {
       async (args: unknown) =>
         runLogged(s.name, 'scripts', args, async () => {
           const r = await executeTool(s.id, inputSchemaOf(spec).parse(args))
-          if (!r.ok) throw new ToolError(r.error ?? 'ошибка')
-          return r.output ?? (r.logs.length ? r.logs.join('\n') : 'Готово')
+          if (!r.ok) throw new ToolError(r.error ?? t`error`)
+          return r.output ?? (r.logs.length ? r.logs.join('\n') : t`Done`)
         }),
     )
   }

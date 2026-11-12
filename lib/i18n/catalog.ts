@@ -2,3 +2,4 @@
 import './ru/format'
 import './ru/common'
 import '../../components/settings/ru'
+import './ru/shared'
