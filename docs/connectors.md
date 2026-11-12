@@ -202,7 +202,10 @@ The assistant writes the JS and the schedule, you approve the code in the admin 
 - Any code change waits for approval again and pauses the script. Changing the schedule needs no approval.
   A rejected new script is deleted, a rejected change is rolled back to the previous version.
 - You can turn a script off and on in the admin panel or ask the assistant (`cron_enable`).
-- The sandbox is QuickJS (WebAssembly): no access to files, the process or the hub database, 30 s and 64 MB per run, up to 20 requests.
+- The sandbox is QuickJS (WebAssembly): no access to files, the process or the hub database, 64 MB of memory per run.
+- Limits in the **Скрипты** connector settings, the defaults in brackets: run time of a cron script (30 s, up to 600), of a custom tool
+  (25 s, up to 120), one `fetch` (15 s, up to 120, never past the run's time), requests per run (20, up to 200) and the size of one response (1 MB, up to 5).
+  The assistant waits for a custom tool, and the client may cut a long call off by itself, so more than a minute there is risky.
 - Switches in the **Скрипты** connector settings:
   - **Без одобрения** (No approval): the assistant's code is enabled right away (off by default);
   - **Доступ к внешним адресам** (Access to external addresses): on by default;
@@ -224,4 +227,4 @@ and the assistant sees only the names. This usually also needs **Доступ к
 The **MCP-инструменты** (MCP tools) block on the **Скрипты** screen. The assistant creates them with `tool_create` (or you do it with the **Добавить инструмент** (Add tool) button):
 a `my_*` name, a description, parameters (string, number, yes/no, a choice from a list), and code with `args` and `return`. The assistant calls
 an approved tool by itself like any other, in a new chat. In the current chat you can test it with `cron_run` and `args`.
-Secrets, network, `hub.tool` and **Без одобрения** are shared with scripts, and a call is limited to 25 s.
+Secrets, network, `hub.tool`, **Без одобрения** and the limits are shared with scripts; a call has its own time limit (25 s by default).

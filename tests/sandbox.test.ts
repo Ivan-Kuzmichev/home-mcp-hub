@@ -67,6 +67,29 @@ describe('sandbox', () => {
     expect(many.error).toContain('Больше 20 запросов')
   })
 
+  it('takes time, request, fetch-time and response limits from the caller', async () => {
+    const limits = { timeMs: 300, fetches: 2, fetchTimeoutMs: 15_000, responseBytes: 1024 * 1024 }
+    const loop = await runScript('s1', 'while (true) {}', { limits })
+    expect(loop.error).toBe('Превышено время выполнения (0.3 с)')
+    const many = await runScript('s1', `for (let i = 0; i < 3; i++) await fetch('https://example.com/' + i)`, { fetchImpl: fakeFetch([]), limits: { ...limits, timeMs: 5000 } })
+    expect(many.error).toContain('Больше 2 запросов')
+
+    // A fetch that honors its signal, like undici does.
+    const slow = async (_url: string, init: { signal: AbortSignal }) =>
+      new Promise<Response>((resolve, reject) => {
+        const t = setTimeout(() => resolve(Response.json({ ok: true })), 2000)
+        init.signal.addEventListener('abort', () => (clearTimeout(t), reject(new Error('aborted'))))
+      })
+    const cut = await runScript('s1', `await fetch('https://example.com/')`, { fetchImpl: slow, limits: { ...limits, timeMs: 5000, fetchTimeoutMs: 100 } })
+    expect(cut).toMatchObject({ ok: false, error: expect.stringContaining('aborted') })
+    expect(cut.durationMs).toBeLessThan(1500)
+
+    const big = () => new Response('x'.repeat(1536 * 1024))
+    expect((await runScript('s1', `return (await fetch('https://example.com/')).text.length`, { fetchImpl: fakeFetch([], big) })).error).toContain('Ответ больше 1 МБ')
+    const roomy = await runScript('s1', `return (await fetch('https://example.com/')).text.length`, { fetchImpl: fakeFetch([], big), limits: { ...limits, timeMs: 5000, responseBytes: 2 * 1024 * 1024 } })
+    expect(roomy.output).toBe(String(1536 * 1024))
+  })
+
   it('keeps state between runs and calls read-only hub tools', async () => {
     await runScript('s1', `state.set('seen', ['a'])`)
     const r = await runScript('s1', `const s = state.get('seen'); s.push('b'); state.set('seen', s); return s.join(',') + ' ' + await hub.tool('torrents_status', { filter: 'completed' })`, {

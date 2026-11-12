@@ -60,7 +60,7 @@ Self-hosted MCP-хаб для домашних сервисов (Jackett, qBitto
   (тот же уровень доступа, что `fetch` к сервисам); инструменты коннектора scripts скриптам недоступны никогда.
 - **Свои MCP-инструменты** — строки `script` с `kind = 'tool'`: имя `my_*`, `spec` (параметры + read-only) входит в хэш версии,
   `approvedSpec` хранит одобренную. Регистрируются в `initializeServer` только одобренные и включённые, пока включён коннектор scripts;
-  лимит вызова 25 с. Новые инструменты клиент видит в новом чате (сервер stateless, `listChanged` не шлём).
+  лимит вызова — настройка `toolTimeSec` (25 с). Лимиты времени, запросов и ответа — в настройках коннектора scripts (`lib/scripts/limits.ts`, по умолчанию прежние значения, с потолками), память 64 МБ фиксирована. Новые инструменты клиент видит в новом чате (сервер stateless, `listChanged` не шлём).
 - **camofox (браузер, id `browser`):** REST `http://camofox:9377`, `Authorization: Bearer <access key>` везде кроме `/health`; версии в `/health` нет —
   её берём из `/openapi.json`. Тела: `type` — `{ref, text, submit, clear}`, `wait` — `{selector, timeout}`, `scroll` — только up/down,
   скриншот — бинарный PNG, субтитры YouTube — плагин `POST /youtube/transcript` (берёт первый язык). Адрес проверяет `checkUrl`

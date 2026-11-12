@@ -2,7 +2,8 @@ import { z } from 'zod'
 import { formatAgo, formatWhen } from '../../format'
 import { logger } from '../../logger'
 import { executeScript, executeTool, syncSchedules } from '../../scripts/scheduler'
-import { LIMITS, SANDBOX_API_DOC } from '../../scripts/sandbox'
+import { BOUNDS, DEFAULT_LIMITS, DEFAULT_TOOL_TIME_MS, limitsLine } from '../../scripts/limits'
+import { SANDBOX_API_DOC } from '../../scripts/sandbox'
 import { listSecrets } from '../../scripts/secrets'
 import { describeParams, inputSchemaOf, MAX_PARAMS, paramInput } from '../../scripts/tool-spec'
 import {
@@ -24,6 +25,16 @@ import {
 import { plural, truncate } from '../format'
 import { defineConnector, field, toolFor, ToolError } from '../types'
 
+function limitField(key: keyof typeof BOUNDS, def: number, meta: { label: string; help?: string }) {
+  const { min, max } = BOUNDS[key]
+  return field(z.coerce.number().int().min(min, `Не меньше ${min}`).max(max, `Не больше ${max}`).default(def), {
+    ...meta,
+    help: `${meta.help ? `${meta.help}. ` : ''}${min}–${max}, по умолчанию ${def}`,
+    widget: 'number',
+    section: 'defaults',
+  })
+}
+
 const configSchema = z.object({
   autoApprove: field(z.boolean().default(false), {
     label: 'Без одобрения',
@@ -40,6 +51,14 @@ const configSchema = z.object({
     help: 'fetch к NAS, контейнерам, роутеру и localhost, плюс инструменты хаба с записью через hub.tool (torrent_add, paperless_update…). Скрипт сможет менять данные в домашних сервисах',
     widget: 'switch',
   }),
+  cronTimeSec: limitField('cronTimeSec', DEFAULT_LIMITS.timeMs / 1000, { label: 'Время cron-скрипта, с', help: 'Весь запуск по расписанию или вручную' }),
+  toolTimeSec: limitField('toolTimeSec', DEFAULT_TOOL_TIME_MS / 1000, {
+    label: 'Время своего инструмента, с',
+    help: 'Вызов my_* из чата. Ассистент ждёт ответа, и клиент может оборвать слишком долгий вызов сам — больше минуты ставить рискованно',
+  }),
+  fetchTimeoutSec: limitField('fetchTimeoutSec', DEFAULT_LIMITS.fetchTimeoutMs / 1000, { label: 'Один fetch, с', help: 'Но не дольше, чем осталось от времени запуска' }),
+  maxFetches: limitField('maxFetches', DEFAULT_LIMITS.fetches, { label: 'Запросов за запуск' }),
+  maxResponseMb: limitField('maxResponseMb', DEFAULT_LIMITS.responseBytes / 1024 / 1024, { label: 'Ответ одного запроса, МБ', help: 'Песочнице дано 64 МБ памяти: большой ответ может в неё не влезть' }),
 })
 type Config = z.output<typeof configSchema>
 const tool = toolFor<Config>()
@@ -128,6 +147,7 @@ export const scripts = defineConnector<Config>({
         ? `Свои MCP-инструменты: tool_create/tool_update — JS с параметрами, который потом вызываешь ты сам (имя с префиксом my_); после ${c.autoApprove ? 'сохранения' : 'одобрения'} он появится в новом чате, в текущем проверяй через cron_run с args.`
         : null,
       tools.includes('script_secrets') ? 'Секреты — только заглушками {{secret:ИМЯ}} (список — script_secrets), значения тебе недоступны.' : 'Секреты — только заглушками {{secret:ИМЯ}}, значения тебе недоступны.',
+      limitsLine(c),
     ]
       .filter(Boolean)
       .join(' ')
@@ -228,7 +248,7 @@ export const scripts = defineConnector<Config>({
     tool({
       name: 'tool_create',
       title: 'Создать MCP-инструмент',
-      description: `Создать свой MCP-инструмент: JS-код с параметрами, который ты потом вызываешь сам, как любой другой инструмент (например «курс валюты», «рейтинг фильма по API с ключом пользователя»). Имя получит префикс my_. Описание — то, что ты увидишь в списке инструментов: когда вызывать и что вернёт. Код видит аргументы в args, результат — через return (текст или объект, до 10 КБ), лимит 25 с. Обычно ждёт одобрения пользователя; после него доступен в новом чате.\n${SANDBOX_API_DOC}`,
+      description: `Создать свой MCP-инструмент: JS-код с параметрами, который ты потом вызываешь сам, как любой другой инструмент (например «курс валюты», «рейтинг фильма по API с ключом пользователя»). Имя получит префикс my_. Описание — то, что ты увидишь в списке инструментов: когда вызывать и что вернёт. Код видит аргументы в args, результат — через return (текст или объект, до 10 КБ), лимит времени — в инструкциях хаба. Обычно ждёт одобрения пользователя; после него доступен в новом чате.\n${SANDBOX_API_DOC}`,
       annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
       inputSchema: z.object({
         name: z.string().min(1).max(40).describe('Имя, например eth_price → my_eth_price'),
@@ -368,7 +388,7 @@ export const scripts = defineConnector<Config>({
       description: 'Имена секретов для cron-скриптов и MCP-инструментов: заведённые пользователем и открытые настройки коннекторов, с хостами, куда их можно отправлять. Значения недоступны — в коде пиши {{secret:ИМЯ}}.',
       annotations: { readOnlyHint: true, openWorldHint: false },
       inputSchema: z.object({}),
-      async run() {
+      async run(_args, { config }) {
         const list = listSecrets()
         const { connectorValues } = await import('../../scripts/connector-secrets')
         // Names only: values of shared connector settings are not shown, secret or not.
@@ -381,7 +401,7 @@ export const scripts = defineConnector<Config>({
           shared.length ? 'Настройки коннекторов (та же запись {{secret:ИМЯ}}):' : null,
           ...shared.map((v) => `• ${v.name} — ${v.label}${v.secret ? ` · секрет → ${v.hosts.join(', ')}` : ' · обычное значение, можно в начало url'}`),
           shared.length ? 'Сервисы коннекторов обычно в локальной сети — нужен доступ к ней в настройках скриптов.' : null,
-          `Лимиты запуска: ${LIMITS.timeMs / 1000} с, ${LIMITS.fetches} запросов.`,
+          limitsLine(config),
         ]
           .filter(Boolean)
           .join('\n')

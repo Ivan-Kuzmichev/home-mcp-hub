@@ -108,6 +108,25 @@ describe('cron scripts: switches', () => {
     expect(store.statusOf(store.findScript('Авто'))).toBe('pending')
   })
 
+  it('limits: current values by default, settings within bounds, told to the model', async () => {
+    const { limitsFor } = await import('@/lib/scripts/limits')
+    expect(limitsFor('cron', cfg as never)).toEqual({ timeMs: 30_000, fetches: 20, fetchTimeoutMs: 15_000, responseBytes: 1024 * 1024 })
+    expect(limitsFor('tool', cfg as never).timeMs).toBe(25_000)
+    // A config saved before these settings existed.
+    expect(limitsFor('tool', {}).timeMs).toBe(25_000)
+    expect(limitsFor('cron', { cronTimeSec: 99_999, maxResponseMb: 50 })).toMatchObject({ timeMs: 600_000, responseBytes: 5 * 1024 * 1024 })
+
+    const tuned = configOf(scripts, { cronTimeSec: '300', toolTimeSec: '90', fetchTimeoutSec: '60', maxFetches: '50', maxResponseMb: '3' })
+    expect(limitsFor('tool', tuned as never)).toEqual({ timeMs: 90_000, fetches: 50, fetchTimeoutMs: 60_000, responseBytes: 3 * 1024 * 1024 })
+    expect(scripts.parseConfig({ toolTimeSec: 500 })).toMatchObject({ ok: false, errors: { toolTimeSec: 'Не больше 120' } })
+    expect(scripts.parseConfig({ maxFetches: 0 })).toMatchObject({ ok: false, errors: { maxFetches: 'Не меньше 1' } })
+
+    const tools = scripts.tools.map((t) => t.name)
+    expect(scripts.instructions?.(cfg, { tools })).toContain('Лимиты: cron-скрипт 30 с, свой инструмент 25 с, один fetch до 15 с, 20 запросов, ответ до 1 МБ')
+    expect(scripts.instructions?.(tuned, { tools })).toContain('свой инструмент 90 с, один fetch до 60 с, 50 запросов, ответ до 3 МБ')
+    expect(await runTool(scripts, 'script_secrets', tuned)).toContain('cron-скрипт 300 с')
+  })
+
   it('instructions describe approval and network access', () => {
     const tools = scripts.tools.map((t) => t.name)
     expect(scripts.instructions?.(cfg, { tools })).toContain('на одобрение')
@@ -191,5 +210,18 @@ describe('MCP tools from the Scripts screen', () => {
     saveConfig(getConnector('scripts')!, { allowLocal: true })
     expect((await executeTool(store.findScript('my_hub_write').id, {})).error ?? '').not.toContain('меняет данные')
     expect((await executeTool(store.findScript('my_hub_self').id, {})).error).toContain('недоступен из скриптов')
+  })
+
+  it('a tool call and a cron run get their own time limit from the settings', { timeout: 20_000 }, async () => {
+    const { saveConfig } = await import('@/lib/connectors/store')
+    const { getConnector } = await import('@/lib/connectors/registry')
+    const { executeTool } = await import('@/lib/scripts/scheduler')
+    const auto = configOf(scripts, { autoApprove: true })
+    await runTool(scripts, 'tool_create', auto, { name: 'spin', description: 't', code: 'while (true) {}' })
+    await runTool(scripts, 'cron_create', auto, { name: 'Крутилка', schedule: '0 3 * * *', code: 'while (true) {}' })
+    saveConfig(getConnector('scripts')!, { toolTimeSec: 5, cronTimeSec: 6 })
+    expect((await executeTool(store.findScript('my_spin').id, {})).error).toBe('Превышено время выполнения (5 с)')
+    expect((await executeScript(store.findScript('Крутилка').id, 'manual')).error).toBe('Превышено время выполнения (6 с)')
+    saveConfig(getConnector('scripts')!, {})
   })
 })

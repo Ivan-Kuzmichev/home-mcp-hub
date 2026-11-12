@@ -6,8 +6,6 @@ export type { ToolParam, ToolSpec }
 /** Custom tools live next to the built-in ones, so they carry their own prefix. */
 export const TOOL_PREFIX = 'my_'
 export const MAX_PARAMS = 10
-/** An MCP call is awaited by the model: well below the client's own timeout. */
-export const TOOL_TIME_MS = 25_000
 
 const PARAM_NAME = /^[a-z][a-z0-9_]{0,31}$/
 

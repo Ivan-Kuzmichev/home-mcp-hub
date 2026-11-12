@@ -4,7 +4,7 @@ import { logger } from '../logger'
 import { DEFAULT_NET_POLICY, type NetPolicy } from './net'
 import { runScript, type RunResult } from './sandbox'
 import { SecretVault } from './secrets'
-import { TOOL_TIME_MS } from './tool-spec'
+import { limitsFor, type LimitSettings } from './limits'
 import { getScript, listScripts, recordRun, statusOf, type Script } from './store'
 
 /**
@@ -30,17 +30,23 @@ async function callHubTool(name: string, args: unknown, allowWrite: boolean): Pr
   throw new Error(`Инструмента ${name} нет или его коннектор выключен`)
 }
 
-/** Everything a run needs from the hub: network policy, secrets with shared connector values, hub tools. */
-async function runDeps() {
-  const net = await netPolicy()
+/** Everything a run needs from the hub: network policy and limits, secrets with shared connector values, hub tools. */
+async function runDeps(kind: 'cron' | 'tool') {
+  const c = await scriptsConfig()
+  const net = netPolicy(c)
   const { connectorValues } = await import('./connector-secrets')
-  return { net, vault: new SecretVault(connectorValues()), callTool: (name: string, args: unknown) => callHubTool(name, args, net.local) }
+  return { net, limits: limitsFor(kind, c), vault: new SecretVault(connectorValues()), callTool: (name: string, args: unknown) => callHubTool(name, args, net.local) }
+}
+
+type ScriptsConfig = LimitSettings & { allowLocal?: boolean; allowExternal?: boolean }
+
+async function scriptsConfig(): Promise<ScriptsConfig | null> {
+  const { activeConfig } = await import('../connectors/active')
+  return activeConfig('scripts') as ScriptsConfig | null
 }
 
 /** Network switches from the scripts connector; external only if it cannot be read. */
-async function netPolicy(): Promise<NetPolicy> {
-  const { activeConfig } = await import('../connectors/active')
-  const c = activeConfig('scripts') as { allowLocal?: boolean; allowExternal?: boolean } | null
+function netPolicy(c: ScriptsConfig | null): NetPolicy {
   return c ? { local: c.allowLocal === true, external: c.allowExternal !== false } : DEFAULT_NET_POLICY
 }
 
@@ -56,7 +62,7 @@ export async function executeScript(id: string, trigger: 'cron' | 'manual' | 'as
   if (busy.has(id)) throw new Error('Скрипт уже выполняется')
   busy.add(id)
   try {
-    const r = await runScript(s.id, s.code, await runDeps())
+    const r = await runScript(s.id, s.code, await runDeps('cron'))
     recordRun(s, trigger, r)
     logToolCall({
       tool: `cron:${s.name}`,
@@ -81,7 +87,7 @@ export async function executeTool(id: string, args: Record<string, unknown>, tri
   const s = getScript(id)
   if (!s || s.kind !== 'tool') throw new Error('Инструмент не найден')
   if (s.approvedHash !== s.codeHash) throw new Error('Код не одобрен — вызов невозможен')
-  const r = await runScript(s.id, s.code, { ...(await runDeps()), args, timeMs: TOOL_TIME_MS })
+  const r = await runScript(s.id, s.code, { ...(await runDeps('tool')), args })
   recordRun(s, trigger, r)
   return r
 }

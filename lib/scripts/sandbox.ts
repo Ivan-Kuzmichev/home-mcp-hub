@@ -3,15 +3,13 @@ import { and, count, eq } from 'drizzle-orm'
 import { fetch as undiciFetch } from 'undici'
 import { getDb } from '../db'
 import { scriptState } from '../db/schema'
+import { DEFAULT_LIMITS, type RunLimits } from './limits'
 import { assertAllowedUrl, DEFAULT_NET_POLICY, NetworkPolicyError, scriptAgent, type NetPolicy } from './net'
 import { SecretPolicyError, SecretVault } from './secrets'
 
+/** Fixed limits; time, requests and response size are in limits.ts and come from the settings. */
 export const LIMITS = {
-  timeMs: 30_000,
   memoryBytes: 64 * 1024 * 1024,
-  fetches: 20,
-  fetchTimeoutMs: 15_000,
-  responseBytes: 1024 * 1024,
   logBytes: 20 * 1024,
   outputBytes: 10 * 1024,
   stateKeys: 100,
@@ -27,7 +25,7 @@ export const SANDBOX_API_DOC = `Код — тело async-функции (мож
 - await hub.tool(имя, аргументы) — инструменты хаба (torrents_status, search_torrents, paperless_search…), возвращают текст. Инструменты с записью (torrent_add, paperless_update…) — только если пользователь открыл скриптам локальную сеть; удаление по-прежнему требует confirm: true.
 - args — аргументы вызова (для MCP-инструментов; у cron-скрипта пустой объект).
 - return значение — результат запуска.
-Нет: require/import, process, файлов, таймеров. Лимиты: 30 с, 64 МБ, ${LIMITS.fetches} запросов, ответ до 1 МБ.`
+Нет: require/import, process, файлов, таймеров. Лимиты времени, запросов и памяти — в инструкциях хаба.`
 
 export type RunResult = { ok: boolean; output: string | null; logs: string[]; error: string | null; durationMs: number; fetches: number }
 
@@ -41,8 +39,8 @@ export type SandboxDeps = {
   net?: NetPolicy
   /** Tool arguments, visible to the code as `args` */
   args?: Record<string, unknown>
-  /** Shorter limit for tools the model is waiting on */
-  timeMs?: number
+  /** Time, requests and response size; the defaults when absent */
+  limits?: RunLimits
 }
 
 // Friendly wrappers over the raw host functions.
@@ -85,10 +83,10 @@ async function readCapped(res: Response, limit: number): Promise<string> {
   return Buffer.concat(chunks).toString('utf8')
 }
 
-function errorText(ctx: QuickJSContext, handle: QuickJSHandle): string {
+function errorText(ctx: QuickJSContext, handle: QuickJSHandle, timeMs = DEFAULT_LIMITS.timeMs): string {
   const e = ctx.dump(handle) as { name?: string; message?: string; stack?: string } | string
   if (typeof e !== 'object' || e === null) return String(e)
-  if (e.message === 'interrupted') return `Превышено время выполнения (${LIMITS.timeMs / 1000} с)`
+  if (e.message === 'interrupted') return `Превышено время выполнения (${timeMs / 1000} с)`
   const where = /eval\.js:(\d+)/.exec(e.stack ?? '')?.[1]
   return `${e.name ?? 'Error'}: ${e.message ?? ''}${where ? ` (строка ${Math.max(1, Number(where) - 1)})` : ''}`
 }
@@ -114,7 +112,8 @@ export async function checkSyntax(code: string): Promise<string | null> {
 
 export async function runScript(scriptId: string, code: string, deps: SandboxDeps = {}): Promise<RunResult> {
   const started = Date.now()
-  const timeMs = Math.min(deps.timeMs ?? LIMITS.timeMs, LIMITS.timeMs)
+  const limits = deps.limits ?? DEFAULT_LIMITS
+  const timeMs = limits.timeMs
   const deadline = started + timeMs
   const vault = deps.vault ?? new SecretVault()
   const net = deps.net ?? DEFAULT_NET_POLICY
@@ -172,7 +171,7 @@ export async function runScript(scriptId: string, code: string, deps: SandboxDep
   }
 
   asyncFn('__fetch', async (rawUrl, optsJson) => {
-    if (++fetches > LIMITS.fetches) throw new Error(`Больше ${LIMITS.fetches} запросов за запуск`)
+    if (++fetches > limits.fetches) throw new Error(`Больше ${limits.fetches} запросов за запуск`)
     const opts = JSON.parse(optsJson) as { method?: string; headers?: Record<string, unknown>; body?: unknown }
     // Host is fixed before secrets go in: a placeholder cannot change where the request goes.
     // Plain values (a connector's address) may set the host; secrets never can.
@@ -188,7 +187,7 @@ export async function runScript(scriptId: string, code: string, deps: SandboxDep
       if (typeof opts.body !== 'string' && !Object.keys(headers).some((k) => k.toLowerCase() === 'content-type')) headers['Content-Type'] = 'application/json'
       body = vault.substitute(vault.expandParams(body), host)
     }
-    const signal = AbortSignal.any([abort.signal, AbortSignal.timeout(Math.min(LIMITS.fetchTimeoutMs, Math.max(1, deadline - Date.now())))])
+    const signal = AbortSignal.any([abort.signal, AbortSignal.timeout(Math.min(limits.fetchTimeoutMs, Math.max(1, deadline - Date.now())))])
     const init = { method: (opts.method ?? 'GET').toUpperCase(), headers, body, redirect: 'manual' as const, signal }
     let res: Response
     try {
@@ -198,7 +197,7 @@ export async function runScript(scriptId: string, code: string, deps: SandboxDep
       if (cause && (cause instanceof NetworkPolicyError || (cause as { code?: string }).code === 'EPOLICY')) throw new NetworkPolicyError(cause.message)
       throw new Error(`${host}: ${cause?.message ?? (error instanceof Error ? error.message : String(error))}`)
     }
-    const text = await readCapped(res, LIMITS.responseBytes)
+    const text = await readCapped(res, limits.responseBytes)
     return JSON.stringify({ status: res.status, ok: res.ok, headers: Object.fromEntries(res.headers), text })
   })
 
@@ -230,19 +229,19 @@ export async function runScript(scriptId: string, code: string, deps: SandboxDep
   let result: RunResult
   try {
     const prelude = ctx.evalCode(PRELUDE)
-    if (prelude.error) throw new Error(errorText(ctx, prelude.error))
+    if (prelude.error) throw new Error(errorText(ctx, prelude.error, timeMs))
     prelude.value.dispose()
     // Arguments go in as JSON text, never as code: nothing the model sends is evaluated.
     const argsHandle = ctx.newString(JSON.stringify(deps.args ?? {}))
     ctx.setProp(ctx.global, '__args', argsHandle)
     argsHandle.dispose()
     const argsSet = ctx.evalCode('globalThis.args = JSON.parse(__args); delete globalThis.__args')
-    if (argsSet.error) throw new Error(errorText(ctx, argsSet.error))
+    if (argsSet.error) throw new Error(errorText(ctx, argsSet.error, timeMs))
     argsSet.value.dispose()
 
     const evaluated = ctx.evalCode(`(async () => {\n${code}\n})()`)
     if (evaluated.error) {
-      const msg = errorText(ctx, evaluated.error)
+      const msg = errorText(ctx, evaluated.error, timeMs)
       evaluated.error.dispose()
       throw new Error(msg)
     }
@@ -253,7 +252,7 @@ export async function runScript(scriptId: string, code: string, deps: SandboxDep
     const outcome = await Promise.race([settled, timeout])
     if (outcome === 'timeout') throw new Error(`Превышено время выполнения (${timeMs / 1000} с)`)
     if (outcome.error) {
-      const msg = errorText(ctx, outcome.error)
+      const msg = errorText(ctx, outcome.error, timeMs)
       outcome.error.dispose()
       throw new Error(msg)
     }
