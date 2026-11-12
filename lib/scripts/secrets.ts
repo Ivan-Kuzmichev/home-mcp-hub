@@ -2,6 +2,7 @@ import { asc, eq } from 'drizzle-orm'
 import { decryptSecret, encryptSecret } from '../crypto'
 import { getDb } from '../db'
 import { scriptSecret } from '../db/schema'
+import { t } from '../i18n'
 
 export const SECRET_NAME = /^[A-Z][A-Z0-9_]{1,63}$/
 const PLACEHOLDER = /\{\{secret:([A-Z][A-Z0-9_]{1,63})\}\}/g
@@ -25,11 +26,11 @@ export function isValidHostPattern(h: string): boolean {
 }
 
 export function saveSecret(input: { name: string; value?: string; hosts: string[]; description?: string }): void {
-  if (!SECRET_NAME.test(input.name)) throw new Error('Имя — заглавные латинские буквы, цифры и _, например TELEGRAM_TOKEN')
+  if (!SECRET_NAME.test(input.name)) throw new Error(t`The name — capital Latin letters, digits and _, for example TELEGRAM_TOKEN`)
   const hosts = normalizeHosts(input.hosts)
-  if (hosts.length === 0 || !hosts.every(isValidHostPattern)) throw new Error('Хосты — например api.telegram.org или *.example.com')
+  if (hosts.length === 0 || !hosts.every(isValidHostPattern)) throw new Error(t`Hosts — for example api.telegram.org or *.example.com`)
   const existing = getDb().select().from(scriptSecret).where(eq(scriptSecret.name, input.name)).get()
-  if (!existing && !input.value) throw new Error('Нужно значение секрета')
+  if (!existing && !input.value) throw new Error(t`The secret value is required`)
   const values = {
     name: input.name,
     valueEnc: input.value ? encryptSecret(input.value) : existing!.valueEnc,
@@ -85,8 +86,8 @@ export class SecretVault {
   substitute(text: string, host: string): string {
     return text.replace(PLACEHOLDER, (_m, name: string) => {
       const s = this.secrets.get(name)
-      if (!s) throw new SecretPolicyError(`Секрета ${name} нет — список: script_secrets`)
-      if (!hostAllowed(host, s.hosts)) throw new SecretPolicyError(`Секрет ${name} нельзя отправлять на ${host} (разрешено: ${s.hosts.join(', ')})`)
+      if (!s) throw new SecretPolicyError(t`No secret ${name} — the list: script_secrets`)
+      if (!hostAllowed(host, s.hosts)) throw new SecretPolicyError(t`Secret ${name} cannot be sent to ${host} (allowed: ${s.hosts.join(', ')})`)
       return s.value
     })
   }

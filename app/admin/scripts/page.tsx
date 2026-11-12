@@ -1,3 +1,4 @@
+import { tr } from '@/lib/i18n'
 import { Lock } from 'lucide-react'
 import { PageHeader } from '@/components/admin/page-header'
 import { ReviewCard } from '@/components/scripts/review-card'
@@ -116,7 +117,7 @@ function rowOf(s: Script) {
     schedule: s.schedule,
     tool: s.kind === 'tool' ? { params: describeParams(s.spec), readOnly: !!s.spec?.readOnly } : null,
     status,
-    statusLabel: STATUS_LABELS[status],
+    statusLabel: tr(STATUS_LABELS[status]),
     tone: TONES[status],
     approved: s.approvedHash === s.codeHash,
     enabled: s.enabled,

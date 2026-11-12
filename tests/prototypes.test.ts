@@ -267,3 +267,12 @@ describe('page storage window.hub.db', () => {
     expect(data.readData(p)).toEqual({ rev: 0, data: {} })
   })
 })
+
+describe('Prototypes in English', () => {
+  it('metadata and replies', async () => {
+    const { connectorLanguageGaps } = await import('./helpers')
+    const { runWithLang } = await import('@/lib/i18n')
+    expect(await connectorLanguageGaps(prototypes, cfg)).toEqual({ cyrillic: null, missing: [] })
+    await expect(runWithLang('en', () => runTool(prototypes, 'prototype_update', cfg, { prototype: 'nope-nope' }))).rejects.toThrow('Prototype “nope-nope” not found — check prototype_list')
+  })
+})

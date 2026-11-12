@@ -5,6 +5,7 @@ import { getDb } from '../db'
 import { script, scriptRun } from '../db/schema'
 import { checkSyntax, type RunResult } from './sandbox'
 import { normalizeSpec, toolNameOf, type ToolParam, type ToolSpec } from './tool-spec'
+import { t } from '../i18n'
 
 export type Script = typeof script.$inferSelect
 export type ScriptStatus = 'pending' | 'rejected' | 'approved' | 'active'
@@ -15,8 +16,8 @@ export const MAX_CODE_BYTES = 32 * 1024
 /** Every minute is the finest schedule; seconds-level patterns are refused. */
 export function validateSchedule(expr: string): string {
   const e = expr.trim().replace(/\s+/g, ' ')
-  if (e.split(' ').length !== 5) throw new ScriptError('Расписание — 5 полей cron: минута час день месяц день_недели, например «0 9 * * *»')
-  if (!cron.validate(e)) throw new ScriptError(`Неверное cron-выражение «${e}»`)
+  if (e.split(' ').length !== 5) throw new ScriptError(t`The schedule — 5 cron fields: minute hour day month weekday, for example “0 9 * * *”`)
+  if (!cron.validate(e)) throw new ScriptError(t`Invalid cron expression “${e}”`)
   return e
 }
 
@@ -42,11 +43,12 @@ export function statusOf(s: Script): ScriptStatus {
   return s.enabled ? 'active' : 'approved'
 }
 
+/** English; shown through tr(). */
 export const STATUS_LABELS: Record<ScriptStatus, string> = {
-  pending: 'ждёт одобрения',
-  rejected: 'отклонён',
-  approved: 'одобрен, выключен',
-  active: 'включён',
+  pending: 'waiting for approval',
+  rejected: 'rejected',
+  approved: 'approved, off',
+  active: 'enabled',
 }
 
 function newId(): string {
@@ -57,10 +59,10 @@ function newId(): string {
 }
 
 async function checkCode(code: string): Promise<void> {
-  if (!code.trim()) throw new ScriptError('Пустой код')
-  if (Buffer.byteLength(code) > MAX_CODE_BYTES) throw new ScriptError('Код больше 32 КБ')
+  if (!code.trim()) throw new ScriptError(t`Empty code`)
+  if (Buffer.byteLength(code) > MAX_CODE_BYTES) throw new ScriptError(t`Code over 32 KB`)
   const err = await checkSyntax(code)
-  if (err) throw new ScriptError(`Ошибка в коде: ${err}`)
+  if (err) throw new ScriptError(t`Error in the code: ${err}`)
 }
 
 export function listScripts(): Script[] {
@@ -73,14 +75,14 @@ export function getScript(id: string): Script | undefined {
 
 export function findScript(ref: string): Script {
   const s = getScript(ref.trim()) ?? listScripts().find((x) => x.name.toLowerCase() === ref.trim().toLowerCase())
-  if (!s) throw new ScriptError(`Скрипт «${ref}» не найден — cron_list`)
+  if (!s) throw new ScriptError(t`Script “${ref}” not found — cron_list`)
   return s
 }
 
 export async function createScript(input: { name: string; description?: string; schedule: string; code: string }): Promise<Script> {
   const name = input.name.trim().slice(0, 80)
-  if (!name) throw new ScriptError('Нужно имя')
-  if (listScripts().some((s) => s.name.toLowerCase() === name.toLowerCase())) throw new ScriptError(`Скрипт «${name}» уже есть — меняй его через cron_update`)
+  if (!name) throw new ScriptError(t`A name is required`)
+  if (listScripts().some((s) => s.name.toLowerCase() === name.toLowerCase())) throw new ScriptError(t`Script “${name}” already exists — change it with cron_update`)
   const schedule = validateSchedule(input.schedule)
   await checkCode(input.code)
   const now = new Date()
@@ -110,7 +112,7 @@ export async function createScript(input: { name: string; description?: string; 
 }
 
 function assertFreeName(name: string): void {
-  if (listScripts().some((x) => x.name.toLowerCase() === name.toLowerCase())) throw new ScriptError(`«${name}» уже есть — меняй через ${name.startsWith('my_') ? 'tool_update' : 'cron_update'}`)
+  if (listScripts().some((x) => x.name.toLowerCase() === name.toLowerCase())) throw new ScriptError(t`“${name}” already exists — change it with ${name.startsWith('my_') ? 'tool_update' : 'cron_update'}`)
 }
 
 export async function createTool(input: { name: string; description: string; params: ToolParam[]; readOnly: boolean; code: string }): Promise<Script> {
@@ -123,7 +125,7 @@ export async function createTool(input: { name: string; description: string; par
     throw new ScriptError(e instanceof Error ? e.message : String(e))
   }
   assertFreeName(name)
-  if (!input.description.trim()) throw new ScriptError('Нужно описание — по нему ассистент решает, когда вызывать инструмент')
+  if (!input.description.trim()) throw new ScriptError(t`A description is required — the assistant decides from it when to call the tool`)
   await checkCode(input.code)
   const now = new Date()
   const row: Script = {
@@ -189,8 +191,8 @@ async function applyChange(s: Script, change: ScriptChange): Promise<Script> {
 /** Admin only: approves exactly this code (by hash) and switches the script on. */
 export function approveScript(id: string, codeHash: string): void {
   const s = getScript(id)
-  if (!s) throw new ScriptError('Скрипт не найден')
-  if (s.codeHash !== codeHash) throw new ScriptError('Код изменился, пока ты смотрел — открой заново')
+  if (!s) throw new ScriptError(t`Script not found`)
+  if (s.codeHash !== codeHash) throw new ScriptError(t`The code changed while you were looking — open it again`)
   getDb()
     .update(script)
     .set({ approvedHash: s.codeHash, approvedCode: s.code, approvedSpec: s.spec, approvedAt: new Date(), rejectedHash: null, rejectReason: null, enabled: true })
@@ -204,8 +206,8 @@ export function approveScript(id: string, codeHash: string): void {
  */
 export function rejectScript(id: string, codeHash: string): 'deleted' | 'reverted' {
   const s = getScript(id)
-  if (!s) throw new ScriptError('Скрипт не найден')
-  if (s.codeHash !== codeHash) throw new ScriptError('Код изменился, пока ты смотрел — открой заново')
+  if (!s) throw new ScriptError(t`Script not found`)
+  if (s.codeHash !== codeHash) throw new ScriptError(t`The code changed while you were looking — open it again`)
   if (!s.approvedHash || s.approvedCode === null) {
     deleteScript(id)
     return 'deleted'
@@ -219,7 +221,7 @@ export function rejectScript(id: string, codeHash: string): 'deleted' | 'reverte
 }
 
 export function setScriptEnabled(s: Script, enabled: boolean): void {
-  if (enabled && s.approvedHash !== s.codeHash) throw new ScriptError('Этот код ещё не одобрен в админке — включить нельзя')
+  if (enabled && s.approvedHash !== s.codeHash) throw new ScriptError(t`This code is not approved in the admin panel yet — it cannot be turned on`)
   getDb().update(script).set({ enabled, updatedAt: new Date() }).where(eq(script.id, s.id)).run()
 }
 

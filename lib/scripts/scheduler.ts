@@ -6,6 +6,7 @@ import { runScript, type RunResult } from './sandbox'
 import { SecretVault } from './secrets'
 import { limitsFor, type LimitSettings } from './limits'
 import { getScript, listScripts, recordRun, statusOf, type Script } from './store'
+import { t } from '../i18n'
 
 /**
  * Hub tools for hub.tool(); imported lazily to avoid a cycle with the registry. Read-only tools
@@ -21,13 +22,13 @@ async function callHubTool(name: string, args: unknown, allowWrite: boolean): Pr
     if (state.status !== 'active') continue
     const tool = enabledTools(state).find((t) => t.name === name)
     if (!tool) continue
-    if (state.connector.id === 'scripts') throw new Error(`${name} недоступен из скриптов`)
-    if (!tool.annotations.readOnlyHint && !allowWrite) throw new Error(`${name} меняет данные — из скриптов это можно, только когда в настройках скриптов открыта локальная сеть`)
+    if (state.connector.id === 'scripts') throw new Error(t`${name} is not available to scripts`)
+    if (!tool.annotations.readOnlyHint && !allowWrite) throw new Error(t`${name} changes data — scripts may do that only when the local network is open in the script settings`)
     const jackett = activeConfig('jackett') as { baseUrl?: string; apiKey?: string } | null
     const access = jackett?.baseUrl && jackett.apiKey ? { baseUrl: jackett.baseUrl, apiKey: jackett.apiKey } : null
     return outputText(await tool.run(args, { config: state.config, resolveResult: (id) => resolveResult(id, access) }))
   }
-  throw new Error(`Инструмента ${name} нет или его коннектор выключен`)
+  throw new Error(t`There is no ${name} tool or its connector is off`)
 }
 
 /** Everything a run needs from the hub: network policy and limits, secrets with shared connector values, hub tools. */
@@ -57,9 +58,9 @@ const busy = (globalForSched.__hubScriptBusy ??= new Set())
 /** Run a script now. Refuses code that is not the approved version. */
 export async function executeScript(id: string, trigger: 'cron' | 'manual' | 'assistant'): Promise<RunResult> {
   const s = getScript(id)
-  if (!s) throw new Error('Скрипт не найден')
-  if (s.approvedHash !== s.codeHash) throw new Error('Код не одобрен — запуск невозможен')
-  if (busy.has(id)) throw new Error('Скрипт уже выполняется')
+  if (!s) throw new Error(t`Script not found`)
+  if (s.approvedHash !== s.codeHash) throw new Error(t`The code is not approved — it cannot run`)
+  if (busy.has(id)) throw new Error(t`The script is already running`)
   busy.add(id)
   try {
     const r = await runScript(s.id, s.code, await runDeps('cron'))
@@ -69,7 +70,7 @@ export async function executeScript(id: string, trigger: 'cron' | 'manual' | 'as
       connectorId: 'scripts',
       args: { trigger },
       ok: r.ok,
-      result: r.ok ? (r.output ?? 'готово') : undefined,
+      result: r.ok ? (r.output ?? t`finished`) : undefined,
       error: r.error ?? undefined,
       durationMs: r.durationMs,
     })
@@ -85,8 +86,8 @@ export async function executeScript(id: string, trigger: 'cron' | 'manual' | 'as
  */
 export async function executeTool(id: string, args: Record<string, unknown>, trigger: 'assistant' | 'manual' = 'assistant'): Promise<RunResult> {
   const s = getScript(id)
-  if (!s || s.kind !== 'tool') throw new Error('Инструмент не найден')
-  if (s.approvedHash !== s.codeHash) throw new Error('Код не одобрен — вызов невозможен')
+  if (!s || s.kind !== 'tool') throw new Error(t`Tool not found`)
+  if (s.approvedHash !== s.codeHash) throw new Error(t`The code is not approved — it cannot be called`)
   const r = await runScript(s.id, s.code, { ...(await runDeps('tool')), args })
   recordRun(s, trigger, r)
   return r

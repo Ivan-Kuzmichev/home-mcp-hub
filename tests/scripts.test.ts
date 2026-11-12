@@ -225,3 +225,13 @@ describe('MCP tools from the Scripts screen', () => {
     saveConfig(getConnector('scripts')!, {})
   })
 })
+
+describe('Scripts in English', () => {
+  it('metadata and replies', async () => {
+    const { connectorLanguageGaps } = await import('./helpers')
+    const { runWithLang } = await import('@/lib/i18n')
+    expect(await connectorLanguageGaps(scripts, cfg)).toEqual({ cyrillic: null, missing: [] })
+    await expect(runWithLang('en', () => runTool(scripts, 'cron_create', cfg, { name: 'bad', schedule: '* * *', code: 'return 1' }))).rejects.toThrow('The schedule — 5 cron fields')
+    expect(runWithLang('en', () => scripts.instructions?.(cfg, { tools: scripts.tools.map((x) => x.name) }))).toContain('Limits: cron script 30 s, own tool 25 s')
+  })
+})

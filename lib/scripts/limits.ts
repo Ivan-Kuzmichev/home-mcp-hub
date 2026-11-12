@@ -1,3 +1,4 @@
+import { t } from '../i18n'
 // Run limits the admin can change in the scripts connector. Defaults are the old fixed values;
 // the bounds keep one script from holding the hub (memory and the state limits stay fixed).
 
@@ -43,5 +44,5 @@ export function limitsFor(kind: 'cron' | 'tool', s: LimitSettings | null | undef
 export function limitsLine(s: LimitSettings | null | undefined): string {
   const cron = limitsFor('cron', s)
   const tool = limitsFor('tool', s)
-  return `Лимиты: cron-скрипт ${cron.timeMs / 1000} с, свой инструмент ${tool.timeMs / 1000} с, один fetch до ${cron.fetchTimeoutMs / 1000} с, ${cron.fetches} запросов, ответ до ${cron.responseBytes / 1024 / 1024} МБ, память 64 МБ.`
+  return t`Limits: cron script ${cron.timeMs / 1000} s, own tool ${tool.timeMs / 1000} s, one fetch up to ${cron.fetchTimeoutMs / 1000} s, ${cron.fetches} requests, response up to ${cron.responseBytes / 1024 / 1024} MB, memory 64 MB.`
 }

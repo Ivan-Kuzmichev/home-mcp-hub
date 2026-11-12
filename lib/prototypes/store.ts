@@ -5,6 +5,7 @@ import { hash as argonHash, verify as argonVerify } from '@node-rs/argon2'
 import { and, desc, eq, isNotNull, lt, sql } from 'drizzle-orm'
 import { getDb } from '../db'
 import { prototype } from '../db/schema'
+import { t } from '../i18n'
 
 export type Prototype = typeof prototype.$inferSelect
 
@@ -55,13 +56,13 @@ export function isExpired(p: Pick<Prototype, 'expiresAt'>, now = new Date()): bo
 
 function checkHtml(html: string, limit: number): number {
   const size = Buffer.byteLength(html, 'utf8')
-  if (size === 0) throw new PrototypeError('Пустой HTML')
-  if (size > limit) throw new PrototypeError(`HTML ${(size / 1024 / 1024).toFixed(1)} МБ — больше лимита ${limit / 1024 / 1024} МБ`)
+  if (size === 0) throw new PrototypeError(t`Empty HTML`)
+  if (size > limit) throw new PrototypeError(t`HTML ${(size / 1024 / 1024).toFixed(1)} MB — over the ${limit / 1024 / 1024} MB limit`)
   return size
 }
 
 async function hashPin(pin: string): Promise<string> {
-  if (!PIN_PATTERN.test(pin)) throw new PrototypeError('Пин — от 4 до 8 цифр')
+  if (!PIN_PATTERN.test(pin)) throw new PrototypeError(t`The PIN is 4 to 8 digits`)
   return argonHash(pin)
 }
 
@@ -123,7 +124,7 @@ export function listPrototypes(): Prototype[] {
 export async function publish(input: { html: string; title: string; pin?: string; expiry?: Expiry; maxBytes?: number; draft?: boolean }): Promise<Prototype> {
   const size = checkHtml(input.html, input.maxBytes ?? MAX_HTML_BYTES)
   const title = input.title.trim().slice(0, 200)
-  if (!title) throw new PrototypeError('Нужно название')
+  if (!title) throw new PrototypeError(t`A title is required`)
   const pinHash = input.pin ? await hashPin(input.pin) : null
   const now = new Date()
   const id = randomUUID()
@@ -150,7 +151,7 @@ export async function update(
   }
   if (change.title !== undefined) {
     const title = change.title.trim().slice(0, 200)
-    if (!title) throw new PrototypeError('Нужно название')
+    if (!title) throw new PrototypeError(t`A title is required`)
     set.title = title
   }
   if (change.pin !== undefined) {
@@ -191,9 +192,9 @@ export function startDraft(p: Pick<Prototype, 'id'>, html: string): number {
 
 export function appendDraft(p: Pick<Prototype, 'id'>, chunk: string): number {
   const current = draftSize(p)
-  if (current === null) throw new PrototypeError('Черновика нет: начни с prototype_publish или prototype_update с more: true')
+  if (current === null) throw new PrototypeError(t`No draft: start with prototype_publish or prototype_update with more: true`)
   const size = checkHtml(chunk, MAX_TOOL_HTML_BYTES)
-  if (current + size > MAX_HTML_BYTES) throw new PrototypeError(`Вместе с этим куском HTML больше ${MAX_HTML_BYTES / 1024 / 1024} МБ`)
+  if (current + size > MAX_HTML_BYTES) throw new PrototypeError(t`With this part the HTML is over ${MAX_HTML_BYTES / 1024 / 1024} MB`)
   fs.appendFileSync(draftFile(p.id), chunk, 'utf8')
   getDb().update(prototype).set({ updatedAt: new Date() }).where(eq(prototype.id, p.id)).run()
   return current + size
@@ -205,7 +206,7 @@ export async function commitDraft(p: Prototype): Promise<Prototype> {
   try {
     html = fs.readFileSync(draftFile(p.id), 'utf8')
   } catch {
-    throw new PrototypeError('Черновика нет: начни с prototype_publish или prototype_update с more: true')
+    throw new PrototypeError(t`No draft: start with prototype_publish or prototype_update with more: true`)
   }
   const next = await update(p, { html })
   fs.rmSync(draftFile(p.id), { force: true })
@@ -215,7 +216,7 @@ export async function commitDraft(p: Prototype): Promise<Prototype> {
 /** Rollback = the old file becomes a new version, so history stays linear. */
 export async function rollback(p: Prototype, version: number): Promise<Prototype> {
   const html = readHtml(p, version)
-  if (html === null) throw new PrototypeError(`Версии v${version} нет`)
+  if (html === null) throw new PrototypeError(t`No version v${version}`)
   return update(p, { html })
 }
 

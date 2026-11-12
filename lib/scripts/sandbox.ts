@@ -6,6 +6,7 @@ import { scriptState } from '../db/schema'
 import { DEFAULT_LIMITS, type RunLimits } from './limits'
 import { assertAllowedUrl, DEFAULT_NET_POLICY, NetworkPolicyError, scriptAgent, type NetPolicy } from './net'
 import { SecretPolicyError, SecretVault } from './secrets'
+import { t } from '../i18n'
 
 /** Fixed limits; time, requests and response size are in limits.ts and come from the settings. */
 export const LIMITS = {
@@ -17,15 +18,15 @@ export const LIMITS = {
 }
 
 /** What the model reads before writing a script (cron_create description). */
-export const SANDBOX_API_DOC = `Код — тело async-функции (можно await и return). Доступно:
-- await fetch(url, { method, headers, body }) → { status, ok, headers, text, json() }. body — строка или объект (уйдёт как JSON). Редиректы не выполняются сами (3xx вернётся как есть). Куда можно ходить (внешние адреса, локальная сеть) — задаёт пользователь, см. инструкции хаба.
-- Секреты — только заглушками {{secret:ИМЯ}} в url, headers или body; хаб подставит значение, если адрес совпадает с хостами секрета. Значение секрета скрипту недоступно. Список — script_secrets: там же настройки коннекторов, которыми поделился пользователь (адрес вроде {{secret:JACKETT_BASE_URL}} можно ставить в начало url).
-- log(...значения) — в журнал запуска.
-- state.get(key), state.set(key, value) — память между запусками (JSON).
-- await hub.tool(имя, аргументы) — инструменты хаба (torrents_status, search_torrents, paperless_search…), возвращают текст. Инструменты с записью (torrent_add, paperless_update…) — только если пользователь открыл скриптам локальную сеть; удаление по-прежнему требует confirm: true.
-- args — аргументы вызова (для MCP-инструментов; у cron-скрипта пустой объект).
-- return значение — результат запуска.
-Нет: require/import, process, файлов, таймеров. Лимиты времени, запросов и памяти — в инструкциях хаба.`
+export const SANDBOX_API_DOC = `The code is the body of an async function (await and return work). Available:
+- await fetch(url, { method, headers, body }) → { status, ok, headers, text, json() }. body — a string or an object (sent as JSON). Redirects are not followed (a 3xx comes back as is). Where requests may go (external addresses, the local network) is set by the user, see the hub instructions.
+- Secrets — only as {{secret:NAME}} placeholders in url, headers or body; the hub substitutes the value when the address matches the secret's hosts. The script never sees the value. The list is in script_secrets: it also has connector settings the user shared (an address like {{secret:JACKETT_BASE_URL}} can start a url).
+- log(...values) — to the run log.
+- state.get(key), state.set(key, value) — memory between runs (JSON).
+- await hub.tool(name, args) — hub tools (torrents_status, search_torrents, paperless_search…), they return text. Tools that change data (torrent_add, paperless_update…) — only when the user opened the local network to scripts; deleting still needs confirm: true.
+- args — the call arguments (for MCP tools; an empty object for a cron script).
+- return value — the run result.
+Not available: require/import, process, files, timers. Time, request and memory limits are in the hub instructions.`
 
 export type RunResult = { ok: boolean; output: string | null; logs: string[]; error: string | null; durationMs: number; fetches: number }
 
@@ -62,7 +63,7 @@ globalThis.hub = { tool: (name, args) => __tool(String(name), JSON.stringify(arg
 
 function cap(text: string, bytes: number): string {
   if (Buffer.byteLength(text) <= bytes) return text
-  return `${Buffer.from(text).subarray(0, bytes).toString('utf8')}… (обрезано)`
+  return t`${Buffer.from(text).subarray(0, bytes).toString('utf8')}… (cut)`
 }
 
 async function readCapped(res: Response, limit: number): Promise<string> {
@@ -76,7 +77,7 @@ async function readCapped(res: Response, limit: number): Promise<string> {
     size += value.length
     if (size > limit) {
       await reader.cancel()
-      throw new Error(`Ответ больше ${limit / 1024 / 1024} МБ`)
+      throw new Error(t`Response over ${limit / 1024 / 1024} MB`)
     }
     chunks.push(value)
   }
@@ -86,9 +87,9 @@ async function readCapped(res: Response, limit: number): Promise<string> {
 function errorText(ctx: QuickJSContext, handle: QuickJSHandle, timeMs = DEFAULT_LIMITS.timeMs): string {
   const e = ctx.dump(handle) as { name?: string; message?: string; stack?: string } | string
   if (typeof e !== 'object' || e === null) return String(e)
-  if (e.message === 'interrupted') return `Превышено время выполнения (${timeMs / 1000} с)`
+  if (e.message === 'interrupted') return t`Time limit exceeded (${timeMs / 1000} s)`
   const where = /eval\.js:(\d+)/.exec(e.stack ?? '')?.[1]
-  return `${e.name ?? 'Error'}: ${e.message ?? ''}${where ? ` (строка ${Math.max(1, Number(where) - 1)})` : ''}`
+  return `${e.name ?? 'Error'}: ${e.message ?? ''}${where ? t` (line ${Math.max(1, Number(where) - 1)})` : ''}`
 }
 
 /** Checks syntax without running anything. Returns the error text or null. */
@@ -171,14 +172,14 @@ export async function runScript(scriptId: string, code: string, deps: SandboxDep
   }
 
   asyncFn('__fetch', async (rawUrl, optsJson) => {
-    if (++fetches > limits.fetches) throw new Error(`Больше ${limits.fetches} запросов за запуск`)
+    if (++fetches > limits.fetches) throw new Error(t`More than ${limits.fetches} requests in one run`)
     const opts = JSON.parse(optsJson) as { method?: string; headers?: Record<string, unknown>; body?: unknown }
     // Host is fixed before secrets go in: a placeholder cannot change where the request goes.
     // Plain values (a connector's address) may set the host; secrets never can.
     const expanded = vault.expandParams(rawUrl)
     const host = assertAllowedUrl(expanded.replace(/\{\{secret:[A-Z0-9_]+\}\}/g, 'x'), net).hostname
     const url = vault.substitute(expanded, host)
-    if (assertAllowedUrl(url, net).hostname !== host) throw new SecretPolicyError('Секрет не может менять адрес запроса')
+    if (assertAllowedUrl(url, net).hostname !== host) throw new SecretPolicyError(t`A secret cannot change the request address`)
     const headers: Record<string, string> = {}
     for (const [k, v] of Object.entries(opts.headers ?? {})) headers[k] = vault.substitute(vault.expandParams(String(v)), host)
     let body: string | undefined
@@ -211,18 +212,18 @@ export async function runScript(scriptId: string, code: string, deps: SandboxDep
   const db = getDb()
   syncFn('__stateGet', (key) => db.select().from(scriptState).where(and(eq(scriptState.scriptId, scriptId), eq(scriptState.key, key))).get()?.valueJson)
   syncFn('__stateSet', (key, valueJson) => {
-    if (Buffer.byteLength(valueJson) > LIMITS.stateValueBytes) throw new Error('state: значение больше 64 КБ')
+    if (Buffer.byteLength(valueJson) > LIMITS.stateValueBytes) throw new Error(t`state: value over 64 KB`)
     const exists = db.select().from(scriptState).where(and(eq(scriptState.scriptId, scriptId), eq(scriptState.key, key))).get()
     if (!exists) {
       const n = db.select({ n: count() }).from(scriptState).where(eq(scriptState.scriptId, scriptId)).get()?.n ?? 0
-      if (n >= LIMITS.stateKeys) throw new Error(`state: больше ${LIMITS.stateKeys} ключей`)
+      if (n >= LIMITS.stateKeys) throw new Error(t`state: more than ${LIMITS.stateKeys} keys`)
     }
     db.insert(scriptState).values({ scriptId, key, valueJson }).onConflictDoUpdate({ target: [scriptState.scriptId, scriptState.key], set: { valueJson } }).run()
     return undefined
   })
 
   asyncFn('__tool', async (name, argsJson) => {
-    if (!deps.callTool) throw new Error('hub.tool недоступен')
+    if (!deps.callTool) throw new Error(t`hub.tool is not available`)
     return deps.callTool(name, JSON.parse(argsJson))
   })
 
@@ -250,7 +251,7 @@ export async function runScript(scriptId: string, code: string, deps: SandboxDep
     rt.executePendingJobs()
     const timeout = new Promise<'timeout'>((r) => setTimeout(() => r('timeout'), Math.max(0, deadline - Date.now()) + 50))
     const outcome = await Promise.race([settled, timeout])
-    if (outcome === 'timeout') throw new Error(`Превышено время выполнения (${timeMs / 1000} с)`)
+    if (outcome === 'timeout') throw new Error(t`Time limit exceeded (${timeMs / 1000} s)`)
     if (outcome.error) {
       const msg = errorText(ctx, outcome.error, timeMs)
       outcome.error.dispose()

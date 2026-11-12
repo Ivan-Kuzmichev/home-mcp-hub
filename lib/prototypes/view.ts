@@ -6,6 +6,7 @@ import { formatAgo, formatWhen } from '../format'
 import { href } from '../prefix'
 import { dataSize } from './data'
 import { isExpired, listVersions, publicUrl, type Prototype } from './store'
+import { t } from '../i18n'
 
 export async function cardData(p: Prototype): Promise<CardData> {
   const url = publicUrl(p.slug)
@@ -15,7 +16,7 @@ export async function cardData(p: Prototype): Promise<CardData> {
     title: p.title,
     url,
     qr: await QRCode.toDataURL(url, { margin: 1, width: 360 }),
-    meta: `Опубликован ${formatWhen(p.createdAt)} · ${formatSize(p.sizeBytes)} · ${p.views} просм.`,
+    meta: t`Published ${formatWhen(p.createdAt)} · ${formatSize(p.sizeBytes)} · ${p.views} views`,
     hasPin: !!p.pinHash,
     expiryText: expiryText(p),
     expired: isExpired(p),

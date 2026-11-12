@@ -1,6 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { PrototypeError, prototypesDir, type Prototype } from './store'
+import { t } from '../i18n'
 
 // Per-prototype JSON storage for window.hub.db: /data/prototypes/{id}/data.json,
 // removed together with the prototype. Not versioned with the HTML.
@@ -27,8 +28,8 @@ export function readData(p: Pick<Prototype, 'id'>): StoredData {
 /** Replace the whole document. `ifRev` — optimistic lock: a different current rev throws DataConflictError. */
 export function writeData(p: Pick<Prototype, 'id'>, data: unknown, ifRev?: number): number {
   const json = JSON.stringify(data)
-  if (json === undefined) throw new PrototypeError('Данные должны быть JSON')
-  if (Buffer.byteLength(json) > MAX_DATA_BYTES) throw new PrototypeError(`Данные больше ${MAX_DATA_BYTES / 1024 / 1024} МБ`)
+  if (json === undefined) throw new PrototypeError(t`The data must be JSON`)
+  if (Buffer.byteLength(json) > MAX_DATA_BYTES) throw new PrototypeError(t`Data over ${MAX_DATA_BYTES / 1024 / 1024} MB`)
   const current = readData(p).rev
   if (ifRev !== undefined && ifRev !== current) throw new DataConflictError()
   const rev = current + 1

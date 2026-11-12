@@ -1,6 +1,7 @@
 import dns from 'node:dns'
 import { isIP } from 'node:net'
 import { Agent } from 'undici'
+import { t } from '../i18n'
 
 /**
  * Where scripts may connect: external addresses and/or the local network (NAS, docker network,
@@ -34,8 +35,8 @@ export class NetworkPolicyError extends Error {}
 
 /** Why this address is off limits under the policy, or null when it is allowed. */
 function refusal(ip: string, policy: NetPolicy): string | null {
-  if (isPrivateAddress(ip)) return policy.local ? null : 'локальная сеть скриптам недоступна'
-  return policy.external ? null : 'внешние адреса скриптам недоступны'
+  if (isPrivateAddress(ip)) return policy.local ? null : t`the local network is closed to scripts`
+  return policy.external ? null : t`external addresses are closed to scripts`
 }
 
 type LookupCb = (err: NodeJS.ErrnoException | null, address: string | dns.LookupAddress[], family?: number) => void
@@ -71,21 +72,21 @@ export function scriptAgent(policy: NetPolicy = DEFAULT_NET_POLICY): Agent {
 
 /** URL checks that do not need DNS: scheme, literal IPs and local names. */
 export function assertAllowedUrl(raw: string, policy: NetPolicy = DEFAULT_NET_POLICY): URL {
-  if (!policy.local && !policy.external) throw new NetworkPolicyError('Сеть скриптам выключена в настройках коннектора')
+  if (!policy.local && !policy.external) throw new NetworkPolicyError(t`Network access for scripts is off in the connector settings`)
   let url: URL
   try {
     url = new URL(raw)
   } catch {
-    throw new NetworkPolicyError(`Неверный адрес: ${raw.slice(0, 80)}`)
+    throw new NetworkPolicyError(t`Invalid address: ${raw.slice(0, 80)}`)
   }
-  if (url.protocol !== 'https:' && url.protocol !== 'http:') throw new NetworkPolicyError('Только http и https')
-  if (url.username || url.password) throw new NetworkPolicyError('Логин и пароль в адресе не поддерживаются — используй заголовки и секреты')
+  if (url.protocol !== 'https:' && url.protocol !== 'http:') throw new NetworkPolicyError(t`Only http and https`)
+  if (url.username || url.password) throw new NetworkPolicyError(t`A username and password in the address are not supported — use headers and secrets`)
   const host = url.hostname.replace(/^\[|\]$/g, '')
   if (isIP(host)) {
     const why = refusal(host, policy)
     if (why) throw new NetworkPolicyError(`${host}: ${why}`)
   } else if (!policy.local && (host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local') || host.endsWith('.internal') || !host.includes('.'))) {
-    throw new NetworkPolicyError(`${host}: локальные имена скриптам недоступны`)
+    throw new NetworkPolicyError(t`${host}: local names are closed to scripts`)
   }
   return url
 }
