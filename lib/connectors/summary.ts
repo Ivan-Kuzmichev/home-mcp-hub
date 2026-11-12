@@ -1,7 +1,7 @@
 import { connectorStates, enabledTools } from './active'
 import { plural } from './format'
 import type { ConnectorRow } from './store'
-import { t } from '../i18n'
+import { t, tr } from '../i18n'
 
 export type ConnectorSummary = {
   id: string
@@ -22,7 +22,7 @@ function checkLine(row: ConnectorRow): string | null {
 export function connectorSummaries(): ConnectorSummary[] {
   return connectorStates().map((s) => {
     const { connector: c } = s
-    const base = { id: c.id, name: c.name, description: c.description }
+    const base = { id: c.id, name: tr(c.name), description: tr(c.description) }
     if (s.status === 'unconfigured') {
       return { ...base, configured: false, enabled: false, tone: 'muted', line: t`not set up`, lastCheckAt: null }
     }

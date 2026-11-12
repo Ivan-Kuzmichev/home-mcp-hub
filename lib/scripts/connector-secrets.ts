@@ -1,5 +1,6 @@
 import { connectorStates } from '../connectors/active'
 import { fieldRegistry, type RegisteredConnector } from '../connectors/types'
+import { tr } from '../i18n'
 import { getSetting, setSetting } from '../settings'
 
 /**
@@ -38,7 +39,7 @@ function sharedFields(c: RegisteredConnector) {
   return Object.entries(c.shape)
     .map(([key, schema]) => ({ key, meta: fieldRegistry.get(schema) }))
     .filter((f) => f.meta && f.meta.widget !== 'textarea')
-    .map((f) => ({ key: f.key, label: f.meta!.label, secret: !!f.meta!.secret }))
+    .map((f) => ({ key: f.key, label: tr(f.meta!.label), secret: !!f.meta!.secret }))
 }
 
 function apiHost(config: Record<string, unknown>): string | null {

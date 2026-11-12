@@ -54,7 +54,7 @@ export function buildInstructions(): string {
 export function defaultCustomInstructions(): string {
   const names = connectorStates()
     .filter((s) => s.status === 'active')
-    .map((s) => s.connector.name)
+    .map((s) => tr(s.connector.name))
   return [
     t`Home Hub is the user's home hub${names.length ? `: ${names.join(', ')}` : ''}.`,
     t`For the full rules of the hub, call hub_guide before the first action with it in this chat.`,
@@ -134,7 +134,7 @@ async function hubStatus(): Promise<string> {
   const states = connectorStates()
   const lines = await Promise.all(
     states.map(async (s) => {
-      const name = s.connector.name
+      const name = tr(s.connector.name)
       switch (s.status) {
         case 'unconfigured':
           return t`• ${name}: not set up`
