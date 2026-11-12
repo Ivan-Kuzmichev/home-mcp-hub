@@ -35,7 +35,7 @@ describe('mitmproxy mock rules', () => {
     const sent = JSON.parse(payloadFor([{ ...r, id: 'b' }, { ...r, id: 'c', enabled: false }], true)) as { allowed: boolean; rules: MockRule[] }
     expect(sent.allowed).toBe(true)
     expect(sent.rules.map((x) => [x.id, x.enabled])).toEqual([['b', true], ['c', false]])
-    expect(payloadFor([{ ...r, id: 'b' }], false)).toBe('{"allowed":false,"rules":[]}')
+    expect(payloadFor([{ ...r, id: 'b' }], false)).toBe('{"allowed":false,"rules":[],"lang":"en"}')
   })
   it('validates replace rules and match shape', () => {
     const base = { name: 'n', kind: 'replace', match: { host: 'a.example', path: '/x' } }

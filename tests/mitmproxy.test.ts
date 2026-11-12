@@ -327,6 +327,15 @@ describe('mock tools', () => {
     expect(sent.rules.map((r) => r.enabled)).toEqual([false])
   })
 
+  it('the payload carries the hub language for the addon', async () => {
+    const { runWithLang } = await import('@/lib/i18n')
+    await runTool(mitmproxy, 'mitm_mock_patch', mockCfg(), patchArgs)
+    expect(JSON.parse(String(puts.at(-1)!.hub_mocks)).lang).toBe('ru')
+    const out = await runWithLang('en', () => runTool(mitmproxy, 'mitm_mock_toggle', mockCfg(), { id: listMocks()[0]!.id, enabled: false }))
+    expect(out).toMatch(/^Mock “.+” is disabled/)
+    expect(JSON.parse(String(puts.at(-1)!.hub_mocks)).lang).toBe('en')
+  })
+
   it('lists rules with hit counts from flow comments', async () => {
     seedMock('m1', { name: 'Премиум', match: { host: 'api.mocked.example', path: '/*', method: 'GET' }, kind: 'patch', json: [{ path: 'a', value: 1 }] })
     expect(await runTool(mitmproxy, 'mitm_mocks', mockCfg())).toBe('• m1 «Премиум» — вкл · patch GET api.mocked.example/* · сработал 2 раза, из них json пропущен 1')
@@ -410,5 +419,14 @@ describe('mock tools', () => {
   it('mitm_clear clears the captured flows', async () => {
     expect(await runTool(mitmproxy, 'mitm_clear', mockCfg())).toContain('очищен')
     expect(cleared).toBe(1)
+  })
+})
+
+describe('mitmproxy in English', () => {
+  it('metadata and replies', async () => {
+    const { connectorLanguageGaps } = await import('./helpers')
+    const { runWithLang } = await import('@/lib/i18n')
+    expect(await connectorLanguageGaps(mitmproxy, cfg({ allowMocks: true }))).toEqual({ cyrillic: null, missing: [] })
+    await expect(runWithLang('en', () => runTool(mitmproxy, 'mitm_mock_patch', cfg({ allowMocks: true }), { name: 'x', host: 'a.example', path: '/*' }))).rejects.toThrow('A patch needs at least one of: status, setHeaders, removeHeaders, json or delayMs')
   })
 })

@@ -27,7 +27,7 @@ export function connectorSummaries(): ConnectorSummary[] {
       return { ...base, configured: false, enabled: false, tone: 'muted', line: t`not set up`, lastCheckAt: null }
     }
     const row = s.row
-    if (s.status === 'disabled') return { ...base, configured: true, enabled: false, tone: 'muted', line: t`off`, lastCheckAt: row.lastCheckAt }
+    if (s.status === 'disabled') return { ...base, configured: true, enabled: false, tone: 'muted', line: t`turned off`, lastCheckAt: row.lastCheckAt }
     if (s.status !== 'active') return { ...base, configured: true, enabled: true, tone: 'err', line: t`settings incomplete`, lastCheckAt: row.lastCheckAt }
     const tools = enabledTools(s).length
     const toolsText = `${tools} ${plural(tools, ['tool', 'tools'])}`

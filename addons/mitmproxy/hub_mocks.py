@@ -32,7 +32,47 @@ _INDEX = re.compile(r"\[(\d+|\*)\]")
 # Flow-list marks (valid keys of mitmproxy.utils.emoji in mitmproxy 12.x).
 MARKS = {"replace": ":large_blue_circle:", "patch": ":large_orange_diamond:"}
 MAX_EDITS = 100
-NOT_ALLOWED = "Моки выключены в хабе"
+# Texts for the mitmweb commands. The hub sends its language in the payload ("lang"); an older hub
+# sends none and gets Russian, as before. The «(json пропущен)» flow comment is protocol, not text.
+TEXTS = {
+    "ru": {
+        "not_allowed": "Моки выключены в хабе",
+        "none": "Моков нет.",
+        "fired": "сработал {n} {times}",
+        "skipped": ", из них json пропущен {skipped}",
+        "error": "Ошибка: {exc}",
+        "no_mock": "Нет мока «{target}» — см. hub.mocks",
+        "deleted": "удалён",
+        "enabled": "включён",
+        "disabled": "выключен",
+        "done": "Мок «{name}» {done}.",
+    },
+    "en": {
+        "not_allowed": "Mocks are off in the hub",
+        "none": "No mocks.",
+        "fired": "hit {n} {times}",
+        "skipped": ", json skipped in {skipped} of them",
+        "error": "Error: {exc}",
+        "no_mock": "No mock “{target}” — see hub.mocks",
+        "deleted": "deleted",
+        "enabled": "turned on",
+        "disabled": "turned off",
+        "done": "Mock “{name}” {done}.",
+    },
+}
+NOT_ALLOWED = TEXTS["ru"]["not_allowed"]
+
+
+def payload_lang(raw):
+    """The hub's language from the payload; Russian when it is missing or unreadable."""
+    try:
+        return "en" if json.loads(raw or "{}").get("lang") == "en" else "ru"
+    except (ValueError, AttributeError):
+        return "ru"
+
+
+def _text(lang, key, **values):
+    return TEXTS[lang][key].format(**values)
 
 
 def _command(name):
@@ -182,7 +222,9 @@ def _dumps(value):
     return json.dumps(value, ensure_ascii=False, separators=(",", ":"))
 
 
-def _times(n):
+def _times(n, lang="ru"):
+    if lang == "en":
+        return "time" if n == 1 else "times"
     if n % 10 in (2, 3, 4) and n % 100 not in (12, 13, 14):
         return "раза"
     return "раз"
@@ -201,16 +243,16 @@ def _hits(flows, rule_id):
     return n, skipped
 
 
-def format_mocks(rules, flows):
+def format_mocks(rules, flows, lang="ru"):
     if not rules:
-        return "Моков нет."
+        return _text(lang, "none")
     lines = []
     for i, r in enumerate(rules, 1):
         match = r.get("match") or {}
         method = match.get("method")
         target = f"{method.upper() + ' ' if method else ''}{match.get('host', '?')}{match.get('path', '')}"
         n, skipped = _hits(flows, r.get("id"))
-        fired = f"сработал {n} {_times(n)}" + (f", из них json пропущен {skipped}" if skipped else "")
+        fired = _text(lang, "fired", n=n, times=_times(n, lang)) + (_text(lang, "skipped", skipped=skipped) if skipped else "")
         mark = "✗" if r.get("enabled") is False else "✓"
         lines.append(f"{i}. {mark} {r.get('name') or r.get('id')} — {r.get('kind')} {target} · {fired}")
     return "\n".join(lines)
@@ -220,6 +262,7 @@ class HubMocks:
     def __init__(self):
         self._raw = None
         self._allowed = False
+        self._lang = "ru"
         self._rules = []
         # A new epoch per addon start tells the hub that edit numbering restarted.
         self._epoch = secrets.token_hex(8)
@@ -241,6 +284,7 @@ class HubMocks:
         if raw != self._raw:
             self._raw = raw
             self._allowed, self._rules = parse_payload(raw)
+            self._lang = payload_lang(raw)
 
     def _current_rules(self):
         self._refresh()
@@ -262,11 +306,11 @@ class HubMocks:
         try:
             self._refresh()
             if not self._allowed:
-                return NOT_ALLOWED
-            return format_mocks(self._rules, self._view())
+                return _text(self._lang, "not_allowed")
+            return format_mocks(self._rules, self._view(), self._lang)
         except Exception as exc:
             logger.warning("hub_mocks: list failed: %s", exc)
-            return f"Ошибка: {exc}"
+            return _text(self._lang, "error", exc=exc)
 
     def _edit(self, target, op):
         from mitmproxy import ctx
@@ -274,21 +318,21 @@ class HubMocks:
         try:
             self._refresh()
             if not self._allowed:
-                return NOT_ALLOWED
+                return _text(self._lang, "not_allowed")
             target = str(target).strip()
             index = next((i for i, r in enumerate(self._rules) if r.get("id") == target), None)
             if index is None and target.isdigit() and 1 <= int(target) <= len(self._rules):
                 index = int(target) - 1
             if index is None:
-                return f"Нет мока «{target}» — см. hub.mocks"
+                return _text(self._lang, "no_mock", target=target)
             rules = [dict(r) for r in self._rules]
             rule = rules[index]
             if op == "delete":
                 del rules[index]
-                done = "удалён"
+                done = _text(self._lang, "deleted")
             else:
                 rule["enabled"] = op == "enable"
-                done = "включён" if op == "enable" else "выключен"
+                done = _text(self._lang, "enabled" if op == "enable" else "disabled")
             self._seq += 1
             self._edits = (self._edits + [{"seq": self._seq, "op": op, "id": rule.get("id")}])[-MAX_EDITS:]
             data = json.loads(self._raw)
@@ -299,10 +343,10 @@ class HubMocks:
                 hub_mocks_edits=_dumps({"epoch": self._epoch, "edits": self._edits}),
             )
             self._raw, self._rules = raw, rules
-            return f"Мок «{rule.get('name') or rule.get('id')}» {done}."
+            return _text(self._lang, "done", name=rule.get("name") or rule.get("id"), done=done)
         except Exception as exc:
             logger.warning("hub_mocks: %s failed: %s", op, exc)
-            return f"Ошибка: {exc}"
+            return _text(self._lang, "error", exc=exc)
 
     @_command("hub.mock.on")
     def mock_on(self, target: str) -> str:

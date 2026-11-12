@@ -1,6 +1,7 @@
 import { randomBytes } from 'node:crypto'
 import { scrub, serviceFetch } from '../http'
 import { ToolError } from '../types'
+import { t } from '../../i18n'
 
 export type MitmConfig = { baseUrl: string; password?: string; timeoutSec: number }
 
@@ -43,14 +44,14 @@ export class MitmClient {
         timeoutMs: this.cfg.timeoutSec * 1000,
       })
     } catch (e) {
-      if (e instanceof ToolError) throw new ToolError(`${e.message} — проверь контейнер mitmweb и адрес в настройках`)
+      if (e instanceof ToolError) throw new ToolError(t`${e.message} — check the mitmweb container and the address in the settings`)
       throw e
     }
     if (res.ok) return res
 
-    if (res.status === 403) throw new ToolError('mitmproxy: неверный пароль веб-интерфейса (403)')
-    if (res.status === 404 && opts.flow) throw new ToolError('Запроса уже нет в mitmproxy — он хранит только последние запросы')
-    throw new ToolError(`mitmproxy: ошибка ${res.status} (${res.statusText || 'без описания'})`)
+    if (res.status === 403) throw new ToolError(t`mitmproxy: wrong web interface password (403)`)
+    if (res.status === 404 && opts.flow) throw new ToolError(t`The request is no longer in mitmproxy — it keeps only the latest requests`)
+    throw new ToolError(t`mitmproxy: error ${res.status} (${res.statusText || t`no description`})`)
   }
 
   private async json<T>(path: string): Promise<T> {

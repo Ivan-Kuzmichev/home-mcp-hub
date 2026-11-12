@@ -97,14 +97,14 @@ describe('syncMocks', () => {
     await syncMocks()
     setConnectorEnabled('mitmproxy', false)
     expect(await syncMocks()).toBe('pushed')
-    expect(puts[1]).toEqual({ hub_mocks: '{"allowed":false,"rules":[]}' })
+    expect(puts[1]).toEqual({ hub_mocks: '{"allowed":false,"rules":[],"lang":"ru"}' })
   })
 
   it('pushes an empty list when allowMocks is off', async () => {
     saveMock(rule)
     saveConfig(conn, { baseUrl: 'http://mitmweb:8081', allowMocks: false })
     expect(await syncMocks()).toBe('pushed')
-    expect(puts[0]).toEqual({ hub_mocks: '{"allowed":false,"rules":[]}' })
+    expect(puts[0]).toEqual({ hub_mocks: '{"allowed":false,"rules":[],"lang":"ru"}' })
   })
 
   it('reports a missing addon', async () => {

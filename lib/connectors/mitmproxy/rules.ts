@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { t } from '../../i18n'
 
 /**
  * Declarative mock rules shared with the Python mitmproxy addon: the addon applies exactly these
@@ -64,37 +65,37 @@ const headersSchema = z.record(z.string().min(1), z.string())
 
 export const mockRuleSchema: z.ZodType<Omit<MockRule, 'id' | 'enabled'>> = z
   .object({
-    name: z.string().min(1, 'Укажите имя правила').max(80, 'Имя не длиннее 80 символов'),
+    name: z.string().min(1, { error: () => t`Give the rule a name` }).max(80, { error: () => t`The name is at most 80 characters` }),
     match: z.object({
       host: z
         .string()
-        .regex(HOST_PATTERN, 'Хост — без схемы и пути: api.example.com или *.example.com'),
-      path: z.string().startsWith('/', 'Путь начинается с /'),
+        .regex(HOST_PATTERN, { error: () => t`Host — without a scheme and path: api.example.com or *.example.com` }),
+      path: z.string().startsWith('/', { error: () => t`The path starts with /` }),
       method: z
         .string()
-        .regex(/^[A-Za-z]+$/, 'Метод — например GET или POST')
+        .regex(/^[A-Za-z]+$/, { error: () => t`Method — for example GET or POST` })
         .optional(),
     }),
     kind: z.enum(['replace', 'patch']),
-    status: z.number().int().min(100, 'Статус от 100 до 599').max(599, 'Статус от 100 до 599').optional(),
+    status: z.number().int().min(100, { error: () => t`Status from 100 to 599` }).max(599, { error: () => t`Status from 100 to 599` }).optional(),
     headers: headersSchema.optional(),
-    body: z.string().max(MAX_BODY, 'Тело не больше 1 МБ').optional(),
+    body: z.string().max(MAX_BODY, { error: () => t`The body is at most 1 MB` }).optional(),
     setHeaders: headersSchema.optional(),
     removeHeaders: z.array(z.string().min(1)).optional(),
     json: z
       .array(
         z.object({
-          path: z.string().regex(JSON_PATH, 'Неверный путь в JSON, например user.items[0].price'),
+          path: z.string().regex(JSON_PATH, { error: () => t`Invalid JSON path, for example user.items[0].price` }),
           value: z.unknown(),
         }),
       )
       .optional(),
-    delayMs: z.number().int().min(0, 'Задержка от 0 до 30000 мс').max(30000, 'Задержка от 0 до 30000 мс').optional(),
+    delayMs: z.number().int().min(0, { error: () => t`Delay from 0 to 30000 ms` }).max(30000, { error: () => t`Delay from 0 to 30000 ms` }).optional(),
   })
   .superRefine((rule, ctx) => {
     if (rule.kind === 'replace') {
       if (rule.body === undefined) {
-        ctx.addIssue({ code: 'custom', path: ['body'], message: 'Для подмены целиком нужно тело (можно пустое)' })
+        ctx.addIssue({ code: 'custom', path: ['body'], message: t`A whole replacement needs a body (may be empty)` })
       }
       return
     }
@@ -107,7 +108,7 @@ export const mockRuleSchema: z.ZodType<Omit<MockRule, 'id' | 'enabled'>> = z
     if (!hasChange) {
       ctx.addIssue({
         code: 'custom',
-        message: 'Для правки нужно хотя бы одно: status, setHeaders, removeHeaders, json или delayMs',
+        message: t`A patch needs at least one of: status, setHeaders, removeHeaders, json or delayMs`,
       })
     }
   })
@@ -118,6 +119,7 @@ export const mockRuleSchema: z.ZodType<Omit<MockRule, 'id' | 'enabled'>> = z
  * callers pass `listMocks()` (oldest first, then by id) — equal sets give equal JSON.
  * Not allowed (connector or «Разрешить моки» off) — no rules, and the addon refuses its commands.
  */
-export function payloadFor(rules: MockRule[], allowed: boolean): string {
-  return JSON.stringify({ allowed, rules: allowed ? rules : [] })
+/** `lang` tells the addon which language its mitmweb commands answer in. */
+export function payloadFor(rules: MockRule[], allowed: boolean, lang: 'en' | 'ru' = 'en'): string {
+  return JSON.stringify({ allowed, rules: allowed ? rules : [], lang })
 }

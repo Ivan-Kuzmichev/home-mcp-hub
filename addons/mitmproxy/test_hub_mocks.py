@@ -356,6 +356,20 @@ class CommandTests(unittest.TestCase):
         for raw in (json.dumps({"allowed": False, "rules": []}), "", "garbage"):
             self.assertEqual(self.run_cmd(raw, "mocks"), "Моки выключены в хабе")
 
+    def test_english_when_the_hub_says_so(self):
+        en = lambda *rules: json.dumps({"allowed": True, "rules": list(rules), "lang": "en"})
+        self.assertEqual(self.run_cmd(en(), "mocks"), "No mocks.")
+        self.assertEqual(
+            self.run_cmd(en(PREMIUM, DOWN), "mocks"),
+            "1. ✓ Премиум — patch GET api.example.com/v1/profile · hit 2 times, json skipped in 1 of them\n"
+            "2. ✗ Лежит — replace *.example.com/* · hit 0 times",
+        )
+        self.assertEqual(self.run_cmd(en(PREMIUM, DOWN), "mock_off", "1"), "Mock “Премиум” turned off.")
+        # The language travels with the rules when mitmweb edits them.
+        self.assertEqual(json.loads(self.ctx.options.hub_mocks)["lang"], "en")
+        self.assertEqual(self.run_cmd(json.dumps({"allowed": False, "rules": [], "lang": "en"}), "mocks"), "Mocks are off in the hub")
+        self.assertEqual(self.run_cmd(en(PREMIUM), "mock_on", "nope"), "No mock “nope” — see hub.mocks")
+
     def test_off_on_delete_by_number_and_id(self):
         self.assertEqual(self.run_cmd(_rules(PREMIUM, DOWN), "mock_off", "1"), "Мок «Премиум» выключен.")
         self.assertFalse(parse_payload(self.ctx.options.hub_mocks)[1][0]["enabled"])

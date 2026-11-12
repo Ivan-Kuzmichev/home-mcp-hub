@@ -1,3 +1,4 @@
+import { localeTag, t } from '../../i18n'
 import { maskBody, maskHeaders, maskUrl } from '../../redact'
 import { formatSize } from '../format'
 import type { MitmFlow } from './client'
@@ -20,7 +21,7 @@ export function appOf(f: MitmFlow): string {
 }
 
 function codeClass(f: MitmFlow): string | null {
-  if (f.error) return 'ошибка'
+  if (f.error) return t`error`
   const s = f.response?.status_code
   if (!s) return null
   return `${Math.floor(s / 100)}xx`
@@ -70,7 +71,7 @@ export function hostSummary(flows: MitmFlow[], q: { sinceMs: number; app?: strin
 }
 
 export function clockOf(f: MitmFlow): string {
-  return new Date(f.timestamp_created * 1000).toLocaleTimeString('ru-RU', { hour12: false })
+  return new Date(f.timestamp_created * 1000).toLocaleTimeString(localeTag(), { hour12: false })
 }
 
 const MOCK_COMMENT = /^mock:(\S+)( \(json пропущен\))?/
@@ -84,7 +85,7 @@ export function parseMockComment(comment: string): { id: string; skipped: boolea
 /** «мок «Премиум»» or «мок «Премиум» (json пропущен)»; the id when the rule is gone. */
 export function mockLabel(comment: string, names: Map<string, string>): string | null {
   const m = parseMockComment(comment)
-  return m ? `мок «${names.get(m.id) ?? m.id}»${m.skipped ? ' (json пропущен)' : ''}` : null
+  return m ? t`mock “${names.get(m.id) ?? m.id}”${m.skipped ? t` (json skipped)` : ''}` : null
 }
 
 export type FlowBodies = { request?: Buffer | null; response?: Buffer | null }
@@ -99,15 +100,15 @@ function bodyText(
   const m = part === 'request' ? f.request : f.response
   const headers = m?.headers
   // In mitmweb JSON a null contentLength means the raw content was not stored (streamed past the limit).
-  if (m && m.contentLength === null) return 'тело не сохранено (больше 1 МБ, стрим)'
-  if (!buf || buf.length === 0) return '(пусто)'
+  if (m && m.contentLength === null) return t`body not saved (over 1 MB, streamed)`
+  if (!buf || buf.length === 0) return t`(empty)`
   const type = (header(headers, 'content-type') ?? '').split(';')[0]!.trim()
-  if (BINARY_TYPE.test(type)) return `бинарное, ${buf.length} байт`
+  if (BINARY_TYPE.test(type)) return t`binary, ${buf.length} bytes`
   let text: string
   try {
     text = new TextDecoder('utf-8', { fatal: true }).decode(buf)
   } catch {
-    return `бинарное, ${buf.length} байт`
+    return t`binary, ${buf.length} bytes`
   }
   return masked ? maskBody(text, type) : text
 }
@@ -122,18 +123,19 @@ export function renderFlow(f: MitmFlow, bodies: FlowBodies, o: RenderOpts): stri
   const lines: string[] = []
   const url = req ? `${req.scheme}://${hostOf(f)}${req.path}` : '?'
   lines.push(`${req?.method ?? '?'} ${o.masked ? maskUrl(url) : url}`)
-  const status = f.response ? String(f.response.status_code) : f.error ? 'ошибка' : 'нет ответа'
-  lines.push(`id ${f.id} · ${status} · ${clockOf(f)} · приложение ${appOf(f)}`)
+  const status = f.response ? String(f.response.status_code) : f.error ? t`error` : t`no response`
+  lines.push(t`id ${f.id} · ${status} · ${clockOf(f)} · app ${appOf(f)}`)
   if (o.mock) lines.push(o.mock)
-  if (f.error) lines.push(`Ошибка: ${f.error.msg}`)
-  lines.push('', '— Запрос —', ...headerLines(req?.headers, o.masked), '', bodyText('request', f, bodies.request, o.masked))
+  if (f.error) lines.push(t`Error: ${f.error.msg}`)
+  lines.push('', t`— Request —`, ...headerLines(req?.headers, o.masked), '', bodyText('request', f, bodies.request, o.masked))
   if (f.response) {
-    lines.push('', '— Ответ —', ...headerLines(f.response.headers, o.masked), '', bodyText('response', f, bodies.response, o.masked))
+    lines.push('', t`— Response —`, ...headerLines(f.response.headers, o.masked), '', bodyText('response', f, bodies.response, o.masked))
   }
   const full = lines.join('\n')
   const page = full.slice(o.offset, o.offset + o.limit)
   const next = o.offset + o.limit
-  return next < full.length ? `${page}\n… (offset для продолжения: ${next})` : page
+  return next < full.length ? t`${page}
+… (offset to continue: ${next})` : page
 }
 
 export function sizeOf(f: MitmFlow): string {
