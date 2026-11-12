@@ -1,4 +1,5 @@
-import { getLang } from '../i18n'
+import { getLang, tr } from '../i18n'
+import { localizeSchema } from '../i18n/schema'
 import type { McpServer } from '@modelcontextprotocol/server'
 import { createMcpHandler } from 'mcp-handler'
 import { z } from 'zod'
@@ -123,7 +124,7 @@ async function runLogged(name: string, connectorId: string, args: unknown, fn: (
 function registerConnectorTool(server: McpServer, connectorId: string, tool: ErasedTool, config: unknown): void {
   server.registerTool(
     tool.name,
-    { title: tool.title, description: tool.description, inputSchema: tool.inputSchema, annotations: tool.annotations, _meta: AUTH_META },
+    { title: tr(tool.title), description: tr(tool.description), inputSchema: localizeSchema(tool.inputSchema), annotations: tool.annotations, _meta: AUTH_META },
     async (args: unknown) =>
       runLogged(tool.name, connectorId, args, () => tool.run(args, { config, resolveResult: (id) => resolveResult(id, jackettAccess()) })),
   )

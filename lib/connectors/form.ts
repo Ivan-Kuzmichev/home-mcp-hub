@@ -1,4 +1,5 @@
 import os from 'node:os'
+import { tr } from '../i18n'
 import { fieldRegistry, type FieldMeta, type RegisteredConnector } from './types'
 import { readConfig, storedSecretFlags, type ConnectorRow } from './store'
 
@@ -24,12 +25,20 @@ export function describeFields(c: RegisteredConnector, row: ConnectorRow | undef
     const fallback = schema.safeParse(undefined)
     const initial = stored[name] ?? (fallback.success ? fallback.data : undefined)
     const value = meta.secret ? '' : widget === 'switch' ? initial === true : initial === undefined || initial === null ? '' : String(initial)
-    return { ...meta, name, widget, value, ...(meta.secret ? { secretSet: secrets[name] ?? false } : {}) }
+    const text = (s: string | undefined) => (s === undefined ? undefined : tr(s))
+    const localized = {
+      ...meta,
+      label: tr(meta.label),
+      help: text(meta.help),
+      placeholder: text(meta.placeholder),
+      options: meta.options?.map((o) => ({ ...o, label: tr(o.label), short: text(o.short), help: text(o.help) })),
+    }
+    return { ...localized, name, widget, value, ...(meta.secret ? { secretSet: secrets[name] ?? false } : {}) }
   })
 }
 
 export function describeTools(c: RegisteredConnector): ToolDescriptor[] {
-  return c.tools.map((t) => ({ name: t.name, title: t.title, readOnly: !!t.annotations.readOnlyHint, destructive: !!t.annotations.destructiveHint }))
+  return c.tools.map((t) => ({ name: t.name, title: tr(t.title), readOnly: !!t.annotations.readOnlyHint, destructive: !!t.annotations.destructiveHint }))
 }
 
 /** The hub's IPv4 networks as CIDR, to whitelist in services that skip auth for a subnet. */
