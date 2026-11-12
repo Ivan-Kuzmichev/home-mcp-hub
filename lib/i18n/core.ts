@@ -1,0 +1,92 @@
+// Translation core without server dependencies: usable from client components too.
+// English is the text in the code and the key; Russian comes from ru.ts catalogs next to the code.
+
+export type Lang = 'en' | 'ru'
+export const LANGS: readonly Lang[] = ['en', 'ru']
+
+type RuForms = [string, string, string]
+
+const texts = new Map<string, string>()
+const plurals = new Map<string, RuForms>()
+const missing = new Set<string>()
+
+export function registerCatalog(entries: Record<string, string>, pluralForms: Record<string, RuForms> = {}): void {
+  for (const [en, ru] of Object.entries(entries)) texts.set(en, ru)
+  for (const [one, forms] of Object.entries(pluralForms)) plurals.set(one, forms)
+}
+
+export function isLang(v: unknown): v is Lang {
+  return v === 'en' || v === 'ru'
+}
+
+/** `Found ${n} ${w}:` → `Found {0} {1}:` */
+function templateKey(strings: readonly string[]): string {
+  return strings.reduce((key, part, i) => (i === 0 ? part : `${key}{${i - 1}}${part}`), '')
+}
+
+function interpolate(strings: readonly string[], values: readonly unknown[]): string {
+  return strings.reduce((out, part, i) => (i === 0 ? part : `${out}${String(values[i - 1])}${part}`), '')
+}
+
+export function translateTemplate(lang: Lang, strings: readonly string[], values: readonly unknown[]): string {
+  if (lang === 'en') return interpolate(strings, values)
+  const key = templateKey(strings)
+  const template = texts.get(key)
+  if (template === undefined) {
+    missing.add(key)
+    return interpolate(strings, values)
+  }
+  return template.replace(/\{(\d+)\}/g, (_, i: string) => String(values[Number(i)]))
+}
+
+export function translateText(lang: Lang, text: string): string {
+  if (lang === 'en') return text
+  const ru = texts.get(text)
+  if (ru === undefined) {
+    missing.add(text)
+    return text
+  }
+  return ru
+}
+
+/** The Russian rule: 1 документ, 3 документа, 5 документов. */
+function ruPlural(n: number, forms: RuForms): string {
+  const mod10 = n % 10
+  const mod100 = n % 100
+  if (mod10 === 1 && mod100 !== 11) return forms[0]
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return forms[1]
+  return forms[2]
+}
+
+/**
+ * [one, other] in English; Russian forms come from the catalog by `one`.
+ * Three forms are the old Russian call, kept as is until its module is translated.
+ */
+export function pluralFor(lang: Lang, n: number, forms: [string, string] | RuForms): string {
+  if (forms.length === 3) return ruPlural(n, forms)
+  if (lang === 'en') return n === 1 ? forms[0] : forms[1]
+  const ru = plurals.get(forms[0])
+  if (!ru) {
+    missing.add(`plural:${forms[0]}`)
+    return n === 1 ? forms[0] : forms[1]
+  }
+  return ruPlural(n, ru)
+}
+
+export function localeTagFor(lang: Lang): 'en-US' | 'ru-RU' {
+  return lang === 'ru' ? 'ru-RU' : 'en-US'
+}
+
+/** Keys not found in the Russian catalog since start: coverage tests read it. */
+export function missingKeys(): string[] {
+  return [...missing]
+}
+
+export function clearMissingKeys(): void {
+  missing.clear()
+}
+
+/** The first run of Cyrillic text, or null: untranslated text in English mode. */
+export function findCyrillic(text: string): string | null {
+  return /[Ѐ-ӿ][Ѐ-ӿ\s]*/.exec(text)?.[0].trim() ?? null
+}

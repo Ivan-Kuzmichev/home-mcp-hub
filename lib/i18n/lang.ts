@@ -1,0 +1,41 @@
+import { AsyncLocalStorage } from 'node:async_hooks'
+import { getSetting, setSetting } from '../settings'
+import { isLang, type Lang } from './core'
+
+const SETTING = 'language'
+
+const globalForLang = globalThis as unknown as { __hubLangStore?: AsyncLocalStorage<Lang>; __hubLang?: Lang }
+const store = (globalForLang.__hubLangStore ??= new AsyncLocalStorage<Lang>())
+
+/** HUB_LANG fixes the language (tests, the demo); the setting is then ignored. */
+export function langFromEnv(): Lang | null {
+  const v = process.env.HUB_LANG
+  return isLang(v) ? v : null
+}
+
+/** One language for the whole hub: an explicit run, then HUB_LANG, then the setting, English by default. */
+export function getLang(): Lang {
+  const scoped = store.getStore()
+  if (scoped) return scoped
+  const env = langFromEnv()
+  if (env) return env
+  if (globalForLang.__hubLang === undefined) {
+    const stored = getSetting(SETTING)
+    globalForLang.__hubLang = isLang(stored) ? stored : 'en'
+  }
+  return globalForLang.__hubLang
+}
+
+export function setLang(lang: Lang): void {
+  setSetting(SETTING, lang)
+  globalForLang.__hubLang = lang
+}
+
+/** Forget the cached setting (tests that write the setting directly). */
+export function resetLangCache(): void {
+  globalForLang.__hubLang = undefined
+}
+
+export function runWithLang<T>(lang: Lang, fn: () => T): T {
+  return store.run(lang, fn)
+}
