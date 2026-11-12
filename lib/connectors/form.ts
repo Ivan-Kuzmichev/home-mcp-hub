@@ -30,7 +30,8 @@ export function describeFields(c: RegisteredConnector, row: ConnectorRow | undef
       ...meta,
       label: tr(meta.label),
       help: text(meta.help),
-      placeholder: text(meta.placeholder),
+      // A mono field's placeholder is an example value (an address, masks), not text.
+      placeholder: meta.mono ? meta.placeholder : text(meta.placeholder),
       options: meta.options?.map((o) => ({ ...o, label: tr(o.label), short: text(o.short), help: text(o.help) })),
     }
     return { ...localized, name, widget, value, ...(meta.secret ? { secretSet: secrets[name] ?? false } : {}) }

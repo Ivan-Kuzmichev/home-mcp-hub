@@ -1,3 +1,4 @@
+import { localeTag, t, tr, trc } from '../../i18n'
 import { constants, createReadStream, type Dirent } from 'node:fs'
 import fs from 'node:fs/promises'
 import path from 'node:path'
@@ -12,18 +13,18 @@ import { ACCESS_LABEL, allows, code, folderList, fsCall, fsMessage, parseFolders
 const configSchema = z
   .object({
     folders: field(z.string().default(''), {
-      label: 'Папки',
+      label: 'Folders',
       widget: 'textarea',
-      placeholder: 'Документы | /files/docs | edit\nФото | /files/photos | read\n/files/inbox | add',
-      help: 'По строке на папку: «имя | путь в контейнере | режим». Режимы: read — только чтение, add — ещё создание новых файлов и папок, edit — ещё правка, переименование и перенос, full — ещё удаление. Путь — как в volumes docker-compose; без имени берётся имя папки, без режима — read.',
+      placeholder: 'Documents | /files/docs | edit\nPhotos | /files/photos | read\n/files/inbox | add',
+      help: 'One line per folder: “name | path in the container | mode”. Modes: read — read only, add — also create new files and folders, edit — also edit, rename and move, full — also delete. The path is as in the docker-compose volumes; without a name the folder name is used, without a mode — read.',
       section: 'connection',
     }),
     deny: field(z.string().default(DEFAULT_DENY), {
-      label: 'Запрещённые файлы',
+      label: 'Forbidden files',
       widget: 'textarea',
       mono: true,
       placeholder: DEFAULT_DENY,
-      help: 'По маске на строку: * — любые символы, ? — один. Маска проверяется на каждом имени в пути, «.ssh» закрывает всю папку. Такие файлы не читаются, не ищутся, не копируются и не отдаются ссылкой; в списке видно только имя. Пусто — без запретов',
+      help: 'One mask per line: * — any characters, ? — one. The mask is checked on every name in the path, “.ssh” closes the whole folder. Such files are not read, searched, copied or given as links; the list shows only the name. Empty — nothing is forbidden',
       section: 'defaults',
     }),
   })
@@ -44,7 +45,7 @@ const SEARCH_ENTRIES = 20_000
 const SEARCH_MS = 20_000
 
 // Measured on prototypes: one tool argument breaks at ~10 KB on Claude's side.
-const CHUNK_HINT = 'Текст больше ~5 КБ пиши частями по 4–5 КБ: первый кусок с mode: "create" (или "overwrite"), остальные — с mode: "append".'
+const CHUNK_HINT = 'Write text over ~5 KB in parts of 4–5 KB: the first part with mode: "create" (or "overwrite"), the rest with mode: "append".'
 
 /**
  * Files the hub created recently: in an «add» folder the model may keep appending to
@@ -60,7 +61,7 @@ function rememberCreated(abs: string) {
 }
 
 const folders = (c: Config) => folderList(c.folders, c.deny)
-const pathInput = z.string().min(1).describe('Путь вида «папка/подпапка/файл»; первая часть — имя папки из files_list')
+const pathInput = z.string().min(1).describe('A path like “folder/subfolder/file”; the first part is a folder name from files_list')
 
 async function statOrNull(abs: string) {
   try {
@@ -98,7 +99,7 @@ function entryLine(name: string, isDir: boolean, size: number, mtime: Date, inde
   return isDir ? `${indent}• ${name}/` : `${indent}• ${name} — ${formatSize(size)} · ${formatDate(mtime)}`
 }
 
-const byDirThenName = (a: Dirent, b: Dirent) => Number(b.isDirectory()) - Number(a.isDirectory()) || a.name.localeCompare(b.name, 'ru')
+const byDirThenName = (a: Dirent, b: Dirent) => Number(b.isDirectory()) - Number(a.isDirectory()) || a.name.localeCompare(b.name, localeTag())
 
 /** Total size and file count of a directory, with a cap so a huge tree does not hang the call. */
 async function treeStats(abs: string, cap = 20_000): Promise<{ files: number; dirs: number; bytes: number; partial: boolean }> {
@@ -127,15 +128,15 @@ async function destination(list: Folder[], src: Target, to: string): Promise<Tar
   let dst = await resolveTarget(list, to, 'add')
   const st = await statOrNull(dst.abs)
   if (st?.isDirectory()) dst = await resolveTarget(list, `${dst.shown}/${path.basename(src.abs)}`, 'add')
-  if (dst.abs === src.abs || dst.abs.startsWith(src.abs + path.sep)) throw new ToolError(`Нельзя положить «${src.shown}» внутрь самого себя`)
-  if (await statOrNull(dst.abs)) throw new ToolError(`«${dst.shown}» уже существует — выбери другое имя или сначала удали`)
+  if (dst.abs === src.abs || dst.abs.startsWith(src.abs + path.sep)) throw new ToolError(t`“${src.shown}” cannot be put inside itself`)
+  if (await statOrNull(dst.abs)) throw new ToolError(t`“${dst.shown}” already exists — pick another name or delete it first`)
   return dst
 }
 
 export const files = defineConnector<Config>({
   id: 'files',
-  name: 'Файлы',
-  description: 'Папки, смонтированные в контейнер хаба',
+  name: 'Files',
+  description: 'Folders mounted into the hub container',
   configSchema,
 
   instructions(c, { tools }) {
@@ -144,11 +145,11 @@ export const files = defineConnector<Config>({
     // The admin form asks for the text before the connector is configured: config is {} then.
     const r = parseFolders(c.folders ?? '')
     if (!r.ok) return null
-    const list = r.folders.map((f) => `${f.name} — ${ACCESS_LABEL[f.access]}`).join('; ')
-    const parts = [`Файлы: пути вида «папка/подпапка/файл». Папки: ${list}.`]
-    if (own.includes('files_write')) parts.push(CHUNK_HINT)
-    if (own.includes('files_edit')) parts.push('Точечные правки текста — files_edit, без перезаписи всего файла.')
-    if (own.includes('files_link')) parts.push('Пересылаемую ссылку на файл (shareable) — только по прямой просьбе.')
+    const list = r.folders.map((f) => `${f.name} — ${tr(ACCESS_LABEL[f.access])}`).join('; ')
+    const parts = [t`Files: paths like “folder/subfolder/file”. Folders: ${list}.`]
+    if (own.includes('files_write')) parts.push(tr(CHUNK_HINT))
+    if (own.includes('files_edit')) parts.push(t`For small text edits use files_edit, without rewriting the whole file.`)
+    if (own.includes('files_link')) parts.push(t`A shareable file link — only on a direct request.`)
     return parts.join(' ')
   },
 
@@ -163,43 +164,43 @@ export const files = defineConnector<Config>({
         if (!st.isDirectory()) throw Object.assign(new Error(), { code: 'ENOTDIR' })
         await fs.access(f.root, allows(f, 'add') ? constants.R_OK | constants.W_OK : constants.R_OK)
         const n = (await fs.readdir(f.root)).length
-        details.push(`${f.name}: ${ACCESS_LABEL[f.access]}, ${n} ${plural(n, ['объект', 'объекта', 'объектов'])}`)
+        details.push(`${f.name}: ${tr(ACCESS_LABEL[f.access])}, ${n} ${plural(n, ['item', 'items'])}`)
       } catch (e) {
-        const msg = `${f.name}: ${code(e) === 'ENOENT' ? `${f.root} нет в контейнере — смонтируй через volumes` : fsMessage(e, f.root)}`
+        const msg = `${f.name}: ${code(e) === 'ENOENT' ? t`${f.root} is not in the container — mount it through volumes` : fsMessage(e, f.root)}`
         details.push(msg)
         failed ??= msg
       }
     }
     const n = r.folders.length
-    return { ok: !failed, summary: failed ?? `${n} ${plural(n, ['папка', 'папки', 'папок'])}`, details }
+    return { ok: !failed, summary: failed ?? `${n} ${plural(n, ['folder', 'folders'])}`, details }
   },
 
   tools: [
     tool({
       name: 'files_list',
-      title: 'Список файлов',
-      description: 'Без path — доступные папки и права на них. С path — содержимое папки (depth до 3 уровней) или сведения о файле: размер, дата.',
+      title: 'List files',
+      description: 'Without path — the available folders and their access. With path — the folder content (depth up to 3 levels) or file details: size, date.',
       annotations: { readOnlyHint: true, openWorldHint: false },
       inputSchema: z.object({
-        path: z.string().optional().describe('Папка или файл: «папка/подпапка». Пусто — список папок'),
-        depth: z.number().int().min(1).max(3).default(1).describe('Сколько уровней вложенности показать'),
+        path: z.string().optional().describe('Folder or file: “folder/subfolder”. Empty — the folder list'),
+        depth: z.number().int().min(1).max(3).default(1).describe('How many nesting levels to show'),
         limit: z.number().int().min(1).max(500).default(100),
       }),
       async run(args, { config }) {
         const list = folders(config)
         if (!args.path || !args.path.replace(/[\\/.\s]/g, '')) {
-          return ['Папки:', ...list.map((f) => `• ${f.name}/ — ${ACCESS_LABEL[f.access]}`)].join('\n')
+          return [t`Folders:`, ...list.map((f) => `• ${f.name}/ — ${tr(ACCESS_LABEL[f.access])}`)].join('\n')
         }
-        const t = await resolveTarget(list, args.path, 'read')
-        const st = await fsCall(t.shown, () => fs.stat(t.abs))
+        const item = await resolveTarget(list, args.path, 'read')
+        const st = await fsCall(item.shown, () => fs.stat(item.abs))
         if (!st.isDirectory()) {
-          return [`${t.shown}`, `${formatSize(st.size)} · изменён ${st.mtime.toISOString().slice(0, 16).replace('T', ' ')}`, `Папка «${t.folder.name}»: ${ACCESS_LABEL[t.folder.access]}`].join('\n')
+          return [`${item.shown}`, t`${formatSize(st.size)} · modified ${st.mtime.toISOString().slice(0, 16).replace('T', ' ')}`, t`Folder “${item.folder.name}”: ${tr(ACCESS_LABEL[item.folder.access])}`].join('\n')
         }
         const lines: string[] = []
         let total = 0
         let more = false
         const walk = async (dir: string, level: number, prefix: string) => {
-          const entries = (await fsCall(t.shown, () => fs.readdir(dir, { withFileTypes: true }))).sort(byDirThenName)
+          const entries = (await fsCall(item.shown, () => fs.readdir(dir, { withFileTypes: true }))).sort(byDirThenName)
           for (const d of entries) {
             total++
             if (lines.length >= args.limit) {
@@ -207,8 +208,8 @@ export const files = defineConnector<Config>({
               continue
             }
             const p = path.join(dir, d.name)
-            if (t.folder.deny?.(d.name)) {
-              lines.push(`${prefix}• ${d.name}${d.isDirectory() ? '/' : ''} — закрыт`)
+            if (item.folder.deny?.(d.name)) {
+              lines.push(t`${prefix}• ${d.name}${d.isDirectory() ? '/' : ''} — closed`)
               continue
             }
             const s = await fs.lstat(p).catch(() => null)
@@ -216,44 +217,44 @@ export const files = defineConnector<Config>({
             if (d.isDirectory() && level < args.depth) await walk(p, level + 1, `${prefix}   `)
           }
         }
-        await walk(t.abs, 1, '')
-        if (total === 0) return `«${t.shown}» пуста.`
-        const head = `${t.shown}/ — ${ACCESS_LABEL[t.folder.access]}:`
-        return [head, ...lines, ...(more ? [`…показано ${lines.length} из ${total}, увеличь limit или открой подпапку`] : [])].join('\n')
+        await walk(item.abs, 1, '')
+        if (total === 0) return t`“${item.shown}” is empty.`
+        const head = `${item.shown}/ — ${tr(ACCESS_LABEL[item.folder.access])}:`
+        return [head, ...lines, ...(more ? [t`…showing ${lines.length} of ${total}, raise limit or open a subfolder`] : [])].join('\n')
       },
     }),
 
     tool({
       name: 'files_read',
-      title: 'Прочитать файл',
-      description: 'Прочитать текстовый файл по строкам (offset, limit) или картинку (png, jpg, gif, webp до 3 МБ). Длинный файл — частями: ответ подскажет следующий offset.',
+      title: 'Read file',
+      description: 'Read a text file by lines (offset, limit) or an image (png, jpg, gif, webp up to 3 MB). A long file in parts: the reply gives the next offset.',
       annotations: { readOnlyHint: true, openWorldHint: false },
       inputSchema: z.object({
         path: pathInput,
-        offset: z.number().int().min(1).default(1).describe('С какой строки читать, от 1'),
-        limit: z.number().int().min(1).max(5000).default(500).describe('Сколько строк'),
+        offset: z.number().int().min(1).default(1).describe('Line to start from, from 1'),
+        limit: z.number().int().min(1).max(5000).default(500).describe('How many lines'),
       }),
       async run(args, { config }) {
-        const t = await resolveTarget(folders(config), args.path, 'read')
-        const st = await fsCall(t.shown, () => fs.stat(t.abs))
-        if (st.isDirectory()) throw new ToolError(`«${t.shown}» — папка, её содержимое покажет files_list`)
-        const mime = IMAGE[path.extname(t.abs).toLowerCase()]
+        const item = await resolveTarget(folders(config), args.path, 'read')
+        const st = await fsCall(item.shown, () => fs.stat(item.abs))
+        if (st.isDirectory()) throw new ToolError(t`“${item.shown}” is a folder, files_list shows its content`)
+        const mime = IMAGE[path.extname(item.abs).toLowerCase()]
         if (mime) {
-          if (st.size > MAX_IMAGE) return `${t.shown} — картинка ${formatSize(st.size)}, больше 3 МБ: показать не получится.`
-          const data = await fsCall(t.shown, () => fs.readFile(t.abs))
-          return { text: `${t.shown} · ${formatSize(st.size)}`, images: [{ data: data.toString('base64'), mimeType: mime }] }
+          if (st.size > MAX_IMAGE) return t`${item.shown} — an image of ${formatSize(st.size)}, over 3 MB: it cannot be shown.`
+          const data = await fsCall(item.shown, () => fs.readFile(item.abs))
+          return { text: `${item.shown} · ${formatSize(st.size)}`, images: [{ data: data.toString('base64'), mimeType: mime }] }
         }
-        if (await fsCall(t.shown, () => isBinary(t.abs))) return `${t.shown} — двоичный файл ${formatSize(st.size)}, как текст не читается.`
+        if (await fsCall(item.shown, () => isBinary(item.abs))) return t`${item.shown} — a binary file of ${formatSize(st.size)}, it cannot be read as text.`
 
         const out: string[] = []
         let chars = 0
         let n = 0
         let next: number | null = null
-        const rl = createInterface({ input: createReadStream(t.abs, 'utf8'), crlfDelay: Infinity })
+        const rl = createInterface({ input: createReadStream(item.abs, 'utf8'), crlfDelay: Infinity })
         for await (const raw of rl) {
           n++
           if (n < args.offset || next !== null) continue
-          const line = raw.length > MAX_LINE ? `${raw.slice(0, MAX_LINE)}… [строка обрезана]` : raw
+          const line = raw.length > MAX_LINE ? t`${raw.slice(0, MAX_LINE)}… [line cut]` : raw
           if (out.length >= args.limit || chars + line.length > MAX_READ_CHARS) {
             next = n
             continue
@@ -261,46 +262,46 @@ export const files = defineConnector<Config>({
           out.push(line)
           chars += line.length + 1
         }
-        if (n === 0) return `${t.shown} — пустой файл.`
-        if (args.offset > n) return `В «${t.shown}» всего ${n} ${plural(n, ['строка', 'строки', 'строк'])}.`
+        if (n === 0) return t`${item.shown} — an empty file.`
+        if (args.offset > n) return t`“${item.shown}” has only ${n} ${plural(n, ['line', 'lines'])}.`
         const last = args.offset + out.length - 1
-        const head = `${t.shown} · ${formatSize(st.size)} · ${n} ${plural(n, ['строка', 'строки', 'строк'])}${args.offset > 1 || next ? ` · строки ${args.offset}–${last}` : ''}`
-        return [head, '', ...out, ...(next ? ['', `…дальше: offset ${next}`] : [])].join('\n')
+        const head = `${item.shown} · ${formatSize(st.size)} · ${n} ${plural(n, ['line', 'lines'])}${args.offset > 1 || next ? t` · lines ${args.offset}–${last}` : ''}`
+        return [head, '', ...out, ...(next ? ['', t`…next: offset ${next}`] : [])].join('\n')
       },
     }),
 
     tool({
       name: 'files_link',
-      title: 'Ссылка на скачивание',
+      title: 'Download link',
       description:
-        'Ссылка, чтобы скачать или открыть файл в браузере (PDF, картинки и видео открываются сразу). По умолчанию личная: работает 24 часа и только в браузере, где пользователь вошёл в админку хаба. shareable: true — только если пользователь прямо попросил ссылку, чтобы переслать: открывается у любого, один раз, 15 минут.',
+        'A link to download or open the file in a browser (PDF, images and video open right away). Personal by default: works for 24 hours and only in a browser signed in to the hub admin panel. shareable: true — only when the user directly asked for a link to forward: opens for anyone, once, within 15 minutes.',
       annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
       inputSchema: z.object({
         path: pathInput,
-        shareable: z.boolean().default(false).describe('true — пересылаемая одноразовая ссылка на 15 минут'),
+        shareable: z.boolean().default(false).describe('true — a shareable one-time link for 15 minutes'),
       }),
       async run(args, { config }) {
-        const t = await resolveTarget(folders(config), args.path, 'read')
-        const st = await fsCall(t.shown, () => fs.stat(t.abs))
-        if (st.isDirectory()) throw new ToolError(`«${t.shown}» — папка; ссылка бывает только на файл`)
-        const { token } = createLink({ connectorId: 'files', path: t.shown }, { shareable: args.shareable })
-        return [`${t.shown} · ${formatSize(st.size)}:`, linkUrl(token), args.shareable ? LINK_KIND_TEXT.shareable : LINK_KIND_TEXT.personal].join('\n')
+        const item = await resolveTarget(folders(config), args.path, 'read')
+        const st = await fsCall(item.shown, () => fs.stat(item.abs))
+        if (st.isDirectory()) throw new ToolError(t`“${item.shown}” is a folder; a link can only point to a file`)
+        const { token } = createLink({ connectorId: 'files', path: item.shown }, { shareable: args.shareable })
+        return [`${item.shown} · ${formatSize(st.size)}:`, linkUrl(token), args.shareable ? LINK_KIND_TEXT.shareable : LINK_KIND_TEXT.personal].join('\n')
       },
     }),
 
     tool({
       name: 'files_search',
-      title: 'Найти файлы',
-      description: 'Найти файлы по имени (подстрока или маска *.pdf) и/или по тексту внутри (текстовые файлы до 5 МБ). Без path — во всех папках.',
+      title: 'Find files',
+      description: 'Find files by name (a substring or a mask like *.pdf) and/or by text inside (text files up to 5 MB). Without path — in all folders.',
       annotations: { readOnlyHint: true, openWorldHint: false },
       inputSchema: z.object({
-        path: z.string().optional().describe('Где искать: папка или подпапка. Пусто — везде'),
-        name: z.string().optional().describe('Часть имени или маска: «отчёт», «*.pdf», «IMG_2026*»'),
-        text: z.string().optional().describe('Текст внутри файла, без учёта регистра'),
+        path: z.string().optional().describe('Where to search: a folder or subfolder. Empty — everywhere'),
+        name: z.string().optional().describe('Part of the name or a mask: “report”, “*.pdf”, “IMG_2026*”'),
+        text: z.string().optional().describe('Text inside the file, case-insensitive'),
         limit: z.number().int().min(1).max(200).default(50),
       }),
       async run(args, { config }) {
-        if (!args.name && !args.text) throw new ToolError('Нужно name или text')
+        if (!args.name && !args.text) throw new ToolError(t`name or text is required`)
         const list = folders(config)
         // Without path a folder that is not mounted is skipped rather than failing the whole search.
         const starts = args.path
@@ -357,104 +358,104 @@ export const files = defineConnector<Config>({
                 continue
               }
               const line = await textHit(abs, st.size).catch(() => null)
-              if (line) hits.push(`• ${rel} — строка ${line}`)
+              if (line) hits.push(t`• ${rel} — line ${line}`)
             }
           }
           if (partial || hits.length >= args.limit) break
         }
-        if (hits.length === 0) return partial ? 'Ничего не нашлось в просмотренной части — сузь поиск через path.' : 'Ничего не нашлось.'
-        const tail = partial ? ['…поиск остановлен на полпути — сузь path'] : hits.length >= args.limit ? [`…показаны первые ${args.limit}`] : []
-        return [`Найдено ${hits.length}:`, ...hits, ...tail].join('\n')
+        if (hits.length === 0) return partial ? t`Nothing found in the part searched — narrow the search with path.` : trc('search', 'Nothing found.')
+        const tail = partial ? [t`…the search stopped halfway — narrow path`] : hits.length >= args.limit ? [t`…showing the first ${args.limit}`] : []
+        return [t`Found ${hits.length}:`, ...hits, ...tail].join('\n')
       },
     }),
 
     tool({
       name: 'files_write',
-      title: 'Записать файл',
-      description: `Создать текстовый файл, перезаписать его или дописать в конец. Недостающие подпапки создаются. ${CHUNK_HINT}`,
+      title: 'Write file',
+      description: `Create a text file, overwrite it or append to the end. Missing subfolders are created. ${CHUNK_HINT}`,
       annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
       inputSchema: z.object({
         path: pathInput,
-        content: z.string().describe('Текст в UTF-8'),
-        mode: z.enum(['create', 'overwrite', 'append']).default('create').describe('create — только новый файл, overwrite — заменить целиком, append — дописать в конец'),
+        content: z.string().describe('UTF-8 text'),
+        mode: z.enum(['create', 'overwrite', 'append']).default('create').describe('create — only a new file, overwrite — replace entirely, append — add to the end'),
       }),
       async run(args, { config }) {
         const list = folders(config)
-        const t = await resolveTarget(list, args.path, 'add')
-        if (t.isRoot) throw new ToolError('Укажи имя файла внутри папки')
-        const st = await fsCall(t.shown, () => statOrNull(t.abs))
-        if (st?.isDirectory()) throw new ToolError(`«${t.shown}» — папка`)
-        if (st && args.mode === 'create') throw new ToolError(`«${t.shown}» уже есть (${formatSize(st.size)}). Заменить — mode: "overwrite", дописать — mode: "append"`)
+        const item = await resolveTarget(list, args.path, 'add')
+        if (item.isRoot) throw new ToolError(t`Give a file name inside the folder`)
+        const st = await fsCall(item.shown, () => statOrNull(item.abs))
+        if (st?.isDirectory()) throw new ToolError(t`“${item.shown}” is a folder`)
+        if (st && args.mode === 'create') throw new ToolError(t`“${item.shown}” already exists (${formatSize(st.size)}). Replace — mode: "overwrite", append — mode: "append"`)
         // Changing an existing file is «edit», except appending to a file the hub has just created.
-        if (st && !(args.mode === 'append' && created.has(t.abs))) await resolveTarget(list, args.path, 'edit')
+        if (st && !(args.mode === 'append' && created.has(item.abs))) await resolveTarget(list, args.path, 'edit')
 
-        await fsCall(t.shown, () => fs.mkdir(path.dirname(t.abs), { recursive: true }))
-        if (args.mode === 'append' && st) await fsCall(t.shown, () => fs.appendFile(t.abs, args.content, 'utf8'))
-        else if (st) await fsCall(t.shown, () => writeAtomic(t.abs, args.content))
-        else await fsCall(t.shown, () => fs.writeFile(t.abs, args.content, { encoding: 'utf8', flag: 'wx' }))
-        if (!st) rememberCreated(t.abs)
+        await fsCall(item.shown, () => fs.mkdir(path.dirname(item.abs), { recursive: true }))
+        if (args.mode === 'append' && st) await fsCall(item.shown, () => fs.appendFile(item.abs, args.content, 'utf8'))
+        else if (st) await fsCall(item.shown, () => writeAtomic(item.abs, args.content))
+        else await fsCall(item.shown, () => fs.writeFile(item.abs, args.content, { encoding: 'utf8', flag: 'wx' }))
+        if (!st) rememberCreated(item.abs)
 
-        const size = (await fs.stat(t.abs)).size
-        const verb = !st ? 'Создан' : args.mode === 'append' ? 'Дописан' : 'Перезаписан'
-        return `${verb} ${t.shown} · ${formatSize(size)}`
+        const size = (await fs.stat(item.abs)).size
+        const verb = !st ? trc('file', 'Created') : args.mode === 'append' ? t`Appended` : t`Overwritten`
+        return `${verb} ${item.shown} · ${formatSize(size)}`
       },
     }),
 
     tool({
       name: 'files_edit',
-      title: 'Править текст',
-      description: 'Заменить фрагмент текста в файле: old_text должен встречаться ровно один раз (или all: true — заменить все). Для точечных правок без перезаписи файла.',
+      title: 'Edit text',
+      description: 'Replace a piece of text in a file: old_text must occur exactly once (or all: true — replace all). For small edits without rewriting the file.',
       annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
       inputSchema: z.object({
         path: pathInput,
-        old_text: z.string().min(1).describe('Точный фрагмент из файла, с пробелами и переносами'),
-        new_text: z.string().describe('Чем заменить; пусто — удалить фрагмент'),
-        all: z.boolean().default(false).describe('true — заменить все вхождения'),
+        old_text: z.string().min(1).describe('The exact piece from the file, with spaces and line breaks'),
+        new_text: z.string().describe('What to replace with; empty — delete the piece'),
+        all: z.boolean().default(false).describe('true — replace all occurrences'),
       }),
       async run(args, { config }) {
-        const t = await resolveTarget(folders(config), args.path, 'edit')
-        const st = await fsCall(t.shown, () => fs.stat(t.abs))
-        if (st.isDirectory()) throw new ToolError(`«${t.shown}» — папка`)
-        if (st.size > MAX_EDIT) throw new ToolError(`«${t.shown}» больше 5 МБ — правка не поддерживается`)
-        if (await isBinary(t.abs)) throw new ToolError(`«${t.shown}» — двоичный файл`)
-        const text = await fsCall(t.shown, () => fs.readFile(t.abs, 'utf8'))
+        const item = await resolveTarget(folders(config), args.path, 'edit')
+        const st = await fsCall(item.shown, () => fs.stat(item.abs))
+        if (st.isDirectory()) throw new ToolError(t`“${item.shown}” is a folder`)
+        if (st.size > MAX_EDIT) throw new ToolError(t`“${item.shown}” is over 5 MB — editing is not supported`)
+        if (await isBinary(item.abs)) throw new ToolError(t`“${item.shown}” is a binary file`)
+        const text = await fsCall(item.shown, () => fs.readFile(item.abs, 'utf8'))
         const count = text.split(args.old_text).length - 1
-        if (count === 0) throw new ToolError(`Фрагмент не найден в «${t.shown}» — сверь текст через files_read (пробелы и переносы важны)`)
-        if (count > 1 && !args.all) throw new ToolError(`Фрагмент встречается ${count} раз — уточни его или передай all: true`)
-        await fsCall(t.shown, () => writeAtomic(t.abs, text.split(args.old_text).join(args.new_text)))
-        return `Исправлено в ${t.shown}: ${count} ${plural(count, ['замена', 'замены', 'замен'])}`
+        if (count === 0) throw new ToolError(t`The piece was not found in “${item.shown}” — check the text with files_read (spaces and line breaks matter)`)
+        if (count > 1 && !args.all) throw new ToolError(t`The piece occurs ${count} times — make it more exact or pass all: true`)
+        await fsCall(item.shown, () => writeAtomic(item.abs, text.split(args.old_text).join(args.new_text)))
+        return t`Edited in ${item.shown}: ${count} ${plural(count, ['replacement', 'replacements'])}`
       },
     }),
 
     tool({
       name: 'files_mkdir',
-      title: 'Создать папку',
-      description: 'Создать подпапку (вместе с недостающими родительскими).',
+      title: 'Create folder',
+      description: 'Create a subfolder (with the missing parent folders).',
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
       inputSchema: z.object({ path: pathInput }),
       async run(args, { config }) {
-        const t = await resolveTarget(folders(config), args.path, 'add')
-        const st = await fsCall(t.shown, () => statOrNull(t.abs))
-        if (st?.isDirectory()) return `Папка ${t.shown}/ уже есть.`
-        if (st) throw new ToolError(`«${t.shown}» уже есть, и это файл`)
-        await fsCall(t.shown, () => fs.mkdir(t.abs, { recursive: true }))
-        return `Создана папка ${t.shown}/`
+        const item = await resolveTarget(folders(config), args.path, 'add')
+        const st = await fsCall(item.shown, () => statOrNull(item.abs))
+        if (st?.isDirectory()) return t`Folder ${item.shown}/ already exists.`
+        if (st) throw new ToolError(t`“${item.shown}” already exists, and it is a file`)
+        await fsCall(item.shown, () => fs.mkdir(item.abs, { recursive: true }))
+        return t`Created folder ${item.shown}/`
       },
     }),
 
     tool({
       name: 'files_move',
-      title: 'Переместить',
-      description: 'Переместить или переименовать файл или папку, в том числе между папками. Если to — существующая папка, кладёт внутрь неё. Существующее не перезаписывает.',
+      title: 'Move',
+      description: 'Move or rename a file or folder, also between folders. If to is an existing folder, puts it inside. Does not overwrite what exists.',
       annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
       inputSchema: z.object({
-        from: pathInput.describe('Что переместить'),
-        to: pathInput.describe('Новый путь или папка назначения'),
+        from: pathInput.describe('What to move'),
+        to: pathInput.describe('The new path or the target folder'),
       }),
       async run(args, { config }) {
         const list = folders(config)
         const src = await resolveTarget(list, args.from, 'edit')
-        if (src.isRoot) throw new ToolError('Саму папку из настроек переместить нельзя — только её содержимое')
+        if (src.isRoot) throw new ToolError(t`A folder from the settings cannot be moved itself — only its content`)
         await fsCall(src.shown, () => fs.lstat(src.abs))
         const dst = await destination(list, src, args.to)
         await fsCall(dst.shown, () => fs.mkdir(path.dirname(dst.abs), { recursive: true }))
@@ -466,54 +467,56 @@ export const files = defineConnector<Config>({
           await fsCall(dst.shown, () => fs.cp(src.abs, dst.abs, { recursive: true, errorOnExist: true, force: false, preserveTimestamps: true }))
           await fsCall(src.shown, () => fs.rm(src.abs, { recursive: true }))
         }
-        return `Перемещено: ${src.shown} → ${dst.shown}`
+        return t`Moved: ${src.shown} → ${dst.shown}`
       },
     }),
 
     tool({
       name: 'files_copy',
-      title: 'Копировать',
-      description: 'Скопировать файл или папку целиком, в том числе между папками. Если to — существующая папка, кладёт копию внутрь. Существующее не перезаписывает.',
+      title: 'Copy',
+      description: 'Copy a file or a whole folder, also between folders. If to is an existing folder, puts the copy inside. Does not overwrite what exists.',
       annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
       inputSchema: z.object({
-        from: pathInput.describe('Что скопировать'),
-        to: pathInput.describe('Путь копии или папка назначения'),
+        from: pathInput.describe('What to copy'),
+        to: pathInput.describe('The copy path or the target folder'),
       }),
       async run(args, { config }) {
         const list = folders(config)
         const src = await resolveTarget(list, args.from, 'read')
-        if (src.isRoot) throw new ToolError('Укажи файл или подпапку внутри папки')
+        if (src.isRoot) throw new ToolError(t`Give a file or subfolder inside the folder`)
         await fsCall(src.shown, () => fs.lstat(src.abs))
         const dst = await destination(list, src, args.to)
         await fsCall(dst.shown, () => fs.mkdir(path.dirname(dst.abs), { recursive: true }))
         // verbatimSymlinks: a link is copied as a link, never as the file it points to outside the folder.
         await fsCall(dst.shown, () => fs.cp(src.abs, dst.abs, { recursive: true, errorOnExist: true, force: false, preserveTimestamps: true, verbatimSymlinks: true }))
-        return `Скопировано: ${src.shown} → ${dst.shown}`
+        return t`Copied: ${src.shown} → ${dst.shown}`
       },
     }),
 
     tool({
       name: 'files_delete',
-      title: 'Удалить',
-      description: 'Удалить файл или папку со всем содержимым. Необратимо: сначала переспроси пользователя и передай confirm: true.',
+      title: 'Delete',
+      description: 'Delete a file or a folder with all its content. Cannot be undone: ask the user first and pass confirm: true.',
       annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
       inputSchema: z.object({
         path: pathInput,
-        confirm: z.boolean().optional().describe('true — пользователь подтвердил удаление'),
+        confirm: z.boolean().optional().describe('true — the user confirmed the deletion'),
       }),
       async run(args, { config }) {
-        const t = await resolveTarget(folders(config), args.path, 'full')
-        if (t.isRoot) throw new ToolError('Саму папку из настроек удалить нельзя — только её содержимое')
-        const st = await fsCall(t.shown, () => fs.lstat(t.abs))
-        let what = `файл ${t.shown} (${formatSize(st.size)})`
+        const target = await resolveTarget(folders(config), args.path, 'full')
+        if (target.isRoot) throw new ToolError(t`A folder from the settings cannot be deleted itself — only its content`)
+        const st = await fsCall(target.shown, () => fs.lstat(target.abs))
+        let what = t`file ${target.shown} (${formatSize(st.size)})`
         if (st.isDirectory()) {
-          const s = await fsCall(t.shown, () => treeStats(t.abs))
-          what = `папка ${t.shown}/ — ${s.partial ? 'больше ' : ''}${s.files} ${plural(s.files, ['файл', 'файла', 'файлов'])}, ${formatSize(s.bytes)}`
+          const s = await fsCall(target.shown, () => treeStats(target.abs))
+          what = t`folder ${target.shown}/ — ${s.partial ? t`over ` : ''}${s.files} ${plural(s.files, ['file', 'files'])}, ${formatSize(s.bytes)}`
         }
-        if (args.confirm !== true) return `Не удалено. Переспроси пользователя и повтори с confirm: true.\nБудет ${st.isDirectory() ? 'удалена' : 'удалён'} ${what}`
-        await fsCall(t.shown, () => fs.rm(t.abs, { recursive: true }))
-        created.delete(t.abs)
-        return `Удалено: ${what}`
+        // English «To be deleted:», Russian «Будет удалена / удалён» (the gender follows the object).
+        const gone = st.isDirectory() ? trc('folder', 'To be deleted:') : trc('file', 'To be deleted:')
+        if (args.confirm !== true) return t`Not deleted. Ask the user and repeat with confirm: true.\n${gone} ${what}`
+        await fsCall(target.shown, () => fs.rm(target.abs, { recursive: true }))
+        created.delete(target.abs)
+        return t`Deleted: ${what}`
       },
     }),
   ],

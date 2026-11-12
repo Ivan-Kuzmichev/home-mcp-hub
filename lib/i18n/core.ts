@@ -9,10 +9,25 @@ type RuForms = [string, string, string]
 const texts = new Map<string, string>()
 const plurals = new Map<string, RuForms>()
 const missing = new Set<string>()
+const conflicts: string[] = []
 
+/** One English text maps to one Russian across all catalogs; a second, different Russian is a conflict. */
 export function registerCatalog(entries: Record<string, string>, pluralForms: Record<string, RuForms> = {}): void {
-  for (const [en, ru] of Object.entries(entries)) texts.set(en, ru)
-  for (const [one, forms] of Object.entries(pluralForms)) plurals.set(one, forms)
+  for (const [en, ru] of Object.entries(entries)) {
+    const prev = texts.get(en)
+    if (prev !== undefined && prev !== ru) conflicts.push(`${en} → ${prev} | ${ru}`)
+    texts.set(en, ru)
+  }
+  for (const [one, forms] of Object.entries(pluralForms)) {
+    const prev = plurals.get(one)
+    if (prev && prev.join() !== forms.join()) conflicts.push(`plural ${one} → ${prev.join('/')} | ${forms.join('/')}`)
+    plurals.set(one, forms)
+  }
+}
+
+/** For the coverage test: catalogs that disagree on the Russian for the same English. */
+export function catalogConflicts(): string[] {
+  return [...conflicts]
 }
 
 export function isLang(v: unknown): v is Lang {

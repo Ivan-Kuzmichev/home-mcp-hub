@@ -1,3 +1,4 @@
+import { t, tr, trc } from '../../i18n'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import { ToolError } from '../types'
@@ -9,11 +10,12 @@ import { deniedSegment, denyMatcher, parseDeny, type DenyMatcher } from './deny'
 export const ACCESS = ['read', 'add', 'edit', 'full'] as const
 export type Access = (typeof ACCESS)[number]
 
+/** English; shown through tr(). */
 export const ACCESS_LABEL: Record<Access, string> = {
-  read: 'только чтение',
-  add: 'чтение и добавление',
-  edit: 'чтение и правка',
-  full: 'полный доступ',
+  read: 'read only',
+  add: 'read and add',
+  edit: 'read and edit',
+  full: 'full access',
 }
 
 const ACCESS_ALIASES: Record<string, Access> = {
@@ -41,30 +43,30 @@ export function parseFolders(text: string): { ok: true; folders: Folder[] } | { 
   for (const [i, raw] of lines.entries()) {
     const line = raw.trim()
     if (!line || line.startsWith('#')) continue
-    const fail = (msg: string) => ({ ok: false as const, error: `Строка ${i + 1}: ${msg}` })
+    const fail = (msg: string) => ({ ok: false as const, error: t`Line ${i + 1}: ${msg}` })
     const parts = line.split('|').map((p) => p.trim())
-    if (parts.length > 3) return fail('ожидается «имя | /путь | режим»')
+    if (parts.length > 3) return fail(t`expected “name | /path | mode”`)
     // «/path», «/path | mode», «name | /path», «name | /path | mode»
     const hasName = !parts[0]!.startsWith('/')
     const name = hasName ? parts[0]! : path.posix.basename(parts[0]!)
     const root = hasName ? parts[1] : parts[0]
     const mode = (hasName ? parts[2] : parts[1]) ?? 'read'
-    if (!root) return fail('нет пути к папке')
-    if (!root.startsWith('/')) return fail(`путь «${root}» должен быть абсолютным — как в volumes контейнера`)
-    if (path.posix.normalize(root) === '/') return fail('корень контейнера открывать нельзя')
-    if (!NAME.test(name)) return fail(`имя «${name}» — буквы, цифры, пробел, точка, дефис`)
+    if (!root) return fail(t`no folder path`)
+    if (!root.startsWith('/')) return fail(t`the path “${root}” must be absolute — as in the container volumes`)
+    if (path.posix.normalize(root) === '/') return fail(t`the container root cannot be opened`)
+    if (!NAME.test(name)) return fail(t`name “${name}” — letters, digits, space, dot, hyphen`)
     const access = ACCESS_ALIASES[mode.toLowerCase()]
-    if (!access) return fail(`режим «${mode}» — read, add, edit или full`)
-    if (folders.some((f) => f.name.toLowerCase() === name.toLowerCase())) return fail(`имя «${name}» уже занято — задай другое: «имя | ${root}»`)
+    if (!access) return fail(t`mode “${mode}” — read, add, edit or full`)
+    if (folders.some((f) => f.name.toLowerCase() === name.toLowerCase())) return fail(t`the name “${name}” is taken — set another: “name | ${root}”`)
     folders.push({ name, root: path.posix.normalize(root).replace(/\/+$/, ''), access })
   }
-  if (folders.length === 0) return { ok: false, error: 'Добавь хотя бы одну папку' }
+  if (folders.length === 0) return { ok: false, error: t`Add at least one folder` }
   return { ok: true, folders }
 }
 
 export function folderList(text: string, denyText?: string): Folder[] {
   const r = parseFolders(text)
-  if (!r.ok) throw new ToolError(`Список папок в настройках коннектора с ошибкой: ${r.error}`)
+  if (!r.ok) throw new ToolError(t`The folder list in the connector settings has an error: ${r.error}`)
   const deny = denyMatcher(parseDeny(denyText))
   return r.folders.map((f) => ({ ...f, deny }))
 }
@@ -73,15 +75,16 @@ export function allows(f: Folder, need: Access): boolean {
   return ACCESS.indexOf(f.access) >= ACCESS.indexOf(need)
 }
 
+/** English; shown through trc('need', …): the Russian is in the genitive («для правки»). */
 const NEED_TEXT: Record<Access, string> = {
-  read: 'чтения',
-  add: 'добавления файлов',
-  edit: 'правки',
-  full: 'удаления',
+  read: 'reading',
+  add: 'adding files',
+  edit: 'editing',
+  full: 'deleting',
 }
 
 export function requireAccess(f: Folder, need: Access): void {
-  if (!allows(f, need)) throw new ToolError(`Папка «${f.name}» открыта в режиме «${ACCESS_LABEL[f.access]}» — для ${NEED_TEXT[need]} нужен доступ выше. Его меняют в админке хаба.`)
+  if (!allows(f, need)) throw new ToolError(t`Folder “${f.name}” is open as “${tr(ACCESS_LABEL[f.access])}” — ${trc('need', NEED_TEXT[need])} needs higher access. It is changed in the hub admin panel.`)
 }
 
 // ---------------------------------------------------------------------------
@@ -99,18 +102,18 @@ export type Target = {
 }
 
 export function splitPath(input: string): string[] {
-  if (input.includes('\0')) throw new ToolError('Недопустимый символ в пути')
+  if (input.includes('\0')) throw new ToolError(t`Invalid character in the path`)
   const segments = input.split(/[\\/]+/).filter((s) => s && s !== '.')
-  if (segments.includes('..')) throw new ToolError('«..» в пути нельзя — укажи путь от папки: папка/подпапка/файл')
+  if (segments.includes('..')) throw new ToolError(t`“..” is not allowed in a path — give the path from the folder: folder/subfolder/file`)
   return segments
 }
 
 export function target(folders: Folder[], input: string): Target {
   const segments = splitPath(input)
-  if (segments.length === 0) throw new ToolError(`Укажи путь вида папка/файл. Папки: ${folders.map((f) => f.name).join(', ')}`)
+  if (segments.length === 0) throw new ToolError(t`Give a path like folder/file. Folders: ${folders.map((f) => f.name).join(', ')}`)
   const [head, ...rest] = segments
   const folder = folders.find((f) => f.name === head) ?? folders.find((f) => f.name.toLowerCase() === head!.toLowerCase())
-  if (!folder) throw new ToolError(`Нет папки «${head}». Доступны: ${folders.map((f) => f.name).join(', ')}`)
+  if (!folder) throw new ToolError(t`No folder “${head}”. Available: ${folders.map((f) => f.name).join(', ')}`)
   return { folder, abs: path.join(folder.root, ...rest), shown: [folder.name, ...rest].join('/'), isRoot: rest.length === 0 }
 }
 
@@ -132,19 +135,19 @@ async function realOrAncestor(abs: string): Promise<string> {
 
 /** Resolve and check that symlinks do not lead outside the folder. */
 export async function resolveTarget(folders: Folder[], input: string, need: Access): Promise<Target> {
-  const t = target(folders, input)
-  const closed = deniedSegment(t.shown.split('/').slice(1), t.folder.deny)
-  if (closed) throw new ToolError(`«${t.shown}» закрыт: «${closed}» в списке запрещённых файлов коннектора «Файлы»`)
-  requireAccess(t.folder, need)
+  const item = target(folders, input)
+  const closed = deniedSegment(item.shown.split('/').slice(1), item.folder.deny)
+  if (closed) throw new ToolError(t`“${item.shown}” is closed: “${closed}” is in the forbidden files of the Files connector`)
+  requireAccess(item.folder, need)
   let rootReal: string
   try {
-    rootReal = await fs.realpath(t.folder.root)
+    rootReal = await fs.realpath(item.folder.root)
   } catch (e) {
-    throw new ToolError(`Папка «${t.folder.name}» недоступна: ${fsMessage(e, t.folder.name)}`)
+    throw new ToolError(t`Folder “${item.folder.name}” is unavailable: ${fsMessage(e, item.folder.name)}`)
   }
-  const real = await realOrAncestor(t.abs)
-  if (real !== rootReal && !real.startsWith(rootReal + path.sep)) throw new ToolError(`«${t.shown}» ведёт за пределы папки «${t.folder.name}» (символьная ссылка)`)
-  return t
+  const real = await realOrAncestor(item.abs)
+  if (real !== rootReal && !real.startsWith(rootReal + path.sep)) throw new ToolError(t`“${item.shown}” leads outside the folder “${item.folder.name}” (symbolic link)`)
+  return item
 }
 
 // ---------------------------------------------------------------------------
@@ -157,22 +160,22 @@ export function code(e: unknown): string | undefined {
 export function fsMessage(e: unknown, shown: string): string {
   switch (code(e)) {
     case 'ENOENT':
-      return `«${shown}» не найден`
+      return t`“${shown}” not found`
     case 'EEXIST':
-      return `«${shown}» уже существует`
+      return t`“${shown}” already exists`
     case 'ENOTDIR':
-      return `«${shown}» — не папка`
+      return t`“${shown}” is not a folder`
     case 'EISDIR':
-      return `«${shown}» — папка, а не файл`
+      return t`“${shown}” is a folder, not a file`
     case 'ENOTEMPTY':
-      return `папка «${shown}» не пуста`
+      return t`folder “${shown}” is not empty`
     case 'EACCES':
     case 'EPERM':
-      return `нет прав на «${shown}» у пользователя контейнера — проверь владельца папки или PUID/PGID`
+      return t`the container user has no rights to “${shown}” — check the folder owner or PUID/PGID`
     case 'EROFS':
-      return `«${shown}» смонтирован только для чтения (:ro в volumes)`
+      return t`“${shown}” is mounted read-only (:ro in volumes)`
     case 'ENOSPC':
-      return 'на диске нет места'
+      return t`no space left on the disk`
     default:
       return e instanceof Error ? e.message : String(e)
   }

@@ -2,6 +2,7 @@ import dns from 'node:dns'
 import { isIP } from 'node:net'
 import { isPrivateAddress } from '../../scripts/net'
 import { ToolError } from '../types'
+import { t } from '../../i18n'
 
 /**
  * URL checks before camofox opens a page. The network (dockfw) already keeps camofox off the LAN;
@@ -36,29 +37,29 @@ export async function checkUrl(raw: string, lists: DomainLists, resolve: Resolve
   try {
     url = new URL(raw)
   } catch {
-    throw new ToolError(`Адрес отклонён: это не URL (${raw.slice(0, 80)})`)
+    throw new ToolError(t`Address refused: not a URL (${raw.slice(0, 80)})`)
   }
-  if (url.protocol !== 'http:' && url.protocol !== 'https:') throw new ToolError(`Адрес отклонён: только http и https, а не ${url.protocol}`)
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') throw new ToolError(t`Address refused: only http and https, not ${url.protocol}`)
   const host = url.hostname.replace(/^\[|\]$/g, '').toLowerCase()
 
   if (isIP(host)) {
-    if (isPrivateAddress(host)) throw new ToolError(`Адрес отклонён: ${host} — приватный адрес`)
+    if (isPrivateAddress(host)) throw new ToolError(t`Address refused: ${host} is a private address`)
     // An allowlist of names does not let bare addresses through.
-    if (lists.allow.length) throw new ToolError(`Адрес отклонён: ${host} нет в allowlist`)
+    if (lists.allow.length) throw new ToolError(t`Address refused: ${host} is not in the allowlist`)
   } else {
-    if (LOCAL_NAME.test(host) || !host.includes('.')) throw new ToolError(`Адрес отклонён: ${host} — локальное имя`)
+    if (LOCAL_NAME.test(host) || !host.includes('.')) throw new ToolError(t`Address refused: ${host} is a local name`)
     const deny = lists.deny.find((d) => domainMatches(host, d))
-    if (deny) throw new ToolError(`Адрес отклонён: ${host} в denylist (${deny})`)
-    if (lists.allow.length && !lists.allow.some((d) => domainMatches(host, d))) throw new ToolError(`Адрес отклонён: ${host} нет в allowlist`)
+    if (deny) throw new ToolError(t`Address refused: ${host} is in the denylist (${deny})`)
+    if (lists.allow.length && !lists.allow.some((d) => domainMatches(host, d))) throw new ToolError(t`Address refused: ${host} is not in the allowlist`)
     let addresses: string[]
     try {
       addresses = await resolve(host)
     } catch {
-      throw new ToolError(`Адрес отклонён: ${host} не резолвится`)
+      throw new ToolError(t`Address refused: ${host} does not resolve`)
     }
-    if (addresses.length === 0) throw new ToolError(`Адрес отклонён: ${host} не резолвится`)
+    if (addresses.length === 0) throw new ToolError(t`Address refused: ${host} does not resolve`)
     const bad = addresses.find(isPrivateAddress)
-    if (bad) throw new ToolError(`Адрес отклонён: ${host} → ${bad} — приватный адрес`)
+    if (bad) throw new ToolError(t`Address refused: ${host} → ${bad} is a private address`)
   }
   return url
 }

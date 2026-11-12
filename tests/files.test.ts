@@ -192,3 +192,23 @@ describe('closed files', () => {
     await expect(openFile(`${dir('edit')} | edit`, 'edit/a.txt', null, '.env')).resolves.toMatchObject({ status: 200 })
   })
 })
+
+describe('Files in English', () => {
+  it('metadata, replies and the folder order follow the hub language', async () => {
+    const { connectorLanguageGaps } = await import('./helpers')
+    const { runWithLang } = await import('@/lib/i18n')
+    // Folder names are the user's own text: an English set for this check.
+    const english = configOf(files, { folders: `Archive | ${dir('ro')}\nInbox | ${dir('add')} | add` })
+    expect(await connectorLanguageGaps(files, english)).toEqual({ cyrillic: null, missing: [] })
+    expect(await runWithLang('en', () => run('files_list', {}))).toContain('• Входящие/ — read and add')
+    await expect(runWithLang('en', () => run('files_write', { path: 'Архив/new.txt', content: 'x' }))).rejects.toThrow('Folder “Архив” is open as “read only” — adding files needs higher access.')
+    const sorted = path.join(dir('full'), 'sorted')
+    for (const n of ['Документы', 'Downloads', 'apple', 'Яблоко', 'zebra']) fs.mkdirSync(path.join(sorted, n), { recursive: true })
+    const names = (text: string) => text.split('\n').slice(1).map((l) => l.replace(/^\s*• /, '').replace(/\/$/, ''))
+    expect(names(await runWithLang('en', () => run('files_list', { path: 'full/sorted' })))).toEqual(['apple', 'Downloads', 'zebra', 'Документы', 'Яблоко'])
+    expect(names(await runWithLang('ru', () => run('files_list', { path: 'full/sorted' })))).toEqual(['Документы', 'Яблоко', 'apple', 'Downloads', 'zebra'])
+    const del = await runWithLang('en', () => run('files_delete', { path: 'full/sorted' }))
+    expect(del).toMatch(/^Not deleted\. Ask the user and repeat with confirm: true\.\nTo be deleted: folder full\/sorted\/ — /)
+    expect(await runWithLang('ru', () => run('files_delete', { path: 'full/x.txt' }))).toContain('Будет удалён файл full/x.txt')
+  })
+})

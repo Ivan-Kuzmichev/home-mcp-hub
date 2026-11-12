@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises'
 import { folderList, fsMessage, resolveTarget } from '../files/folders'
 import { ToolError } from '../types'
+import { t } from '../../i18n'
 
 export const MAX_COOKIES = 500
 export const MAX_COOKIE_FILE_BYTES = 5 * 1024 * 1024
@@ -41,17 +42,17 @@ export async function readCookieFile(input: string): Promise<{ text: string; sho
   // Lazy: active → registry → this connector would be an import cycle.
   const { activeConfig } = await import('../active')
   const files = activeConfig('files') as { folders?: string } | null
-  if (!files) throw new ToolError('Файлы cookies берутся из коннектора «Файлы» — включи его и добавь папку')
-  const t = await resolveTarget(folderList(files.folders ?? ''), input, 'read')
-  const inside = t.shown.split('/').slice(1)
-  if (inside[0] !== 'cookies' || inside.length < 2) throw new ToolError(`Cookies читаются только из подпапки cookies/: ${t.folder.name}/cookies/<файл>`)
+  if (!files) throw new ToolError(t`Cookie files come from the Files connector — turn it on and add a folder`)
+  const item = await resolveTarget(folderList(files.folders ?? ''), input, 'read')
+  const inside = item.shown.split('/').slice(1)
+  if (inside[0] !== 'cookies' || inside.length < 2) throw new ToolError(t`Cookies are read only from the cookies/ subfolder: ${item.folder.name}/cookies/<file>`)
   try {
-    const stat = await fs.stat(t.abs)
-    if (!stat.isFile()) throw new ToolError(`«${t.shown}» — не файл`)
-    if (stat.size > MAX_COOKIE_FILE_BYTES) throw new ToolError(`«${t.shown}» больше ${MAX_COOKIE_FILE_BYTES / 1024 / 1024} МБ`)
-    return { text: await fs.readFile(t.abs, 'utf8'), shown: t.shown }
+    const stat = await fs.stat(item.abs)
+    if (!stat.isFile()) throw new ToolError(t`“${item.shown}” is not a file`)
+    if (stat.size > MAX_COOKIE_FILE_BYTES) throw new ToolError(t`“${item.shown}” is over ${MAX_COOKIE_FILE_BYTES / 1024 / 1024} MB`)
+    return { text: await fs.readFile(item.abs, 'utf8'), shown: item.shown }
   } catch (e) {
     if (e instanceof ToolError) throw e
-    throw new ToolError(fsMessage(e, t.shown))
+    throw new ToolError(fsMessage(e, item.shown))
   }
 }

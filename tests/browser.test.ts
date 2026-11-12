@@ -2,6 +2,7 @@ import dns from 'node:dns'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { browser } from '@/lib/connectors/browser'
 import { TAB_GONE } from '@/lib/connectors/browser/client'
+import { tr } from '@/lib/i18n'
 import { parseNetscapeCookies } from '@/lib/connectors/browser/cookies'
 import { checkUrl, domainMatches, parseDomains } from '@/lib/connectors/browser/url'
 import { configOf, mockFetch, runTool, runToolRaw, type Call } from './helpers'
@@ -143,7 +144,7 @@ describe('Browser connector', () => {
 
   it('an expired tab gets a clear message', async () => {
     camofox({ status: (c) => (c.url.pathname.startsWith('/tabs/') ? 404 : undefined) })
-    await expect(runTool(browser, 'browser_snapshot', cfg(), { tab: 'old' })).rejects.toThrow(TAB_GONE)
+    await expect(runTool(browser, 'browser_snapshot', cfg(), { tab: 'old' })).rejects.toThrow(tr(TAB_GONE))
   })
 
   it('screenshots come back as images; over 2 MB is refused', async () => {
@@ -219,5 +220,16 @@ describe('tool visibility and cookies', () => {
       { domain: '.youtube.com', path: '/', secure: true, expires: 1893456000, name: 'SID', value: 'abc', httpOnly: false },
       { domain: '.google.com', path: '/', secure: false, expires: -1, name: 'HSID', value: 'x\ty', httpOnly: true },
     ])
+  })
+})
+
+describe('camofox in English', () => {
+  it('metadata and replies', async () => {
+    const { connectorLanguageGaps } = await import('./helpers')
+    const { runWithLang } = await import('@/lib/i18n')
+    expect(await connectorLanguageGaps(browser, cfg({ allowActions: true, apiKey: 'k', vncUrl: 'http://192.168.1.5:6080' }))).toEqual({ cyrillic: null, missing: [] })
+    camofox()
+    await expect(runWithLang('en', () => runTool(browser, 'browser_act', cfg(), { tab: 't1', action: 'click' }))).rejects.toThrow('click needs ref or selector')
+    await expect(runWithLang('en', () => runTool(browser, 'browser_open', cfg(), { url: 'http://192.168.1.1/' }))).rejects.toThrow('Address refused: 192.168.1.1 is a private address')
   })
 })
