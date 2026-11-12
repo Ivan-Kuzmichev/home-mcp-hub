@@ -1,3 +1,4 @@
+import { t, tr } from '@/lib/i18n'
 import type { Metadata } from 'next'
 import { eq } from 'drizzle-orm'
 import { Check } from 'lucide-react'
@@ -22,9 +23,9 @@ export function generateMetadata(): Metadata {
 }
 
 const CAPABILITIES = [
-  'Поиск торрентов через Jackett',
-  'Управление закачками в qBittorrent и TorrServe',
-  'Публикация и удаление прототипов',
+  'Torrent search through Jackett',
+  'Managing downloads in qBittorrent and TorrServe',
+  'Publishing and deleting prototypes',
 ]
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>
@@ -51,7 +52,7 @@ export default async function ConsentPage({ searchParams }: { searchParams: Sear
 
   const prefix = getPrefix()
   const host = new URL(env().BASE_URL).host
-  const clientLabel = client?.name ? `${client.name}${redirectUri ? ` · ${new URL(redirectUri).host}` : ''}` : 'Неизвестный клиент'
+  const clientLabel = client?.name ? `${client.name}${redirectUri ? ` · ${new URL(redirectUri).host}` : ''}` : t`Unknown client`
 
   return (
     <PrefixProvider prefix={prefix}>
@@ -68,20 +69,20 @@ export default async function ConsentPage({ searchParams }: { searchParams: Sear
           <Card className="flex w-full max-w-[460px] flex-col gap-5 p-6 sm:p-8">
             {!client ? (
               <div className="flex flex-col gap-1.5">
-                <h1 className="text-2xl">Запрос устарел</h1>
-                <div className="text-muted-foreground">Клиент не найден. Начни подключение в приложении заново.</div>
+                <h1 className="text-2xl">{t`The request expired`}</h1>
+                <div className="text-muted-foreground">{t`Client not found. Start connecting in the app again.`}</div>
               </div>
             ) : (
               <>
                 <div className="flex flex-col gap-1.5">
-                  <h1 className="text-2xl">{client.name ?? 'Клиент'} запрашивает доступ к Home Hub</h1>
+                  <h1 className="text-2xl">{client.name ?? t`Client`} {t`asks for access to Home Hub`}</h1>
                   <div className="text-muted-foreground">
-                    Приложение сможет вызывать инструменты хаба от твоего имени, пока ты не отзовёшь доступ в админке.
+                    {t`The app will be able to call hub tools on your behalf until you revoke access in the admin panel.`}
                   </div>
                 </div>
 
                 <ul className="flex flex-col gap-2.5">
-                  {CAPABILITIES.map((c) => (
+                  {CAPABILITIES.map(tr).map((c) => (
                     <li key={c} className="flex items-center gap-2.5">
                       <span className="flex size-5 items-center justify-center rounded-full bg-ok/14 text-ok">
                         <Check size={12} strokeWidth={3} />
@@ -92,7 +93,7 @@ export default async function ConsentPage({ searchParams }: { searchParams: Sear
                 </ul>
 
                 <dl className="flex flex-col gap-2 rounded-md border border-border bg-background p-3.5 text-[13px]">
-                  <Row label="Клиент" value={clientLabel} />
+                  <Row label={t`Client`} value={clientLabel} />
                   <Row label="client_id" value={shortId(clientId ?? '')} mono />
                   {redirectUri && <Row label="Redirect URI" value={redirectUri} mono />}
                 </dl>
@@ -100,7 +101,7 @@ export default async function ConsentPage({ searchParams }: { searchParams: Sear
                 <ConsentActions />
 
                 <div className="text-center text-xs text-subtle">
-                  Ты вошёл как {session.user.email} · <NotMeLink />
+                  {t`Signed in as`} {session.user.email} · <NotMeLink />
                 </div>
               </>
             )}
@@ -108,7 +109,7 @@ export default async function ConsentPage({ searchParams }: { searchParams: Sear
         </main>
 
         <footer className="flex flex-wrap justify-between gap-2 text-xs text-faint">
-          <span>Токен живёт 1 час, обновляется автоматически 30 дней</span>
+          <span>{t`The token lives 1 hour and refreshes automatically for 30 days`}</span>
           <span className="font-mono">OAuth 2.1 · PKCE</span>
         </footer>
       </div>

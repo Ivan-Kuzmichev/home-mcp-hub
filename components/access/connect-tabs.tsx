@@ -2,62 +2,65 @@
 
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
+import { t } from '@/components/i18n-client'
 
 type Tab = { id: string; label: string; steps: React.ReactNode[]; note?: React.ReactNode }
 
 const Mono = ({ children }: { children: React.ReactNode }) => <span className="font-mono text-foreground">{children}</span>
 const Ui = ({ children }: { children: React.ReactNode }) => <span className="font-medium text-foreground">{children}</span>
 
-const TABS: Tab[] = [
+/** A function, not a constant: the texts must be built in the hub language at render time. */
+const tabs = (): Tab[] => [
   {
     id: 'claude',
     label: 'Claude',
     steps: [
-      <>Включи <Ui>регистрацию новых клиентов</Ui> ниже.</>,
+      <>{t`Turn on`} <Ui>{t`new client registration`}</Ui> {t`below.`}</>,
       <>
-        Claude (claude.ai или приложение для компьютера) → <Ui>Settings</Ui> → <Ui>Connectors</Ui> → <Ui>Add custom connector</Ui>.
+        {t`Claude (claude.ai or the desktop app) →`} <Ui>Settings</Ui> → <Ui>Connectors</Ui> → <Ui>Add custom connector</Ui>.
       </>,
       <>
-        Имя — любое, например <Mono>Home Hub</Mono>; URL — <Ui>MCP server URL</Ui> выше. OAuth-поля не заполняй → <Ui>Add</Ui>.
+        {t`Any name, for example`} <Mono>Home Hub</Mono>; URL — <Ui>MCP server URL</Ui> {t`above. Leave the OAuth fields empty →`} <Ui>Add</Ui>.
       </>,
       <>
-        Нажми <Ui>Connect</Ui>: откроется страница хаба — войди, введи код 2FA, нажми <Ui>«Разрешить»</Ui>.
+        {t`Press`} <Ui>Connect</Ui>{t`: the hub page opens — sign in, enter the 2FA code, press`} <Ui>{t`“Allow”`}</Ui>.
       </>,
       <>
-        Регистрация клиентов выключится сама. В новом чате попроси: <Mono>вызови hub_status</Mono>.
+        {t`Client registration turns off by itself. In a new chat ask:`} <Mono>{t`call hub_status`}</Mono>.
       </>,
     ],
-    note: 'Коннектор, добавленный в вебе, сразу появится в мобильном приложении Claude.',
+    note: t`A connector added on the web shows up in the Claude mobile app right away.`,
   },
   {
     id: 'chatgpt',
     label: 'ChatGPT',
     steps: [
-      <>Включи <Ui>регистрацию новых клиентов</Ui> ниже.</>,
+      <>{t`Turn on`} <Ui>{t`new client registration`}</Ui> {t`below.`}</>,
       <>
-        ChatGPT → <Ui>Плагины</Ui> → <Ui>Добавить</Ui> → <Ui>Создать MCP-приложение</Ui>.
+        ChatGPT → <Ui>{t`Plugins`}</Ui> → <Ui>{t`Add`}</Ui> → <Ui>{t`Create MCP app`}</Ui>.
       </>,
       <>
-        Название — например <Mono>Home Hub</Mono>; <Ui>Подключение</Ui> → <Ui>URL-адрес сервера</Ui> — <Ui>MCP server URL</Ui> выше;
-        <Ui>Аутентификация</Ui> — <Ui>OAuth</Ui>. Отметь <Ui>«Я понимаю и хочу продолжить»</Ui> → <Ui>Создать</Ui>.
+        {t`Name — for example`} <Mono>Home Hub</Mono>; <Ui>{t`Connection`}</Ui> → <Ui>{t`Server URL`}</Ui> — <Ui>MCP server URL</Ui> {t`above;`}
+        <Ui>{t`Authentication`}</Ui> — <Ui>OAuth</Ui>{t`. Check`} <Ui>{t`“I understand and want to continue”`}</Ui> → <Ui>{t`Create`}</Ui>.
       </>,
       <>
-        Откроется страница хаба — войди, введи код 2FA, нажми <Ui>«Разрешить»</Ui>.
+        {t`The hub page opens — sign in, enter the 2FA code, press`} <Ui>{t`“Allow”`}</Ui>.
       </>,
       <>
-        Регистрация клиентов выключится сама. В новом чате попроси: <Mono>вызови hub_status</Mono>.
+        {t`Client registration turns off by itself. In a new chat ask:`} <Mono>{t`call hub_status`}</Mono>.
       </>,
     ],
-    note: 'ChatGPT должен быть разрешён в «Разрешённых клиентах» ниже (по умолчанию включён).',
+    note: t`ChatGPT must be allowed in Allowed clients below (it is by default).`,
   },
 ]
 
 export function ConnectTabs() {
+  const TABS = tabs()
   const [active, setActive] = useState(TABS[0]!.id)
-  const tab = TABS.find((t) => t.id === active) ?? TABS[0]!
+  const tab = TABS.find((x) => x.id === active) ?? TABS[0]!
   return (
     <div className="flex flex-col gap-3">
-      <div role="tablist" aria-label="Клиент" className="flex gap-1 self-start rounded-md border border-border bg-background p-1">
+      <div role="tablist" aria-label={t`Client`} className="flex gap-1 self-start rounded-md border border-border bg-background p-1">
         {TABS.map((t) => (
           <button
             key={t.id}

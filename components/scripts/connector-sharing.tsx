@@ -5,6 +5,7 @@ import { useState, useTransition } from 'react'
 import { setConnectorSharedAction } from '@/app/admin/scripts/actions'
 import { Switch } from '@/components/ui/switch'
 import { cn } from '@/lib/utils'
+import { t } from '@/components/i18n-client'
 
 type Item = {
   id: string
@@ -21,7 +22,7 @@ export function ConnectorSharing({ items, localOff }: { items: Item[]; localOff:
   const [pending, start] = useTransition()
   const anyOn = Object.values(state).some(Boolean)
 
-  if (items.length === 0) return <div className="py-2 text-[13px] text-subtle">Настроенных коннекторов пока нет.</div>
+  if (items.length === 0) return <div className="py-2 text-[13px] text-subtle">{t`No configured connectors yet.`}</div>
 
   return (
     <div className="flex flex-col">
@@ -47,7 +48,7 @@ export function ConnectorSharing({ items, localOff }: { items: Item[]; localOff:
             <span className="flex min-w-0 flex-col">
               <span className="font-medium">{i.name}</span>
               <span className="text-xs text-subtle">
-                {i.active ? (i.host ? <>секреты уходят только на <span className="font-mono">{i.host}</span></> : 'адрес не задан') : 'коннектор выключен — скрипты значения не получат'}
+                {i.active ? (i.host ? <>{t`secrets go only to`} <span className="font-mono">{i.host}</span></> : t`no address set`) : t`the connector is off — scripts will not get the values`}
               </span>
             </span>
           </label>
@@ -64,7 +65,7 @@ export function ConnectorSharing({ items, localOff }: { items: Item[]; localOff:
       {error && <span className="pt-2 text-[13px] text-err">{error}</span>}
       {anyOn && localOff && (
         <span className="pt-2 text-xs text-warn">
-          Доступ скриптов к локальной сети выключен — до сервисов по адресам вроде http://jackett:9117 они не достучатся. Включается в Коннекторы → Скрипты.
+          {t`Scripts have no local network access — they cannot reach services at addresses like http://jackett:9117. Turn it on in Connectors → Scripts.`}
         </span>
       )}
     </div>

@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { t } from '../i18n'
 
 // ---------------------------------------------------------------------------
 // Config fields. The admin panel renders the form from configSchema; every field
@@ -45,7 +46,7 @@ export function baseUrl(meta: Omit<FieldMeta, 'widget'>) {
     z
       .string()
       .trim()
-      .url('Нужен адрес вида http://host:port')
+      .url({ error: () => t`Needs an address like http://host:port` })
       .transform((v) => v.replace(/\/+$/, '')),
     { ...meta, widget: 'url', mono: true, section: 'connection' },
   )

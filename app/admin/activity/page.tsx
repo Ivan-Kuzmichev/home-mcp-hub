@@ -7,10 +7,11 @@ import { Pill } from '@/components/ui/pill'
 import { plural } from '@/lib/connectors/format'
 import { formatWhen } from '@/lib/format'
 import { countJournal, queryJournal, type JournalRow } from '@/lib/journal'
-import { connectorTag, filterFrom, formatDuration, JOURNAL_CONNECTOR_OPTIONS, PERIODS, resultText, toolLabel, type JournalSearch } from '@/lib/journal-view'
+import { connectorTag, filterFrom, formatDuration, journalConnectorOptions, periods, resultText, toolLabel, type JournalSearch } from '@/lib/journal-view'
 import { href } from '@/lib/prefix'
 import { cn } from '@/lib/utils'
 import { requireAdmin } from '@/lib/session'
+import { t } from '@/lib/i18n'
 
 export const dynamic = 'force-dynamic'
 
@@ -20,7 +21,7 @@ function Result({ row }: { row: JournalRow }) {
   const text = resultText(row)
   return (
     <Pill tone={row.ok ? 'ok' : 'err'} className="max-w-full">
-      <span className="shrink-0">{row.ok ? 'OK' : 'Ошибка'}</span>
+      <span className="shrink-0">{row.ok ? 'OK' : t`Error`}</span>
       {text && <span className="truncate font-normal opacity-80">{text}</span>}
     </Pill>
   )
@@ -51,24 +52,24 @@ export default async function ActivityPage({ searchParams }: { searchParams: Pro
   return (
     <>
       <PageHeader
-        title="Журнал"
-        subtitle="Каждый вызов инструмента и каждый вход в админку. Аргументы обрезаны, секреты не пишутся."
+        title={t`Activity`}
+        subtitle={t`Every tool call and every admin sign-in. Arguments are cut, secrets are not written.`}
         actions={
           <a href={`${href('/admin/activity/export')}?${query}`} className={buttonVariants({ size: 'sm' })}>
-            Экспорт CSV
+            {t`Export CSV`}
           </a>
         }
       />
 
       <div className="flex flex-col gap-2">
-        <ActivityFilters connectors={JOURNAL_CONNECTOR_OPTIONS} periods={PERIODS} values={sp} />
+        <ActivityFilters connectors={journalConnectorOptions()} periods={periods()} values={sp} />
         <span className="px-1 text-xs text-subtle">
-          {total} {plural(total, ['запись', 'записи', 'записей'])} · {errors} {plural(errors, ['ошибка', 'ошибки', 'ошибок'])}
+          {total} {plural(total, ['entry', 'entries'])} · {errors} {plural(errors, ['error', 'errors'])}
         </span>
       </div>
 
       {rows.length === 0 ? (
-        <Card className="p-8 text-center text-[13px] text-subtle">Записей нет. Здесь появятся вызовы ассистента и входы в админку.</Card>
+        <Card className="p-8 text-center text-[13px] text-subtle">{t`No entries. Assistant calls and admin sign-ins appear here.`}</Card>
       ) : (
         <Card className="overflow-hidden">
           <div className="hidden overflow-x-auto lg:block">
@@ -82,7 +83,7 @@ export default async function ActivityPage({ searchParams }: { searchParams: Pro
               </colgroup>
               <thead className="text-xs text-subtle">
                 <tr className="border-b border-divider">
-                  {['Время', 'Инструмент', 'Аргументы', 'Результат', 'Ответ'].map((h) => (
+                  {[t`Time`, t`Tool`, t`Arguments`, t`Result`, t`Response`].map((h) => (
                     <th key={h} className="px-4 py-2.5 font-normal">
                       {h}
                     </th>
@@ -129,7 +130,7 @@ export default async function ActivityPage({ searchParams }: { searchParams: Pro
 
       {rows.length < total && (
         <Link href={`?${more}`} className={cn(buttonVariants({ size: 'sm' }), 'self-center no-underline')}>
-          Показать ещё
+          {t`Show more`}
         </Link>
       )}
     </>

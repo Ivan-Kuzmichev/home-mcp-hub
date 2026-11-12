@@ -1,5 +1,6 @@
 'use client'
 
+import { plural, t } from '@/components/i18n-client'
 import { Delete } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
@@ -12,11 +13,7 @@ const MAX = 8
 type Status = { kind: 'idle' } | { kind: 'wrong'; remaining: number } | { kind: 'locked'; retryAfter: number } | { kind: 'error' }
 
 function attemptsWord(n: number): string {
-  const mod10 = n % 10
-  const mod100 = n % 100
-  if (mod10 === 1 && mod100 !== 11) return 'попытка'
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return 'попытки'
-  return 'попыток'
+  return plural(n, ['attempt', 'attempts'])
 }
 
 /**
@@ -94,15 +91,15 @@ export function PinForm({ slug, title, length }: { slug: string; title: string; 
   return (
     <Card className="flex w-full max-w-[400px] flex-col items-center gap-6 border-0 bg-transparent p-0 sm:border sm:bg-card sm:p-8">
       <div className="flex flex-col items-center gap-2 text-center">
-        <span className="text-xs font-semibold tracking-[0.06em] text-subtle uppercase">Прототип</span>
+        <span className="text-xs font-semibold tracking-[0.06em] text-subtle uppercase">{t`Prototype`}</span>
         <h1 className="text-2xl">{title}</h1>
         <p className="text-muted-foreground">
-          Страница закрыта пинкодом. Его знает тот, кто прислал ссылку<span className="hidden sm:inline"> — введи {length ? `${length} цифр${length < 5 ? 'ы' : ''}` : 'цифры'} с клавиатуры</span>.
+          {t`The page is closed with a PIN. Whoever sent the link knows it`}<span className="hidden sm:inline"> {t`— type`} {length ? `${length} ${plural(length, ['digit', 'digits'])}` : t`the digits`} {t`on the keyboard`}</span>.
         </p>
       </div>
 
       <div className="flex flex-col items-center gap-2.5" aria-live="polite">
-        <div className="flex gap-2" role="img" aria-label={`Введено цифр: ${pin.length}`}>
+        <div className="flex gap-2" role="img" aria-label={t`Digits entered: ${pin.length}`}>
           {Array.from({ length: cells }, (_, i) => (
             <div
               key={i}
@@ -119,15 +116,15 @@ export function PinForm({ slug, title, length }: { slug: string; title: string; 
         <div className="h-5 text-[13px]">
           {status.kind === 'wrong' && (
             <span className="text-err">
-              Неверный пин · осталось {status.remaining} {attemptsWord(status.remaining)}
+              {t`Wrong PIN ·`} {status.remaining} {attemptsWord(status.remaining)}
             </span>
           )}
           {status.kind === 'locked' && (
             <span className="text-warn">
-              Слишком много попыток · подожди {Math.floor(status.retryAfter / 60)}:{String(status.retryAfter % 60).padStart(2, '0')}
+              {t`Too many attempts · wait`} {Math.floor(status.retryAfter / 60)}:{String(status.retryAfter % 60).padStart(2, '0')}
             </span>
           )}
-          {status.kind === 'error' && <span className="text-err">Не получилось проверить пин, попробуй ещё раз</span>}
+          {status.kind === 'error' && <span className="text-err">{t`Could not check the PIN, try again`}</span>}
         </div>
       </div>
 
@@ -141,18 +138,18 @@ export function PinForm({ slug, title, length }: { slug: string; title: string; 
         <Key onPress={() => press('0')} disabled={busy || locked}>
           0
         </Key>
-        <Key onPress={() => press('back')} disabled={busy || locked} label="Стереть">
+        <Key onPress={() => press('back')} disabled={busy || locked} label={t`Erase`}>
           <Delete size={22} />
         </Key>
       </div>
 
       <Button variant="primary" className="w-full max-w-[300px]" disabled={pin.length < min || busy || locked} onClick={() => void submit()}>
-        {busy ? 'Проверяю…' : 'Открыть'}
+        {busy ? t`Checking…` : t`Open`}
       </Button>
 
       <div className="flex flex-col items-center gap-0.5 text-center text-xs text-subtle">
-        <span>Доступ сохранится в этом браузере на 24 часа</span>
-        <span>5 попыток за 10 минут</span>
+        <span>{t`Access is kept in this browser for 24 hours`}</span>
+        <span>{t`5 attempts per 10 minutes`}</span>
       </div>
     </Card>
   )

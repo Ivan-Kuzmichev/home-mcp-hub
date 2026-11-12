@@ -3,8 +3,9 @@
 import { Check, Copy } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { t } from '@/components/i18n-client'
 
-export function CopyButton({ value, label = 'Скопировать' }: { value: string; label?: string }) {
+export function CopyButton({ value, label = t`Copy` }: { value: string; label?: string }) {
   const [copied, setCopied] = useState(false)
   return (
     <Button

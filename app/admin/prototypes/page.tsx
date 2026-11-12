@@ -4,6 +4,7 @@ import { UploadButton } from '@/components/prototypes/upload-form'
 import { formatSize, plural } from '@/lib/connectors/format'
 import { listPrototypes, totalSize } from '@/lib/prototypes/store'
 import { requireAdmin } from '@/lib/session'
+import { t } from '@/lib/i18n'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,8 +15,8 @@ export default async function PrototypesPage() {
   return (
     <>
       <PageHeader
-        title="Прототипы"
-        subtitle="HTML-страницы, которые ассистент опубликовал через MCP. Ссылки открываются без входа, при желании — по пинкоду."
+        title={t`Prototypes`}
+        subtitle={t`HTML pages the assistant published through MCP. Links open without signing in, or with a PIN if you want.`}
         actions={<UploadButton />}
       />
       <div className="md:hidden">
@@ -24,9 +25,9 @@ export default async function PrototypesPage() {
       <PrototypeList items={items} />
       <div className="flex flex-wrap justify-between gap-2 px-1 text-xs text-subtle">
         <span>
-          {items.length} {plural(items.length, ['прототип', 'прототипа', 'прототипов'])} · {formatSize(totalSize())} на диске
+          {items.length} {plural(items.length, ['prototype', 'prototypes'])} · {formatSize(totalSize())} {t`on disk`}
         </span>
-        <span>Истёкшие удаляются через 7 дней</span>
+        <span>{t`Expired ones are deleted after 7 days`}</span>
       </div>
     </>
   )

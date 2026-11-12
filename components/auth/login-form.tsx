@@ -1,5 +1,6 @@
 'use client'
 
+import { t, tr } from '@/components/i18n-client'
 import { useEffect, useState } from 'react'
 import QRCode from 'qrcode'
 import { CodeCells } from '@/components/auth/code-cells'
@@ -13,10 +14,10 @@ import { authErrorMessage, oauthRedirectUrl, useAuthClient } from '@/lib/auth-cl
 type Step = 'password' | 'totp' | 'backup' | 'setup'
 
 const STEP_LABEL: Record<Step, string> = {
-  password: 'Шаг 1 · Пароль',
-  totp: 'Шаг 2 · Второй фактор',
-  backup: 'Шаг 2 · Резервный код',
-  setup: 'Шаг 2 · Настройка 2FA',
+  password: 'Step 1 · Password',
+  totp: 'Step 2 · Second factor',
+  backup: 'Step 2 · Backup code',
+  setup: 'Step 2 · 2FA setup',
 }
 
 export function LoginForm({ initialStep, oauth }: { initialStep: 'password' | 'setup'; oauth: boolean }) {
@@ -47,7 +48,7 @@ export function LoginForm({ initialStep, oauth }: { initialStep: 'password' | 's
     setError(null)
     const { data, error } = await auth.signIn.email({ email, password })
     setBusy(false)
-    if (error) return setError(authErrorMessage(error, error.status === 401 ? 'Неверный email или пароль.' : `Не получилось войти (ошибка ${error.status ?? '?'})`))
+    if (error) return setError(authErrorMessage(error, error.status === 401 ? t`Wrong email or password.` : t`Could not sign in (error ${error.status ?? '?'})`))
     if (data && 'twoFactorRedirect' in data && data.twoFactorRedirect) return go('totp')
     // Signed in, but 2FA is not set up yet: it is mandatory for the admin.
     go('setup')
@@ -61,7 +62,7 @@ export function LoginForm({ initialStep, oauth }: { initialStep: 'password' | 's
     setBusy(false)
     if (error) {
       setCode('')
-      return setError(authErrorMessage(error, 'Неверный код.'))
+      return setError(authErrorMessage(error, t`Wrong code.`))
     }
     finish(data)
   }
@@ -72,28 +73,28 @@ export function LoginForm({ initialStep, oauth }: { initialStep: 'password' | 's
     setError(null)
     const { data, error } = await auth.twoFactor.verifyBackupCode({ code: code.trim() })
     setBusy(false)
-    if (error) return setError(authErrorMessage(error, 'Неверный резервный код.'))
+    if (error) return setError(authErrorMessage(error, t`Wrong backup code.`))
     finish(data)
   }
 
   return (
     <div className="flex w-full max-w-[400px] flex-col gap-3.5">
-      <div className="text-xs font-semibold tracking-[0.06em] text-subtle uppercase">{STEP_LABEL[step]}</div>
+      <div className="text-xs font-semibold tracking-[0.06em] text-subtle uppercase">{tr(STEP_LABEL[step])}</div>
       <Card className="flex flex-col gap-5 p-6 sm:p-8">
         {step === 'password' && (
           <form className="flex flex-col gap-5" onSubmit={submitPassword}>
-            <Heading title="Вход в админку" subtitle="Один аккаунт, зарегистрироваться нельзя." />
+            <Heading title={t`Admin sign-in`} subtitle={t`One account, registration is closed.`} />
             <Field id="email" label="Email">
               <Input id="email" type="email" autoComplete="username" required autoFocus value={email} onChange={(e) => setEmail(e.target.value)} />
             </Field>
-            <Field id="password" label="Пароль">
+            <Field id="password" label={t`Password`}>
               <Input id="password" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
             </Field>
             <ErrorText error={error} />
             <Button variant="primary" type="submit" className="w-full" disabled={busy}>
-              Продолжить
+              {t`Continue`}
             </Button>
-            <div className="text-center text-xs text-subtle">Не больше 5 попыток входа за 15 минут</div>
+            <div className="text-center text-xs text-subtle">{t`At most 5 sign-in attempts per 15 minutes`}</div>
           </form>
         )}
 
@@ -105,16 +106,16 @@ export function LoginForm({ initialStep, oauth }: { initialStep: 'password' | 's
               void submitTotp()
             }}
           >
-            <Heading title="Код из приложения" subtitle="Введи 6 цифр из Google Authenticator или 1Password." />
+            <Heading title={t`Code from the app`} subtitle={t`Enter the 6 digits from Google Authenticator or 1Password.`} />
             <CodeCells value={code} onChange={setCode} onComplete={(v) => void submitTotp(v)} disabled={busy} autoFocus />
             <ErrorText error={error} />
             <Button variant="primary" type="submit" className="w-full" disabled={busy || code.length !== 6}>
-              Войти
+              {t`Sign in`}
             </Button>
             <div className="flex justify-between text-[13px]">
-              <LinkButton onClick={() => go('password')}>Назад</LinkButton>
+              <LinkButton onClick={() => go('password')}>{t`Back`}</LinkButton>
               <LinkButton muted onClick={() => go('backup')}>
-                Резервный код
+                {t`Backup code`}
               </LinkButton>
             </div>
           </form>
@@ -122,16 +123,16 @@ export function LoginForm({ initialStep, oauth }: { initialStep: 'password' | 's
 
         {step === 'backup' && (
           <form className="flex flex-col gap-5" onSubmit={submitBackup}>
-            <Heading title="Резервный код" subtitle="Один из кодов, сохранённых при настройке 2FA. Каждый работает один раз." />
-            <Field id="backup" label="Код">
+            <Heading title={t`Backup code`} subtitle={t`One of the codes saved when setting up 2FA. Each works once.`} />
+            <Field id="backup" label={t`Code`}>
               <Input id="backup" className="font-mono" autoComplete="off" required autoFocus value={code} onChange={(e) => setCode(e.target.value)} />
             </Field>
             <ErrorText error={error} />
             <Button variant="primary" type="submit" className="w-full" disabled={busy || !code.trim()}>
-              Войти
+              {t`Sign in`}
             </Button>
             <div className="text-[13px]">
-              <LinkButton onClick={() => go('totp')}>Ввести код из приложения</LinkButton>
+              <LinkButton onClick={() => go('totp')}>{t`Enter a code from the app`}</LinkButton>
             </div>
           </form>
         )}
@@ -157,7 +158,7 @@ function TwoFactorSetup({ knownPassword, oauth, onDone }: { knownPassword: strin
     setError(null)
     const { data, error } = await auth.twoFactor.enable({ password: pwd, issuer: 'Home Hub', method: 'totp' })
     setBusy(false)
-    if (error || !data || data.method !== 'totp') return setError(authErrorMessage(error, 'Не получилось начать настройку.'))
+    if (error || !data || data.method !== 'totp') return setError(authErrorMessage(error, t`Could not start the setup.`))
     setTotpURI(data.totpURI)
     setBackupCodes(data.backupCodes)
   }
@@ -180,7 +181,7 @@ function TwoFactorSetup({ knownPassword, oauth, onDone }: { knownPassword: strin
     setBusy(false)
     if (error) {
       setCode('')
-      return setError(authErrorMessage(error, 'Неверный код.'))
+      return setError(authErrorMessage(error, t`Wrong code.`))
     }
     onDone(data)
   }
@@ -194,13 +195,13 @@ function TwoFactorSetup({ knownPassword, oauth, onDone }: { knownPassword: strin
           void start(password)
         }}
       >
-        <Heading title="Включи второй фактор" subtitle="Без 2FA в админку не пустит. Подтверди пароль, чтобы начать." />
-        <Field id="setup-password" label="Пароль">
+        <Heading title={t`Turn on the second factor`} subtitle={t`The admin panel needs 2FA. Confirm the password to start.`} />
+        <Field id="setup-password" label={t`Password`}>
           <Input id="setup-password" type="password" autoComplete="current-password" required autoFocus value={password} onChange={(e) => setPassword(e.target.value)} />
         </Field>
         <ErrorText error={error} />
         <Button variant="primary" type="submit" className="w-full" disabled={busy || !password}>
-          Продолжить
+          {t`Continue`}
         </Button>
       </form>
     )
@@ -216,21 +217,21 @@ function TwoFactorSetup({ knownPassword, oauth, onDone }: { knownPassword: strin
         void verify()
       }}
     >
-      <Heading title="Включи второй фактор" subtitle="Отсканируй QR-код в приложении-аутентификаторе и введи код из него." />
+      <Heading title={t`Turn on the second factor`} subtitle={t`Scan the QR code in an authenticator app and enter the code from it.`} />
       <div className="flex items-center gap-4">
         {qr ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={qr} alt="QR-код для приложения-аутентификатора" width={132} height={132} className="rounded-md bg-white" />
+          <img src={qr} alt={t`QR code for the authenticator app`} width={132} height={132} className="rounded-md bg-white" />
         ) : (
           <div className="size-[132px] rounded-md bg-secondary" />
         )}
         <div className="flex min-w-0 flex-col gap-1">
-          <span className="text-xs text-subtle">Или введи ключ вручную</span>
+          <span className="text-xs text-subtle">{t`Or enter the key by hand`}</span>
           <code className="font-mono text-xs break-all text-muted-foreground">{secret}</code>
         </div>
       </div>
       <details className="rounded-md border border-border bg-background px-3 py-2 text-[13px]">
-        <summary className="cursor-pointer text-muted-foreground">Резервные коды — сохрани их сейчас</summary>
+        <summary className="cursor-pointer text-muted-foreground">{t`Backup codes — save them now`}</summary>
         <div className="mt-2 grid grid-cols-2 gap-1 font-mono text-xs">
           {backupCodes.map((c) => (
             <span key={c}>{c}</span>
@@ -240,7 +241,7 @@ function TwoFactorSetup({ knownPassword, oauth, onDone }: { knownPassword: strin
       <CodeCells value={code} onChange={setCode} onComplete={(v) => void verify(v)} disabled={busy} />
       <ErrorText error={error} />
       <Button variant="primary" type="submit" className="w-full" disabled={busy || code.length !== 6}>
-        Включить и войти
+        {t`Turn on and sign in`}
       </Button>
     </form>
   )

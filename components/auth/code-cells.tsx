@@ -2,6 +2,7 @@
 
 import { useRef } from 'react'
 import { cn } from '@/lib/utils'
+import { t } from '@/components/i18n-client'
 
 /** Six single-digit cells with auto-advance, backspace and paste support. */
 export function CodeCells({
@@ -52,7 +53,7 @@ export function CodeCells({
             inputMode="numeric"
             autoComplete={i === 0 ? 'one-time-code' : 'off'}
             maxLength={length}
-            aria-label={`Цифра ${i + 1}`}
+            aria-label={t`Digit ${i + 1}`}
             value={ch}
             disabled={disabled}
             autoFocus={autoFocus && i === 0}

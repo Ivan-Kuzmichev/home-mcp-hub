@@ -4,6 +4,7 @@ import { maskHeaders, maskJsonOpValue } from './redact'
 import { getDb } from './db'
 import { toolCall } from './db/schema'
 import { logger } from './logger'
+import { t } from './i18n'
 
 export type JournalRow = typeof toolCall.$inferSelect
 
@@ -24,9 +25,9 @@ function describeItem(v: unknown): string {
 
 function describeValue(key: string, value: unknown): string | null {
   if (SECRET_KEYS.test(key)) return null
-  if (key === 'pin') return value ? 'задан' : 'нет'
+  if (key === 'pin') return value ? t`set` : t`none`
   // Prototype HTML never goes into the journal.
-  if (key === 'html' && typeof value === 'string') return `HTML ${Math.max(1, Math.round(Buffer.byteLength(value) / 1024))} КБ`
+  if (key === 'html' && typeof value === 'string') return t`HTML ${Math.max(1, Math.round(Buffer.byteLength(value) / 1024))} KB`
   if (value === null || value === undefined) return null
   if (typeof value === 'string') return key === 'query' || key === 'title' ? `«${value.slice(0, 120)}»` : value.slice(0, 120)
   if (Array.isArray(value)) return value.map(describeItem).join('; ')
@@ -37,7 +38,7 @@ function describeValue(key: string, value: unknown): string | null {
 /** Per-tool argument sanitizers: return the text to journal for one argument, or undefined to use the default. */
 type Sanitizer = (value: unknown) => string | undefined
 
-const lengthOnly: Sanitizer = (v) => (typeof v === 'string' ? `${v.length} симв.` : undefined)
+const lengthOnly: Sanitizer = (v) => (typeof v === 'string' ? t`${v.length} chars` : undefined)
 
 const headerValues: Sanitizer = (v) => {
   if (!v || typeof v !== 'object' || Array.isArray(v)) return undefined
@@ -122,11 +123,11 @@ export function logToolCall(e: {
 export type AuthEvent = 'auth.password' | 'auth.second_factor' | 'auth.consent' | 'auth.register' | 'auth.script_review'
 
 export const AUTH_EVENT_LABELS: Record<AuthEvent, string> = {
-  'auth.password': 'вход: пароль',
-  'auth.second_factor': 'вход в админку',
-  'auth.consent': 'доступ для клиента',
-  'auth.register': 'регистрация клиента',
-  'auth.script_review': 'проверка скрипта',
+  'auth.password': 'sign-in: password',
+  'auth.second_factor': 'admin sign-in',
+  'auth.consent': 'client access',
+  'auth.register': 'client registration',
+  'auth.script_review': 'script review',
 }
 
 export function logAuthEvent(e: { event: AuthEvent; ok: boolean; detail: string; error?: string; ip?: string | null }): void {

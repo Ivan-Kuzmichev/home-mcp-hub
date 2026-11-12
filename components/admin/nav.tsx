@@ -1,5 +1,6 @@
 'use client'
 
+import { tr } from '@/components/i18n-client'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useRef } from 'react'
@@ -37,7 +38,7 @@ export function SidebarNav({ hidden = [] }: { hidden?: string[] }) {
           )}
         >
           <Icon size={16} strokeWidth={2} />
-          {label}
+          {tr(label)}
         </Link>
       ))}
     </nav>
@@ -77,7 +78,7 @@ export function MobileTabs({ hidden = [] }: { hidden?: string[] }) {
           )}
         >
           <Icon size={20} strokeWidth={2} />
-          <span>{short ?? label}</span>
+          <span>{short ?? tr(label)}</span>
         </Link>
       ))}
     </nav>

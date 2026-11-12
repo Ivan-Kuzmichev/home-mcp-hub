@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useHref } from '@/components/prefix-provider'
 import { Button } from '@/components/ui/button'
 import { authErrorMessage, oauthRedirectUrl, useAuthClient } from '@/lib/auth-client'
+import { t } from '@/components/i18n-client'
 
 export function ConsentActions() {
   const auth = useAuthClient({ oauth: true })
@@ -18,7 +19,7 @@ export function ConsentActions() {
     const url = oauthRedirectUrl(data)
     if (error || !url) {
       setBusy(false)
-      return setError(authErrorMessage(error, 'Запрос устарел. Начни подключение в приложении заново.'))
+      return setError(authErrorMessage(error, t`The request expired. Start connecting in the app again.`))
     }
     window.location.assign(url)
   }
@@ -32,10 +33,10 @@ export function ConsentActions() {
       )}
       <div className="grid grid-cols-2 gap-2.5">
         <Button disabled={busy} onClick={() => decide(false)}>
-          Отказать
+          {t`Deny`}
         </Button>
         <Button variant="primary" disabled={busy} onClick={() => decide(true)}>
-          Разрешить
+          {t`Allow`}
         </Button>
       </div>
     </>
@@ -54,7 +55,7 @@ export function NotMeLink() {
         window.location.assign(href('/login'))
       }}
     >
-      Это не я
+      {t`This is not me`}
     </button>
   )
 }

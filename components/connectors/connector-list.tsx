@@ -5,6 +5,7 @@ import { StatusDot } from '@/components/ui/pill'
 import type { ConnectorSummary } from '@/lib/connectors/summary'
 import { href } from '@/lib/prefix'
 import { cn } from '@/lib/utils'
+import { t } from '@/lib/i18n'
 
 export function ConnectorList({ items, selected }: { items: ConnectorSummary[]; selected?: string }) {
   return (
@@ -19,7 +20,7 @@ export function ConnectorList({ items, selected }: { items: ConnectorSummary[]; 
           <EnabledSwitch id={c.id} name={c.name} enabled={c.enabled} disabled={!c.configured} />
         </Card>
       ))}
-      <div className="px-1 pt-1 text-xs text-faint">Новые коннекторы появляются с обновлением хаба</div>
+      <div className="px-1 pt-1 text-xs text-faint">{t`New connectors come with hub updates`}</div>
     </div>
   )
 }

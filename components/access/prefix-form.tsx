@@ -5,6 +5,7 @@ import { changePrefixAction, type PrefixState } from '@/app/admin/access/actions
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { t } from '@/components/i18n-client'
 
 const BASE62 = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
 
@@ -22,7 +23,7 @@ export function PrefixForm({ current, host }: { current: string; host: string })
 
   return (
     <form action={action} className="flex flex-col gap-2">
-      <Label htmlFor="mcp-secret">Префикс пути</Label>
+      <Label htmlFor="mcp-secret">{t`Path prefix`}</Label>
       <div className="flex flex-wrap items-center gap-2">
         <span className="hidden font-mono text-[13px] text-subtle sm:inline">{host}/</span>
         <Input
@@ -43,15 +44,15 @@ export function PrefixForm({ current, host }: { current: string; host: string })
             setConfirming(false)
           }}
         >
-          Сгенерировать
+          {t`Generate`}
         </Button>
         {!confirming ? (
           <Button variant="primary" disabled={!changed} onClick={() => setConfirming(true)}>
-            Применить
+            {t`Apply`}
           </Button>
         ) : (
           <Button type="submit" variant="destructive" disabled={pending} className="bg-err text-background hover:bg-err/90">
-            Точно сменить
+            {t`Really change`}
           </Button>
         )}
       </div>
@@ -61,8 +62,7 @@ export function PrefixForm({ current, host }: { current: string; host: string })
         </span>
       )}
       <span className={confirming ? 'text-xs text-warn' : 'text-xs text-subtle'}>
-        После смены: MCP-клиенты (Claude, ChatGPT) подключить заново — токены отзываются, админка откроется по новой ссылке, старая — 404. Прототипы не
-        меняются.
+        {t`After the change: reconnect MCP clients (Claude, ChatGPT) — tokens are revoked, the admin panel opens at the new link, the old one is a 404. Prototypes do not change.`}
       </span>
     </form>
   )

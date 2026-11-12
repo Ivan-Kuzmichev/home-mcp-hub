@@ -9,6 +9,7 @@ import { href } from '@/lib/prefix'
 import { getById, listPrototypes } from '@/lib/prototypes/store'
 import { cardData } from '@/lib/prototypes/view'
 import { requireAdmin } from '@/lib/session'
+import { t } from '@/lib/i18n'
 
 export const dynamic = 'force-dynamic'
 
@@ -22,10 +23,10 @@ export default async function PrototypePage({ params }: { params: Promise<{ id: 
   return (
     <>
       <div className="hidden md:block">
-        <PageHeader title="Прототипы" subtitle="HTML-страницы, которые ассистент опубликовал через MCP." actions={<UploadButton />} />
+        <PageHeader title={t`Prototypes`} subtitle={t`HTML pages the assistant published through MCP.`} actions={<UploadButton />} />
       </div>
       <header className="sticky top-0 z-10 -mx-4 -mt-4 flex h-14 items-center gap-2 border-b border-border bg-background pr-4 pl-2 md:hidden">
-        <Link href={href('/admin/prototypes')} aria-label="Назад" className="flex size-10 items-center justify-center text-muted-foreground">
+        <Link href={href('/admin/prototypes')} aria-label={t`Back`} className="flex size-10 items-center justify-center text-muted-foreground">
           <ChevronLeft size={22} />
         </Link>
         <h1 className="truncate text-[17px]">{p.title}</h1>

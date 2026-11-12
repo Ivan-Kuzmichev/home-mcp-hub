@@ -1,6 +1,7 @@
 'use client'
 
 import { Input } from '@/components/ui/input'
+import { t } from '@/components/i18n-client'
 
 type Option = { value: string; label: string }
 
@@ -19,27 +20,27 @@ export function ActivityFilters({
   const submit = (e: React.ChangeEvent<HTMLSelectElement>) => e.currentTarget.form?.requestSubmit()
   return (
     <form className="flex flex-wrap items-center gap-2" method="get">
-      <select name="connector" aria-label="Коннектор" defaultValue={values.connector ?? ''} onChange={submit} className={selectClass}>
-        <option value="">Все коннекторы</option>
+      <select name="connector" aria-label={t`Connector`} defaultValue={values.connector ?? ''} onChange={submit} className={selectClass}>
+        <option value="">{t`All connectors`}</option>
         {connectors.map((o) => (
           <option key={o.value} value={o.value}>
             {o.label}
           </option>
         ))}
       </select>
-      <select name="status" aria-label="Статус" defaultValue={values.status ?? ''} onChange={submit} className={selectClass}>
-        <option value="">Все статусы</option>
-        <option value="ok">Успешные</option>
-        <option value="error">Ошибки</option>
+      <select name="status" aria-label={t`Status`} defaultValue={values.status ?? ''} onChange={submit} className={selectClass}>
+        <option value="">{t`All statuses`}</option>
+        <option value="ok">{t`Successful`}</option>
+        <option value="error">{t`Errors`}</option>
       </select>
-      <select name="period" aria-label="Период" defaultValue={values.period ?? '7'} onChange={submit} className={selectClass}>
+      <select name="period" aria-label={t`Period`} defaultValue={values.period ?? '7'} onChange={submit} className={selectClass}>
         {periods.map((o) => (
           <option key={o.value} value={o.value}>
             {o.label}
           </option>
         ))}
       </select>
-      <Input name="q" type="search" defaultValue={values.q} placeholder="Поиск по инструменту или аргументам" className="h-9 min-w-[200px] flex-1 text-[13px]" />
+      <Input name="q" type="search" defaultValue={values.q} placeholder={t`Search by tool or arguments`} className="h-9 min-w-[200px] flex-1 text-[13px]" />
     </form>
   )
 }

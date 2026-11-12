@@ -8,6 +8,7 @@ import { env } from '@/lib/env'
 import { prefixedIcons } from '@/lib/icons'
 import { getPrefix } from '@/lib/prefix'
 import { requireAdmin } from '@/lib/session'
+import { t } from '@/lib/i18n'
 
 export const dynamic = 'force-dynamic'
 
@@ -45,7 +46,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             </div>
             <div className="flex min-w-0 flex-1 flex-col">
               <span className="truncate text-[13px] font-medium">{name}</span>
-              <span className="text-[11px] text-subtle">админ · 2FA включена</span>
+              <span className="text-[11px] text-subtle">{t`admin · 2FA on`}</span>
             </div>
             <SignOutButton />
           </div>

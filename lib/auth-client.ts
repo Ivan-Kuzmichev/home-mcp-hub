@@ -5,6 +5,7 @@ import { createAuthClient } from 'better-auth/react'
 import { twoFactorClient } from 'better-auth/client/plugins'
 import { oauthProviderClient } from '@better-auth/oauth-provider/client'
 import { usePrefix } from '@/components/prefix-provider'
+import { t } from '@/components/i18n-client'
 
 function create(prefix: string, oauth: boolean) {
   // The client is only called from event handlers; during SSR the origin is never used.
@@ -36,26 +37,26 @@ export function oauthRedirectUrl(data: unknown): string | null {
 type AuthError = { status?: number; code?: string; message?: string } | null | undefined
 
 /** Map better-auth errors to short Russian messages. */
-export function authErrorMessage(error: AuthError, fallback = 'Не получилось. Попробуй ещё раз.'): string {
+export function authErrorMessage(error: AuthError, fallback = t`Failed. Try again.`): string {
   if (!error) return fallback
-  if (error.status === 429) return 'Слишком много попыток. Подожди 15 минут.'
+  if (error.status === 429) return t`Too many attempts. Wait 15 minutes.`
   switch (error.code) {
     case 'INVALID_ORIGIN':
     case 'MISSING_OR_NULL_ORIGIN':
     case 'CROSS_SITE_NAVIGATION_LOGIN_BLOCKED':
-      return 'Вход с этого адреса отклонён: он не совпадает с BASE_URL в .env хаба.'
+      return t`Sign-in from this address was refused: it does not match BASE_URL in the hub .env.`
     case 'INVALID_EMAIL_OR_PASSWORD':
-      return 'Неверный email или пароль.'
+      return t`Wrong email or password.`
     case 'INVALID_PASSWORD':
-      return 'Неверный пароль.'
+      return t`Wrong password.`
     case 'INVALID_CODE':
     case 'INVALID_BACKUP_CODE':
-      return 'Неверный код.'
+      return t`Wrong code.`
     case 'TOO_MANY_ATTEMPTS_REQUEST_NEW_CODE':
     case 'INVALID_TWO_FACTOR_COOKIE':
-      return 'Сессия входа истекла. Введи пароль заново.'
+      return t`The sign-in session expired. Enter the password again.`
     case 'ACCOUNT_TEMPORARILY_LOCKED':
-      return 'Слишком много неверных кодов. Вход заблокирован на 15 минут.'
+      return t`Too many wrong codes. Sign-in is blocked for 15 minutes.`
     default:
       return fallback
   }

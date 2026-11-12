@@ -49,6 +49,6 @@ export function linkUrl(token: string): string {
 }
 
 export const LINK_KIND_TEXT = {
-  personal: 'Личная: 24 часа, открывается только в браузере, где выполнен вход в админку хаба.',
-  shareable: 'Пересылаемая: откроется один раз у любого, у кого ссылка, в течение 15 минут.',
+  personal: 'Personal: 24 hours, opens only in a browser signed in to the hub admin panel.',
+  shareable: 'Shareable: opens once for anyone with the link, within 15 minutes.',
 }

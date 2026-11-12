@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/card'
 import { connectorStates } from '@/lib/connectors/active'
 import { href } from '@/lib/prefix'
 import { requireAdmin } from '@/lib/session'
+import { t, tr } from '@/lib/i18n'
 
 // Phone-only «Ещё» tab: sections that do not fit into the bottom bar.
 const MORE_ITEMS = ['/admin/scripts', '/admin/activity', '/admin/diagnostics', '/admin/settings']
@@ -20,12 +21,12 @@ export default async function MorePage() {
   const MORE = NAV_ITEMS.filter((i) => MORE_ITEMS.includes(i.path) && (scriptsOn || i.path !== '/admin/scripts'))
   return (
     <>
-      <PageHeader title="Ещё" />
+      <PageHeader title={t`More`} />
       <Card className="flex flex-col px-3.5">
         {MORE.map(({ path, label, icon: Icon }) => (
           <Link key={path} href={href(path)} className="flex items-center gap-3 border-b border-divider py-3.5 text-foreground no-underline hover:text-foreground">
             <Icon size={18} className="text-subtle" />
-            <span className="flex-1">{label}</span>
+            <span className="flex-1">{tr(label)}</span>
             <ChevronRight size={16} className="text-subtle" />
           </Link>
         ))}

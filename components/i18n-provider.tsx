@@ -1,12 +1,14 @@
 'use client'
 
 import { createContext, useContext, useMemo } from 'react'
+import { setClientLang } from '@/components/i18n-client'
 import '@/lib/i18n/catalog'
 import { localeTagFor, pluralFor, translateTemplate, translateText, type Lang } from '@/lib/i18n/core'
 
 const LangContext = createContext<Lang>('en')
 
 export function LangProvider({ lang, children }: { lang: Lang; children: React.ReactNode }) {
+  setClientLang(lang)
   return <LangContext.Provider value={lang}>{children}</LangContext.Provider>
 }
 

@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label'
 import { Pill } from '@/components/ui/pill'
 import { Switch } from '@/components/ui/switch'
 import { PreviewFrame } from './preview-frame'
+import { t } from '@/components/i18n-client'
 
 export type CardData = {
   id: string
@@ -43,31 +44,31 @@ export function PrototypeCard({ data }: { data: CardData }) {
           <h2 className="truncate text-lg">{data.title}</h2>
           <span className="text-[13px] text-subtle">{data.meta}</span>
         </div>
-        {data.expired && <Pill tone="err">срок истёк · отвечает 410</Pill>}
+        {data.expired && <Pill tone="err">{t`expired · answers 410`}</Pill>}
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="pt-link">Публичная ссылка</Label>
+        <Label htmlFor="pt-link">{t`Public link`}</Label>
         <div className="flex gap-2">
           <Input id="pt-link" className="min-w-0 font-mono" value={data.url} readOnly />
           <CopyButton value={data.url} />
-          <Button size="icon" className="size-10 shrink-0" aria-label="Показать QR" title="QR-код" onClick={() => setShowQr((v) => !v)}>
+          <Button size="icon" className="size-10 shrink-0" aria-label={t`Show QR`} title={t`QR code`} onClick={() => setShowQr((v) => !v)}>
             <QrCode size={16} />
           </Button>
         </div>
         {showQr && (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={data.qr} alt={`QR-код ссылки ${data.url}`} width={180} height={180} className="mt-2 rounded-md bg-white p-2" />
+          <img src={data.qr} alt={t`QR code of the link ${data.url}`} width={180} height={180} className="mt-2 rounded-md bg-white p-2" />
         )}
       </div>
 
-      <PreviewFrame src={data.previewUrl} title={`Превью: ${data.title}`} />
+      <PreviewFrame src={data.previewUrl} title={t`Preview: ${data.title}`} />
 
       <form action={save} className="flex flex-col gap-4">
         <input type="hidden" name="id" value={data.id} />
         <input type="hidden" name="pinEnabled" value={pinEnabled ? 'on' : ''} />
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="pt-title">Название</Label>
+          <Label htmlFor="pt-title">{t`Title`}</Label>
           <Input id="pt-title" name="title" defaultValue={data.title} />
         </div>
 
@@ -75,34 +76,34 @@ export function PrototypeCard({ data }: { data: CardData }) {
           <div className="flex items-center gap-3">
             <Switch
               checked={pinEnabled}
-              label="Пинкод включён"
+              label={t`PIN on`}
               onChange={(v) => {
                 setPinEnabled(v)
                 if (v && !data.hasPin) setChangingPin(true)
               }}
             />
             <span className="flex-1 font-medium">
-              Пинкод {pinEnabled && data.hasPin && !changingPin && <span className="font-mono text-muted-foreground">••••</span>}
+              {t`PIN code`} {pinEnabled && data.hasPin && !changingPin && <span className="font-mono text-muted-foreground">••••</span>}
             </span>
             {pinEnabled && data.hasPin && !changingPin && (
               <Button size="sm" onClick={() => setChangingPin(true)}>
-                Сменить
+                {t`Change`}
               </Button>
             )}
           </div>
           {pinEnabled && changingPin && (
-            <Input name="pin" inputMode="numeric" pattern="\d{4,8}" autoComplete="off" placeholder="Новый пин, 4–8 цифр" className="font-mono" required={!data.hasPin} />
+            <Input name="pin" inputMode="numeric" pattern="\d{4,8}" autoComplete="off" placeholder={t`New PIN, 4–8 digits`} className="font-mono" required={!data.hasPin} />
           )}
-          <span className="text-xs text-subtle">После ввода cookie на 24 ч · 5 попыток за 10 мин · смена пина сбрасывает все cookie</span>
+          <span className="text-xs text-subtle">{t`A 24 h cookie after entry · 5 attempts per 10 min · a new PIN resets all cookies`}</span>
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="pt-exp">Срок жизни · сейчас {data.expiryText}</Label>
+          <Label htmlFor="pt-exp">{t`Lifetime · now`} {data.expiryText}</Label>
           <select id="pt-exp" name="expiry" defaultValue="keep" className="h-10 rounded-md border border-input bg-background px-3 text-sm">
-            <option value="keep">Не менять</option>
-            <option value="never">Бессрочно</option>
-            <option value="7d">7 дней от сегодня</option>
-            <option value="30d">30 дней от сегодня</option>
+            <option value="keep">{t`Keep`}</option>
+            <option value="never">{t`No expiry`}</option>
+            <option value="7d">{t`7 days from today`}</option>
+            <option value="30d">{t`30 days from today`}</option>
           </select>
         </div>
 
@@ -111,13 +112,13 @@ export function PrototypeCard({ data }: { data: CardData }) {
         <div className="fixed inset-x-0 bottom-[var(--tabs-h,80px)] z-10 flex gap-2.5 border-t border-border bg-panel px-4 py-3 md:static md:justify-end md:border-0 md:bg-transparent md:p-0">
           {saveState.ok && <span className="hidden self-center text-[13px] text-ok md:inline">{saveState.ok}</span>}
           <Button type="submit" variant="primary" className="flex-1 md:flex-none" disabled={saving}>
-            {saving ? 'Сохраняю…' : 'Сохранить'}
+            {saving ? t`Saving…` : t`Save`}
           </Button>
         </div>
       </form>
 
       <div className="flex flex-col gap-2">
-        <Label>Версии</Label>
+        <Label>{t`Versions`}</Label>
         <div className="flex flex-col rounded-md border border-border">
           {data.versions.map((v) => (
             <div key={v.version} className="flex items-center gap-3 border-b border-divider px-3.5 py-2.5 text-[13px] last:border-b-0">
@@ -126,16 +127,16 @@ export function PrototypeCard({ data }: { data: CardData }) {
                 {v.ago} · {v.size}
               </span>
               <a href={`${data.previewUrl.split('?')[0]}?v=${v.version}`} target="_blank" rel="noreferrer" className="no-underline">
-                открыть
+                {t`view`}
               </a>
               {v.version === data.currentVersion ? (
-                <Pill tone="ok">текущая</Pill>
+                <Pill tone="ok">{t`current`}</Pill>
               ) : (
                 <form action={rollbackAction}>
                   <input type="hidden" name="id" value={data.id} />
                   <input type="hidden" name="version" value={v.version} />
                   <button type="submit" className="cursor-pointer text-primary hover:text-primary-hover">
-                    откатить
+                    {t`roll back`}
                   </button>
                 </form>
               )}
@@ -146,7 +147,7 @@ export function PrototypeCard({ data }: { data: CardData }) {
           <input type="hidden" name="id" value={data.id} />
           <input name="file" type="file" accept=".html,.htm,text/html" required className="min-w-0 flex-1 text-[13px] text-muted-foreground file:mr-3 file:cursor-pointer file:rounded-sm file:border file:border-border file:bg-secondary file:px-3 file:py-1.5 file:text-foreground" />
           <Button type="submit" size="sm" disabled={uploading}>
-            {uploading ? 'Загружаю…' : 'Загрузить новую версию'}
+            {uploading ? t`Uploading…` : t`Upload a new version`}
           </Button>
           {uploadState.error && <span className="w-full text-[13px] text-err">{uploadState.error}</span>}
           {uploadState.ok && <span className="w-full text-[13px] text-ok">{uploadState.ok}</span>}
@@ -154,17 +155,17 @@ export function PrototypeCard({ data }: { data: CardData }) {
       </div>
 
       <div className="flex flex-col gap-2">
-        <Label>Данные страницы</Label>
+        <Label>{t`Page data`}</Label>
         <div className="flex flex-wrap items-center gap-3 rounded-md border border-border px-3.5 py-2.5 text-[13px]">
           <span className="min-w-0 flex-1 text-subtle">
-            {data.dataSize ? `window.hub.db · ${data.dataSize}` : 'Страница ещё ничего не сохраняла в window.hub.db'}
+            {data.dataSize ? `window.hub.db · ${data.dataSize}` : t`The page has not saved anything to window.hub.db yet`}
           </span>
-          {data.dataSize && <ConfirmButton action={clearDataAction} fields={{ id: data.id }} label="Очистить" confirmLabel="Точно очистить" />}
+          {data.dataSize && <ConfirmButton action={clearDataAction} fields={{ id: data.id }} label={t`Clear`} confirmLabel={t`Really clear`} />}
         </div>
       </div>
 
       <div className="flex justify-start border-t border-divider pt-4">
-        <ConfirmButton action={deletePrototypeAction} fields={{ id: data.id }} label="Удалить прототип" confirmLabel="Точно удалить" />
+        <ConfirmButton action={deletePrototypeAction} fields={{ id: data.id }} label={t`Delete prototype`} confirmLabel={t`Really delete`} />
       </div>
     </Card>
   )

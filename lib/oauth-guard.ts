@@ -2,6 +2,7 @@ import { MCP_SCOPE } from './auth'
 import { logAuthEvent } from './journal'
 import { allowedRedirect, getAllowedClients } from './oauth-clients'
 import { isDcrAllowed } from './settings'
+import { t } from './i18n'
 
 type GuardInput = {
   method: string
@@ -55,8 +56,8 @@ export async function guardAuthRequest(input: GuardInput, getSession: () => Prom
     if (!ok) {
       // Journal the refused URIs: that is how a new client shows what it needs.
       const shown = Array.isArray(uris) ? uris.map((u) => String(u).slice(0, 120)).join(', ') : '—'
-      const name = typeof body?.client_name === 'string' ? body.client_name.slice(0, 60) : 'без имени'
-      logAuthEvent({ event: 'auth.register', ok: false, detail: `${name} · redirect: ${shown}`, error: 'redirect не в списке разрешённых клиентов', ip: input.ip })
+      const name = typeof body?.client_name === 'string' ? body.client_name.slice(0, 60) : t`no name`
+      logAuthEvent({ event: 'auth.register', ok: false, detail: `${name} · redirect: ${shown}`, error: t`redirect is not in the allowed clients`, ip: input.ip })
       return oauthError(400, 'invalid_redirect_uri', 'Redirect URI is not allowed. Enable this client on the hub access screen.')
     }
     return null

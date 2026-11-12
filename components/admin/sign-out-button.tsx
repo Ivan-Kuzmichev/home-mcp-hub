@@ -4,6 +4,7 @@ import { LogOut } from 'lucide-react'
 import { useHref } from '@/components/prefix-provider'
 import { useAuthClient } from '@/lib/auth-client'
 import { cn } from '@/lib/utils'
+import { t } from '@/components/i18n-client'
 
 export function SignOutButton({ className, withLabel }: { className?: string; withLabel?: boolean }) {
   const auth = useAuthClient()
@@ -11,7 +12,7 @@ export function SignOutButton({ className, withLabel }: { className?: string; wi
   return (
     <button
       type="button"
-      aria-label="Выйти"
+      aria-label={t`Sign out`}
       className={cn('flex cursor-pointer items-center gap-2 text-subtle hover:text-foreground', className)}
       onClick={async () => {
         await auth.signOut()
@@ -19,7 +20,7 @@ export function SignOutButton({ className, withLabel }: { className?: string; wi
       }}
     >
       <LogOut size={16} />
-      {withLabel && <span>Выйти</span>}
+      {withLabel && <span>{t`Sign out`}</span>}
     </button>
   )
 }

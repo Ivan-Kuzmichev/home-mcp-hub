@@ -15,7 +15,7 @@ import { formatAgo, formatWhen } from '@/lib/format'
 import { JOURNAL_RETENTION_DAYS } from '@/lib/journal'
 import { fingerprint, jwksStatus, secretsStatus } from '@/lib/keys'
 import { defaultCustomInstructions, INSTRUCTIONS_HEAD } from '@/lib/mcp/server'
-import { getLang, langFromEnv, tr } from '@/lib/i18n'
+import { getLang, langFromEnv, t, tr } from '@/lib/i18n'
 import { getPrefix } from '@/lib/prefix'
 import { getCustomInstructions } from '@/lib/settings'
 import { requireAdmin } from '@/lib/session'
@@ -25,7 +25,7 @@ import pkg from '@/package.json'
 export const dynamic = 'force-dynamic'
 
 function deviceLabel(ua: string | null | undefined): string {
-  if (!ua) return 'неизвестно'
+  if (!ua) return t`unknown`
   const os = /iPhone|iPad/.test(ua) ? 'iPhone' : /Android/.test(ua) ? 'Android' : /Mac OS X/.test(ua) ? 'Mac' : /Windows/.test(ua) ? 'Windows' : /Linux/.test(ua) ? 'Linux' : ''
   const browser = /Edg\//.test(ua) ? 'Edge' : /Chrome\//.test(ua) ? 'Chrome' : /Firefox\//.test(ua) ? 'Firefox' : /Safari\//.test(ua) ? 'Safari' : ''
   return [os, browser].filter(Boolean).join(' · ') || ua.slice(0, 30)
@@ -57,7 +57,7 @@ export default async function SettingsPage() {
 
   return (
     <>
-      <PageHeader title="Настройки" subtitle="Аккаунт, секретный префикс, ключи и обслуживание хаба." />
+      <PageHeader title={t`Settings`} subtitle={t`Account, secret prefix, keys and hub maintenance.`} />
 
       <Card className="flex flex-col gap-3 p-4 md:p-5">
         <div className="flex flex-col gap-0.5">
@@ -74,24 +74,23 @@ export default async function SettingsPage() {
 
       <Card className="flex flex-col gap-4 p-4 md:p-5">
         <div className="flex items-center justify-between gap-3">
-          <h2 className="text-[15px]">Секретный префикс</h2>
-          <Pill tone="muted">на всё, кроме /p/* и /f/*</Pill>
+          <h2 className="text-[15px]">{t`Secret prefix`}</h2>
+          <Pill tone="muted">{t`on everything except /p/* and /f/*`}</Pill>
         </div>
         <PrefixForm current={prefix} host={host} />
         <dl className="flex flex-col gap-1.5 rounded-md border border-border bg-background p-3 text-[13px]">
-          <UrlRow label="Админка" value={`${host}/${prefix}/admin`} />
-          <UrlRow label="MCP-эндпоинт" value={`${host}/${prefix}/api/mcp`} />
-          <UrlRow label="Прототипы и ссылки на файлы — без префикса" value={`${host}/p/…, ${host}/f/…`} />
-          <div className="pt-1 text-xs text-subtle">Всё остальное отвечает пустым 404. Префикс прячет хаб от сканеров, но не заменяет OAuth и 2FA.</div>
+          <UrlRow label={t`Admin panel`} value={`${host}/${prefix}/admin`} />
+          <UrlRow label={t`MCP endpoint`} value={`${host}/${prefix}/api/mcp`} />
+          <UrlRow label={t`Prototypes and file links — without the prefix`} value={`${host}/p/…, ${host}/f/…`} />
+          <div className="pt-1 text-xs text-subtle">{t`Everything else answers with an empty 404. The prefix hides the hub from scanners but does not replace OAuth and 2FA.`}</div>
         </dl>
       </Card>
 
       <Card className="flex flex-col gap-3 p-4 md:p-5">
         <div className="flex flex-col gap-0.5">
-          <h2 className="text-[15px]">Свой initialize</h2>
+          <h2 className="text-[15px]">{t`Custom initialize`}</h2>
           <span className="text-xs text-subtle">
-            Текст, который MCP-клиент получает при подключении. ChatGPT надёжно читает только первые {INSTRUCTIONS_HEAD} символов, поэтому можно отдать короткую
-            версию со ссылкой на <span className="font-mono">hub_guide</span>. Что уходит сейчас — в «Диагностике».
+            {t`The text an MCP client receives when it connects. ChatGPT reliably reads only the first`} {INSTRUCTIONS_HEAD} {t`characters, so you can send a short version with a pointer to`} <span className="font-mono">hub_guide</span>{t`. What is sent now is in Diagnostics.`}
           </span>
         </div>
         <InitializeForm enabled={custom.enabled} text={custom.text} template={defaultCustomInstructions()} head={INSTRUCTIONS_HEAD} />
@@ -99,7 +98,7 @@ export default async function SettingsPage() {
 
       <div className="grid gap-3.5 lg:grid-cols-2">
         <Card className="flex flex-col p-4 md:p-5">
-          <h2 className="pb-2 text-[15px]">Аккаунт</h2>
+          <h2 className="pb-2 text-[15px]">{t`Account`}</h2>
           <SettingsRow title="Email" detail={session.user.email} />
           <PasswordRow changedAgo={credential ? formatAgo(credential.updatedAt) : '—'} />
           <BackupCodesRow />
@@ -109,36 +108,36 @@ export default async function SettingsPage() {
         </Card>
 
         <Card className="flex flex-col p-4 md:p-5">
-          <h2 className="pb-2 text-[15px]">Ключи</h2>
+          <h2 className="pb-2 text-[15px]">{t`Keys`}</h2>
           <KeyRow
             ok={secrets.unreadable === 0}
-            title="Мастер-ключ шифрования"
+            title={t`Encryption master key`}
             detail={
               <>
-                из <span className="font-mono">HUB_MASTER_KEY</span> · отпечаток <span className="font-mono">{fingerprint(e.HUB_MASTER_KEY)}</span> · {secrets.total}{' '}
-                {plural(secrets.total, ['секрет зашифрован', 'секрета зашифровано', 'секретов зашифровано'])}
-                {secrets.unreadable > 0 && <span className="text-err"> · {secrets.unreadable} не расшифровываются — введи их заново</span>}
+                {t`from`} <span className="font-mono">HUB_MASTER_KEY</span> {t`· fingerprint`} <span className="font-mono">{fingerprint(e.HUB_MASTER_KEY)}</span> · {secrets.total}{' '}
+                {plural(secrets.total, ['secret encrypted', 'secrets encrypted'])}
+                {secrets.unreadable > 0 && <span className="text-err"> · {secrets.unreadable} {t`cannot be decrypted — enter them again`}</span>}
               </>
             }
           />
-          <KeyRow ok title="Секрет сессий" detail={<>из <span className="font-mono">BETTER_AUTH_SECRET</span> · задан</>} />
+          <KeyRow ok title={t`Session secret`} detail={<>{t`from`} <span className="font-mono">BETTER_AUTH_SECRET</span> {t`· set`}</>} />
           <KeyRow
             ok={keys.keys > 0}
-            title="Ключи подписи токенов (JWKS)"
-            detail={keys.keys ? `${keys.keys} ${plural(keys.keys, ['ключ', 'ключа', 'ключей'])} · создан ${formatWhen(keys.oldest)}` : 'появятся при первой выдаче токена MCP-клиенту'}
+            title={t`Token signing keys (JWKS)`}
+            detail={keys.keys ? t`${keys.keys} ${plural(keys.keys, ['key', 'keys'])} · created ${formatWhen(keys.oldest)}` : t`they appear when the first token is issued to an MCP client`}
           />
           <p className="pt-3 text-xs text-subtle">
-            Ключи живут в <span className="font-mono">.env</span> на NAS и здесь не показываются. Потеря мастер-ключа — переввод паролей коннекторов, остальное цело.
+            {t`Keys live in`} <span className="font-mono">.env</span> {t`on the NAS and are not shown here. Losing the master key means re-entering connector passwords, everything else stays.`}
           </p>
         </Card>
 
         <Card className="flex flex-col p-4 md:p-5">
-          <h2 className="pb-2 text-[15px]">Общие</h2>
-          <SettingsRow title="Публичный адрес" detail={<span className="font-mono">{e.BASE_URL}</span>} />
-          <SettingsRow title="Прокси" detail={e.TRUST_PROXY ? 'TRUST_PROXY включён: IP берётся из X-Forwarded-For' : 'TRUST_PROXY выключен'} />
-          <SettingsRow title="Журнал" detail={`хранится ${JOURNAL_RETENTION_DAYS} дней`} />
-          <SettingsRow title="Часовой пояс" detail={Intl.DateTimeFormat().resolvedOptions().timeZone} />
-          <p className="pt-3 text-xs text-subtle">Меняются в .env / docker-compose.yml на NAS и применяются после перезапуска контейнера.</p>
+          <h2 className="pb-2 text-[15px]">{t`General`}</h2>
+          <SettingsRow title={t`Public address`} detail={<span className="font-mono">{e.BASE_URL}</span>} />
+          <SettingsRow title={t`Proxy`} detail={e.TRUST_PROXY ? t`TRUST_PROXY is on: the IP comes from X-Forwarded-For` : t`TRUST_PROXY is off`} />
+          <SettingsRow title={t`Activity`} detail={t`kept for ${JOURNAL_RETENTION_DAYS} days`} />
+          <SettingsRow title={t`Time zone`} detail={Intl.DateTimeFormat().resolvedOptions().timeZone} />
+          <p className="pt-3 text-xs text-subtle">{t`Changed in .env / docker-compose.yml on the NAS and applied after a container restart.`}</p>
         </Card>
 
         <Card className="flex flex-col gap-1 p-4 md:p-5">

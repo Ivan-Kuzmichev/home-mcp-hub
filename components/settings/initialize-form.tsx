@@ -5,6 +5,7 @@ import { saveCustomInstructionsAction, type InitializeState } from '@/app/admin/
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { cn } from '@/lib/utils'
+import { t } from '@/components/i18n-client'
 
 type Props = { enabled: boolean; text: string; template: string; head: number }
 
@@ -21,22 +22,22 @@ export function InitializeForm(props: Props) {
       <label className="flex cursor-pointer items-start gap-3">
         <Switch
           checked={enabled}
-          label="Использовать свою инструкцию"
+          label={t`Use custom instructions`}
           onChange={(on) => {
             setEnabled(on)
             setState({})
           }}
         />
         <span className="flex flex-col">
-          <span>Использовать свою инструкцию</span>
+          <span>{t`Use custom instructions`}</span>
           <span className="text-xs text-subtle">
-            Вместо инструкций, собранных из коннекторов, клиент получит этот текст, а полные правила ассистент возьмёт из инструмента{' '}
+            {t`Instead of the instructions built from the connectors, the client gets this text, and the assistant takes the full rules from the tool`}{' '}
             <span className="font-mono">hub_guide</span>.
           </span>
         </span>
       </label>
       <textarea
-        aria-label="Своя инструкция"
+        aria-label={t`Custom instructions`}
         rows={6}
         disabled={!enabled}
         spellCheck={false}
@@ -48,14 +49,14 @@ export function InitializeForm(props: Props) {
         className="w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-[13px] leading-5 text-foreground placeholder:text-faint focus-visible:border-primary focus-visible:outline-none disabled:opacity-50"
       />
       <span className={cn('text-xs', over ? 'text-warn' : 'text-subtle')}>
-        {text.trim().length} симв.{over && ` — больше ${props.head}, ChatGPT может не дочитать`}
+        {text.trim().length} {t`chars`}{over && t` — over ${props.head}, ChatGPT may not read it all`}
       </span>
       {/* Phone: the message gets its own line above the buttons; wide screens: left of them. */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         {(state.ok || state.error) && <span className={cn('text-[13px] sm:flex-1', state.error ? 'text-err' : 'text-ok')}>{state.error ?? state.ok}</span>}
         <div className="flex gap-2 sm:ml-auto">
           <Button size="sm" disabled={!enabled || pending} onClick={() => setText(props.template)}>
-            Шаблон
+            {t`Template`}
           </Button>
           <Button
             size="sm"
@@ -63,7 +64,7 @@ export function InitializeForm(props: Props) {
             disabled={pending}
             onClick={() => start(async () => setState(await saveCustomInstructionsAction(enabled, text)))}
           >
-            {pending ? 'Сохраняю…' : 'Сохранить'}
+            {pending ? t`Saving…` : t`Save`}
           </Button>
         </div>
       </div>

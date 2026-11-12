@@ -285,7 +285,7 @@ export const files = defineConnector<Config>({
         const st = await fsCall(item.shown, () => fs.stat(item.abs))
         if (st.isDirectory()) throw new ToolError(t`“${item.shown}” is a folder; a link can only point to a file`)
         const { token } = createLink({ connectorId: 'files', path: item.shown }, { shareable: args.shareable })
-        return [`${item.shown} · ${formatSize(st.size)}:`, linkUrl(token), args.shareable ? LINK_KIND_TEXT.shareable : LINK_KIND_TEXT.personal].join('\n')
+        return [`${item.shown} · ${formatSize(st.size)}:`, linkUrl(token), args.shareable ? tr(LINK_KIND_TEXT.shareable) : tr(LINK_KIND_TEXT.personal)].join('\n')
       },
     }),
 

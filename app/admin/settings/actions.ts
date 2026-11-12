@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { changeLanguage, type Lang } from '@/lib/i18n'
+import { changeLanguage, t, type Lang } from '@/lib/i18n'
 import { setCustomInstructions } from '@/lib/settings'
 import { requireAdmin } from '@/lib/session'
 
@@ -19,9 +19,9 @@ const MAX_TEXT = 4000
 export async function saveCustomInstructionsAction(enabled: boolean, text: string): Promise<InitializeState> {
   await requireAdmin()
   const clean = text.trim()
-  if (enabled && !clean) return { error: 'Пустая инструкция — впиши текст или выключи переключатель' }
-  if (clean.length > MAX_TEXT) return { error: `Длиннее ${MAX_TEXT} символов` }
+  if (enabled && !clean) return { error: t`Empty instructions — write the text or turn the switch off` }
+  if (clean.length > MAX_TEXT) return { error: t`Longer than ${MAX_TEXT} characters` }
   setCustomInstructions({ enabled, text: clean })
   revalidatePath('/admin', 'layout')
-  return { ok: enabled ? 'Сохранено — клиенты получат этот текст в новом чате' : 'Выключено — снова отдаются полные инструкции' }
+  return { ok: enabled ? t`Saved — clients get this text in a new chat` : t`Off — the full instructions are sent again` }
 }

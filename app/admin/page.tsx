@@ -1,3 +1,4 @@
+import { localeTag, t, tr, trc } from '@/lib/i18n'
 import Link from 'next/link'
 import { PageHeader } from '@/components/admin/page-header'
 import { Card } from '@/components/ui/card'
@@ -14,10 +15,11 @@ import { requireAdmin } from '@/lib/session'
 
 export const dynamic = 'force-dynamic'
 
-const TONE_LABEL = { ok: 'OK', warn: 'Не отвечает', err: 'Ошибка', muted: 'Не настроен' } as const
+/** English; shown through tr(). */
+const TONE_LABEL = { ok: 'OK', warn: 'Not responding', err: 'Error', muted: 'Not set up' } as const
 
 function formatToday(): string {
-  const s = new Intl.DateTimeFormat('ru-RU', { weekday: 'short', day: 'numeric', month: 'long' }).format(new Date())
+  const s = new Intl.DateTimeFormat(localeTag(), { weekday: 'short', day: 'numeric', month: 'long' }).format(new Date())
   return s.charAt(0).toUpperCase() + s.slice(1)
 }
 
@@ -31,11 +33,11 @@ export default async function DashboardPage() {
   const calls = recentToolCalls(5)
   const failed = failedSignIns(new Date(Date.now() - 86_400_000))
   const awaiting = listScripts().filter((s) => statusOf(s) === 'pending').length
-  const claudeText = connected ? `MCP подключён${last ? ` · вызов ${formatAgo(last.createdAt)}` : ''}` : 'MCP не подключён'
+  const claudeText = connected ? t`MCP connected${last ? t` · call ${formatAgo(last.createdAt)}` : ''}` : t`MCP not connected`
   return (
     <>
       <PageHeader
-        title="Дашборд"
+        title={t`Dashboard`}
         subtitle={
           <>
             {formatToday()} · <span className="font-mono">v{HUB_VERSION}</span>
@@ -48,7 +50,7 @@ export default async function DashboardPage() {
         }
         mobileAside={
           <Pill tone={connected ? 'ok' : 'muted'} dot>
-            MCP{connected && last ? ` · ${formatAgo(last.createdAt).replace(' назад', '')}` : ''}
+            MCP{connected && last ? ` · ${formatAgo(last.createdAt).replace(t` ago`, '')}` : ''}
           </Pill>
         }
       />
@@ -57,8 +59,8 @@ export default async function DashboardPage() {
         {summaries
           .filter((c) => c.configured && c.enabled)
           .map((c) => {
-          const label = TONE_LABEL[c.tone]
-          const detail = c.lastCheckAt ? `проверено ${formatAgo(c.lastCheckAt)}` : 'ещё не проверялся'
+          const label = tr(TONE_LABEL[c.tone])
+          const detail = c.lastCheckAt ? t`checked ${formatAgo(c.lastCheckAt)}` : t`not checked yet`
           return (
             <Link key={c.id} href={href(`/admin/connectors/${c.id}`)} className="text-inherit no-underline hover:text-inherit">
               <Card className={`flex h-full flex-col gap-1.5 p-3 md:gap-2.5 md:p-4 ${c.tone === 'warn' || c.tone === 'err' ? 'border-warn/40' : ''}`}>
@@ -79,16 +81,16 @@ export default async function DashboardPage() {
 
       <Card className="flex flex-col gap-3.5 p-3.5 md:p-[18px]">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm md:text-[15px]">Последние вызовы MCP</h2>
+          <h2 className="text-sm md:text-[15px]">{t`Latest MCP calls`}</h2>
           <Link href={href('/admin/activity')} className="text-xs no-underline">
-            Журнал
+            {t`Activity`}
           </Link>
         </div>
         {calls.length === 0 ? (
           <div className="py-6 text-center text-[13px] text-subtle">
-            Ассистент ещё ничего не вызывал. Подключение настраивается на экране{' '}
+            {t`The assistant has not called anything yet. The connection is set up on the`}{' '}
             <Link href={href('/admin/access')} className="no-underline">
-              «MCP доступ»
+              {t`MCP access screen`}
             </Link>
             .
           </div>
@@ -96,11 +98,11 @@ export default async function DashboardPage() {
           <div className="flex flex-col">
             {calls.map((c) => (
               <div key={c.id} className="flex items-center gap-3 border-b border-divider py-2.5 last:border-b-0">
-                <span className="w-[88px] shrink-0 font-mono text-xs text-subtle">{formatWhen(c.createdAt).replace('сегодня ', '')}</span>
+                <span className="w-[88px] shrink-0 font-mono text-xs text-subtle">{formatWhen(c.createdAt).replace(t`today `, '')}</span>
                 <span className="w-[150px] shrink-0 truncate font-mono text-[13px]">{c.tool}</span>
                 <span className="hidden min-w-0 flex-1 truncate text-muted-foreground md:block">{c.argsRedacted}</span>
                 <span className="ml-auto shrink-0 md:ml-0">
-                  <Pill tone={c.ok ? 'ok' : 'err'}>{c.ok ? `OK · ${((c.durationMs ?? 0) / 1000).toLocaleString('ru-RU', { maximumFractionDigits: 1 })} с` : resultText(c).slice(0, 24)}</Pill>
+                  <Pill tone={c.ok ? 'ok' : 'err'}>{c.ok ? t`OK · ${((c.durationMs ?? 0) / 1000).toLocaleString(localeTag(), { maximumFractionDigits: 1 })} s` : resultText(c).slice(0, 24)}</Pill>
                 </span>
               </div>
             ))}
@@ -115,14 +117,14 @@ export default async function DashboardPage() {
         </span>
         <span className="flex items-center gap-1.5">
           <StatusDot tone={connected ? 'ok' : 'muted'} />
-          {connected ? 'MCP подключён' : 'MCP не подключён'}
+          {connected ? t`MCP connected` : t`MCP not connected`}
         </span>
       </div>
 
       {awaiting > 0 && (
         <Link href={href('/admin/scripts')} className="no-underline">
           <Card className="border-warn/40 px-4 py-3 text-[13px] text-warn">
-            {awaiting === 1 ? 'Скрипт ждёт' : `${awaiting} скрипта ждут`} твоего одобрения — открыть
+            {awaiting === 1 ? t`A script is waiting for` : t`${awaiting} scripts are waiting for`} {t`your approval — open`}
           </Card>
         </Link>
       )}
@@ -130,7 +132,7 @@ export default async function DashboardPage() {
       {failed > 0 && (
         <Link href={`${href('/admin/activity')}?connector=auth&status=error&period=1`} className="no-underline">
           <Card className="border-warn/40 px-4 py-3 text-[13px] text-warn">
-            {failed} {failed === 1 ? 'неудачная попытка' : failed < 5 ? 'неудачные попытки' : 'неудачных попыток'} входа за сутки — открыть журнал
+            {failed} {failed === 1 ? t`failed sign-in` : failed < 5 ? trc('few', 'failed sign-ins') : trc('many', 'failed sign-ins')} {t`in the last 24 hours — open the log`}
           </Card>
         </Link>
       )}

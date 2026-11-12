@@ -1,3 +1,4 @@
+import { t, tr, trc } from '@/lib/i18n'
 import { PageHeader } from '@/components/admin/page-header'
 import { DcrToggle } from '@/components/access/dcr-toggle'
 import { CidrForm } from '@/components/access/cidr-form'
@@ -33,34 +34,34 @@ export default async function AccessPage() {
   const last = lastToolCall()
   const status = (
     <Pill tone={connected ? 'ok' : 'muted'} dot>
-      {connected ? `Подключён${last ? ` · последний вызов ${formatAgo(last.createdAt)}` : ''}` : 'Не подключён'}
+      {connected ? t`Connected${last ? t` · last call ${formatAgo(last.createdAt)}` : ''}` : t`Not connected`}
     </Pill>
   )
 
   return (
     <>
       <PageHeader
-        title="MCP доступ"
-        subtitle="Подключение ИИ-ассистентов по MCP: адрес, разрешённые клиенты, OAuth-клиенты и токены."
+        title={t`MCP access`}
+        subtitle={t`Connecting AI assistants over MCP: the address, allowed clients, OAuth clients and tokens.`}
         actions={status}
         mobileAside={
           // Phone: the short form, as on the dashboard, so the title keeps its room.
           <Pill tone={connected ? 'ok' : 'muted'} dot>
-            MCP{connected && last ? ` · ${formatAgo(last.createdAt).replace(' назад', '')}` : ''}
+            MCP{connected && last ? ` · ${formatAgo(last.createdAt).replace(t` ago`, '')}` : ''}
           </Pill>
         }
       />
 
       {!isMcpAvailable() && (
         <Card className="border-warn/40 p-4 text-[13px] text-warn">
-          BASE_URL без HTTPS: MCP-эндпоинт выключен. Claude и ChatGPT подключаются только к https-адресу — задай публичный URL из Pangolin.
+          {t`BASE_URL has no HTTPS: the MCP endpoint is off. Claude and ChatGPT connect only to an https address — set the public URL from Pangolin.`}
         </Card>
       )}
 
       <Card className="flex flex-col gap-4 p-4 md:p-5">
-        <h2 className="text-[15px]">Как подключить</h2>
+        <h2 className="text-[15px]">{t`How to connect`}</h2>
         <div className="flex flex-col gap-2">
-          <Label htmlFor="mcp-url">MCP server URL — вставить в клиент как есть</Label>
+          <Label htmlFor="mcp-url">{t`MCP server URL — paste into the client as is`}</Label>
           <div className="flex gap-2">
             <Input id="mcp-url" className="font-mono" value={urls.resource} readOnly />
             <CopyButton value={urls.resource} />
@@ -74,37 +75,37 @@ export default async function AccessPage() {
 
       <Card className="flex flex-col gap-1 p-4 md:p-5">
         <div className="flex flex-col gap-0.5 pb-1">
-          <h2 className="text-[15px]">Разрешённые клиенты</h2>
+          <h2 className="text-[15px]">{t`Allowed clients`}</h2>
           <span className="text-xs text-subtle">
-            Кто может зарегистрироваться, пока регистрация включена. Проверяется по redirect URI; отказы видны в журнале.
+            {t`Who may register while registration is on. Checked by redirect URI; refusals show in the log.`}
           </span>
         </div>
-        <ClientsForm presets={CLIENT_PRESETS.map(({ id, name, hint, examples }) => ({ id, name, hint, examples }))} allowed={getAllowedClients()} />
+        <ClientsForm presets={CLIENT_PRESETS.map(({ id, name, hint, examples }) => ({ id, name: tr(name), hint: tr(hint), examples }))} allowed={getAllowedClients()} />
       </Card>
 
       <Card className="flex flex-col gap-3 p-4 md:p-5">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="text-[15px]">OAuth-клиенты</h2>
-          <span className="text-xs text-subtle">Каждое подключение регистрирует своего клиента</span>
+          <h2 className="text-[15px]">{t`OAuth clients`}</h2>
+          <span className="text-xs text-subtle">{t`Every connection registers its own client`}</span>
         </div>
         {clients.length === 0 ? (
-          <Empty text="Клиентов нет. Клиент (Claude, ChatGPT) зарегистрируется сам при подключении, пока включена регистрация." />
+          <Empty text={t`No clients. A client (Claude, ChatGPT) registers itself when connecting while registration is on.`} />
         ) : (
           <div className="flex flex-col">
             {clients.map((c) => (
               <div key={c.clientId} className="flex flex-wrap items-center gap-x-4 gap-y-1.5 border-b border-divider py-3 last:border-b-0">
                 <div className="flex min-w-0 flex-1 flex-col">
-                  <span className="font-medium">{c.name ?? 'Без имени'}</span>
+                  <span className="font-medium">{c.name ?? t`No name`}</span>
                   <span className="font-mono text-xs text-subtle">
-                    {shortId(c.clientId)} · с {formatWhen(c.createdAt)}
+                    {shortId(c.clientId)} {t`· since`} {formatWhen(c.createdAt)}
                   </span>
                 </div>
                 <LastCall clientId={c.clientId} />
-                <Pill tone={c.hasConsent ? 'ok' : 'muted'}>{c.hasConsent ? 'согласие выдано' : 'без согласия'}</Pill>
+                <Pill tone={c.hasConsent ? 'ok' : 'muted'}>{c.hasConsent ? t`consent given` : t`no consent`}</Pill>
                 <span className="w-24 font-mono text-xs text-muted-foreground">
-                  {c.activeTokens} {c.activeTokens === 1 ? 'активный' : 'активных'}
+                  {c.activeTokens} {c.activeTokens === 1 ? trc('one', 'active') : trc('many', 'active')}
                 </span>
-                <ConfirmButton action={revokeClientAction} fields={{ clientId: c.clientId }} label="Отозвать" />
+                <ConfirmButton action={revokeClientAction} fields={{ clientId: c.clientId }} label={t`Revoke`} />
               </div>
             ))}
           </div>
@@ -113,28 +114,28 @@ export default async function AccessPage() {
 
       <Card className="flex flex-col gap-3 p-4 md:p-5">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="text-[15px]">Активные токены</h2>
-          <span className="text-xs text-subtle">access — 1 час, refresh — 30 дней</span>
+          <h2 className="text-[15px]">{t`Active tokens`}</h2>
+          <span className="text-xs text-subtle">{t`access — 1 hour, refresh — 30 days`}</span>
         </div>
         {tokens.length === 0 ? (
-          <Empty text="Активных токенов нет." />
+          <Empty text={t`No active tokens.`} />
         ) : (
           <div className="flex flex-col">
-            {tokens.map((t) => (
-              <div key={t.id} className="flex flex-wrap items-center gap-x-4 gap-y-1.5 border-b border-divider py-3 last:border-b-0">
+            {tokens.map((item) => (
+              <div key={item.id} className="flex flex-wrap items-center gap-x-4 gap-y-1.5 border-b border-divider py-3 last:border-b-0">
                 <div className="flex min-w-0 flex-1 flex-col">
                   <span>
-                    {t.clientName ?? 'Клиент'} · <span className="font-mono text-muted-foreground">rt_…{t.tokenTail}</span>
+                    {item.clientName ?? t`Client`} · <span className="font-mono text-muted-foreground">rt_…{item.tokenTail}</span>
                   </span>
                   <span className="text-xs text-subtle">
-                    выдан {formatWhen(t.createdAt)} · обновление до {formatWhen(t.expiresAt)}
+                    {t`issued`} {formatWhen(item.createdAt)} {t`· refresh until`} {formatWhen(item.expiresAt)}
                   </span>
                 </div>
-                <ConfirmButton action={revokeTokenAction} fields={{ id: t.id }} label="Отозвать" />
+                <ConfirmButton action={revokeTokenAction} fields={{ id: item.id }} label={t`Revoke`} />
               </div>
             ))}
             <div className="pt-2 text-xs text-subtle">
-              Отзыв токена останавливает обновление; текущий access-токен доживёт до часа. Чтобы отключить клиента сразу — отзови его в списке выше.
+              {t`Revoking a token stops the refresh; the current access token lives up to an hour. To cut a client off at once, revoke it in the list above.`}
             </div>
           </div>
         )}
@@ -142,8 +143,8 @@ export default async function AccessPage() {
 
       <Card className="flex flex-col gap-3 p-4 md:p-5">
         <div className="flex flex-col gap-0.5">
-          <h2 className="text-[15px]">Ограничение по IP для MCP</h2>
-          <span className="text-xs text-subtle">Пусто — пускать всех. Claude (Anthropic) ходит из 160.79.104.0/21, у ChatGPT адреса OpenAI. Это защита в глубину, OAuth остаётся.</span>
+          <h2 className="text-[15px]">{t`IP restriction for MCP`}</h2>
+          <span className="text-xs text-subtle">{t`Empty — let everyone in. Claude (Anthropic) comes from 160.79.104.0/21, ChatGPT from OpenAI addresses. This is defense in depth, OAuth stays.`}</span>
         </div>
         <CidrForm initial={getAllowedCidrs()} trustProxy={env().TRUST_PROXY} />
       </Card>
@@ -153,7 +154,7 @@ export default async function AccessPage() {
 
 function LastCall({ clientId }: { clientId: string }) {
   const call = lastCallByClient(clientId)
-  if (!call) return <span className="w-full text-xs text-subtle sm:w-auto">вызовов не было</span>
+  if (!call) return <span className="w-full text-xs text-subtle sm:w-auto">{t`no calls`}</span>
   return (
     <span className="w-full text-xs text-subtle sm:w-auto">
       {formatAgo(call.createdAt)} · <span className="font-mono">{call.tool}</span>

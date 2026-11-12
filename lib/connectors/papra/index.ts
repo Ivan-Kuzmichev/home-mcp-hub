@@ -28,7 +28,7 @@ import {
   type DocFilter,
   type Snapshot,
 } from './logic'
-import { t } from '../../i18n'
+import { t, tr } from '../../i18n'
 
 const configSchema = z
   .object({
@@ -464,7 +464,7 @@ ${part || t`(no OCR text — look at papra_preview)`}`,
         const doc = await client(config).document(id)
         assertVisible(doc, config.excludeTag)
         const { token } = createLink(id, { shareable })
-        return [`«${truncate(doc.name, 70)}»:`, linkUrl(token), shareable ? LINK_KIND_TEXT.shareable : LINK_KIND_TEXT.personal].join('\n')
+        return [`«${truncate(doc.name, 70)}»:`, linkUrl(token), shareable ? tr(LINK_KIND_TEXT.shareable) : tr(LINK_KIND_TEXT.personal)].join('\n')
       },
     }),
   ],

@@ -1,3 +1,4 @@
+import { t } from './i18n'
 // Shared masking of tokens in headers, URLs and bodies. Pure module, no hub imports.
 
 const MASK = '***'
@@ -20,7 +21,7 @@ export function isSensitiveName(name: string): boolean {
 }
 
 export function maskValue(v: string): string {
-  return `${MASK} (${v.length} симв.)`
+  return t`${MASK} (${v.length} chars)`
 }
 
 function maskJwts(text: string): string {

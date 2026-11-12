@@ -6,17 +6,18 @@ import { formatAgo } from '@/lib/format'
 import { href } from '@/lib/prefix'
 import { isExpired, type Prototype } from '@/lib/prototypes/store'
 import { cn } from '@/lib/utils'
+import { t } from '@/lib/i18n'
 
 function PinPill({ p }: { p: Prototype }) {
-  if (p.version === 0) return <Pill tone="muted">загружается</Pill>
-  if (isExpired(p)) return <Pill tone="err">истёк</Pill>
-  return p.pinHash ? <Pill tone="warn">пин</Pill> : <Pill tone="muted">открыт</Pill>
+  if (p.version === 0) return <Pill tone="muted">{t`uploading`}</Pill>
+  if (isExpired(p)) return <Pill tone="err">{t`expired`}</Pill>
+  return p.pinHash ? <Pill tone="warn">{t`PIN`}</Pill> : <Pill tone="muted">{t`open`}</Pill>
 }
 
 /** Table on wide screens (unless `compact`), stacked rows on the phone and next to a card. */
 export function PrototypeList({ items, selected, compact }: { items: Prototype[]; selected?: string; compact?: boolean }) {
   if (items.length === 0) {
-    return <Card className="p-8 text-center text-[13px] text-subtle">Прототипов пока нет. Попроси ассистента опубликовать страницу или загрузи HTML вручную.</Card>
+    return <Card className="p-8 text-center text-[13px] text-subtle">{t`No prototypes yet. Ask the assistant to publish a page or upload HTML by hand.`}</Card>
   }
   return (
     <Card className="overflow-hidden">
@@ -25,7 +26,7 @@ export function PrototypeList({ items, selected, compact }: { items: Prototype[]
           <table className="w-full text-left text-[13px]">
             <thead className="text-xs text-subtle">
               <tr className="border-b border-divider">
-                {['Название', 'Ссылка', 'Пин', 'Просмотры', 'Срок', 'Обновлён'].map((h) => (
+                {[t`Title`, t`Link`, t`Pin`, t`Views`, t`Expires`, t`Updated`].map((h) => (
                   <th key={h} className="px-4 py-2.5 font-normal">
                     {h}
                   </th>
@@ -66,7 +67,7 @@ export function PrototypeList({ items, selected, compact }: { items: Prototype[]
             </span>
             <span className="flex gap-3 text-xs text-subtle">
               <span className="font-mono">/p/{p.slug}</span>
-              <span>{p.views} просм.</span>
+              <span>{p.views} {t`views`}</span>
               <span>{expiryText(p)}</span>
             </span>
           </Link>

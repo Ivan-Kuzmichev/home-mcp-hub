@@ -9,6 +9,7 @@ import { env } from '@/lib/env'
 import { prefixedIcons } from '@/lib/icons'
 import { getPrefix, href } from '@/lib/prefix'
 import { HUB_VERSION } from '@/lib/version'
+import { t } from '@/lib/i18n'
 
 export const dynamic = 'force-dynamic'
 
@@ -41,8 +42,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         </header>
         {hostMismatch && (
           <div role="alert" className="mx-auto w-full max-w-[520px] rounded-md border border-warn/40 bg-warn/10 px-4 py-3 text-[13px] text-warn">
-            Страница открыта как <span className="font-mono">{requestHost}</span>, а в .env хаба <span className="font-mono">BASE_URL={env().BASE_URL}</span>.
-            Вход не сработает: поправь BASE_URL и перезапусти контейнер.
+            {t`The page is open as`} <span className="font-mono">{requestHost}</span>{t`, while the hub .env has`} <span className="font-mono">BASE_URL={env().BASE_URL}</span>{t`. Signing in will not work: fix BASE_URL and restart the container.`}
           </div>
         )}
         <main className="flex flex-1 items-center justify-center">

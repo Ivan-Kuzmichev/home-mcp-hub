@@ -1,5 +1,6 @@
 'use client'
 
+import { t, trc } from '@/components/i18n-client'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
@@ -33,8 +34,8 @@ export function PasswordRow({ changedAgo }: { changedAgo: string }) {
     // Other sessions are signed out: a changed password should lock out whoever had the old one.
     const { error } = await auth.changePassword({ currentPassword: current, newPassword: next, revokeOtherSessions: true })
     setBusy(false)
-    if (error) return setMsg({ ok: false, text: error.code === 'PASSWORD_TOO_SHORT' ? 'Новый пароль — от 12 символов' : authErrorMessage(error, 'Не получилось сменить пароль') })
-    setMsg({ ok: true, text: 'Пароль сменён, остальные сессии завершены' })
+    if (error) return setMsg({ ok: false, text: error.code === 'PASSWORD_TOO_SHORT' ? t`The new password is 12 characters or more` : authErrorMessage(error, t`Could not change the password`) })
+    setMsg({ ok: true, text: t`Password changed, other sessions ended` })
     setCurrent('')
     setNext('')
     setOpen(false)
@@ -42,26 +43,26 @@ export function PasswordRow({ changedAgo }: { changedAgo: string }) {
 
   return (
     <div className="border-b border-divider">
-      <Row title="Пароль" detail={msg?.ok ? msg.text : `изменён ${changedAgo}`}>
-        {!open && <Button size="sm" onClick={() => setOpen(true)}>Сменить</Button>}
+      <Row title={t`Password`} detail={msg?.ok ? msg.text : t`changed ${changedAgo}`}>
+        {!open && <Button size="sm" onClick={() => setOpen(true)}>{t`Change`}</Button>}
       </Row>
       {open && (
         <form onSubmit={submit} className="grid gap-3 pb-4 sm:grid-cols-2">
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="pw-cur">Текущий пароль</Label>
+            <Label htmlFor="pw-cur">{t`Current password`}</Label>
             <Input id="pw-cur" type="password" autoComplete="current-password" required value={current} onChange={(e) => setCurrent(e.target.value)} />
           </div>
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="pw-new">Новый пароль, от 12 символов</Label>
+            <Label htmlFor="pw-new">{t`New password, 12 characters or more`}</Label>
             <Input id="pw-new" type="password" autoComplete="new-password" minLength={12} required value={next} onChange={(e) => setNext(e.target.value)} />
           </div>
           {msg && !msg.ok && <div className="text-[13px] text-err sm:col-span-2">{msg.text}</div>}
           <div className="flex justify-end gap-2 sm:col-span-2">
             <Button size="sm" onClick={() => setOpen(false)}>
-              Отмена
+              {t`Cancel`}
             </Button>
             <Button size="sm" type="submit" variant="primary" disabled={busy}>
-              Сменить пароль
+              {t`Change password`}
             </Button>
           </div>
         </form>
@@ -80,7 +81,7 @@ export function BackupCodesRow() {
   async function generate(e: React.FormEvent) {
     e.preventDefault()
     const { data, error } = await auth.twoFactor.generateBackupCodes({ password })
-    if (error || !data) return setError(authErrorMessage(error, 'Не получилось'))
+    if (error || !data) return setError(authErrorMessage(error, t`Failed`))
     setCodes(data.backupCodes)
     setPassword('')
     setError(null)
@@ -88,27 +89,27 @@ export function BackupCodesRow() {
 
   return (
     <div className="border-b border-divider">
-      <Row title="Второй фактор" detail="TOTP включён · резервные коды на случай потери телефона">
-        {!open && <Button size="sm" onClick={() => setOpen(true)}>Новые коды</Button>}
+      <Row title={t`Second factor`} detail={t`TOTP is on · backup codes in case you lose the phone`}>
+        {!open && <Button size="sm" onClick={() => setOpen(true)}>{t`New codes`}</Button>}
       </Row>
       {open && !codes && (
         <form onSubmit={generate} className="flex flex-wrap items-end gap-2 pb-4">
           <div className="flex min-w-[200px] flex-1 flex-col gap-1.5">
-            <Label htmlFor="bc-pw">Пароль — старые коды перестанут работать</Label>
+            <Label htmlFor="bc-pw">{t`Password — the old codes will stop working`}</Label>
             <Input id="bc-pw" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
           </div>
           <Button size="sm" onClick={() => setOpen(false)}>
-            Отмена
+            {t`Cancel`}
           </Button>
           <Button size="sm" type="submit" variant="primary">
-            Сгенерировать
+            {t`Generate`}
           </Button>
           {error && <span className="w-full text-[13px] text-err">{error}</span>}
         </form>
       )}
       {codes && (
         <div className="flex flex-col gap-2 pb-4">
-          <span className="text-xs text-warn">Сохрани их сейчас — больше они не покажутся.</span>
+          <span className="text-xs text-warn">{t`Save them now — they will not be shown again.`}</span>
           <div className="grid grid-cols-2 gap-1 rounded-md border border-border bg-background p-3 font-mono text-xs sm:grid-cols-5">
             {codes.map((c) => (
               <span key={c}>{c}</span>
@@ -127,7 +128,7 @@ export function SessionsRow({ sessions }: { sessions: { id: string; label: strin
   const others = sessions.filter((s) => !s.current).length
   return (
     <div>
-      <Row title="Сессии админки" detail={`${sessions.length} ${sessions.length === 1 ? 'активная' : 'активных'} · ${sessions.map((s) => s.label + (s.current ? ' (эта)' : '')).join(', ')}`}>
+      <Row title={t`Admin sessions`} detail={`${sessions.length} ${sessions.length === 1 ? trc('session', 'active') : trc('many', 'active')} · ${sessions.map((s) => s.label + (s.current ? t` (this one)` : '')).join(', ')}`}>
         <Button
           size="sm"
           variant="destructive"
@@ -139,7 +140,7 @@ export function SessionsRow({ sessions }: { sessions: { id: string; label: strin
             router.refresh()
           }}
         >
-          Завершить остальные
+          {t`End the others`}
         </Button>
       </Row>
     </div>

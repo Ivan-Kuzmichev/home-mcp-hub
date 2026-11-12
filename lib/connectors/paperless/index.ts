@@ -416,7 +416,7 @@ ${part || t`(no OCR text — look at paperless_thumbnail)`}`,
         return [
           `«${truncate(doc.title, 70)}» — ${what}:`,
           linkUrl(token),
-          shareable ? LINK_KIND_TEXT.shareable : LINK_KIND_TEXT.personal,
+          shareable ? tr(LINK_KIND_TEXT.shareable) : tr(LINK_KIND_TEXT.personal),
         ].join('\n')
       },
     }),

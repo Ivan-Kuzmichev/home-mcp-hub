@@ -1,19 +1,23 @@
+import { localeTag, t, tr } from './i18n'
 import { CONNECTORS } from './connectors/registry'
 import { AUTH_EVENT_LABELS, type AuthEvent, type JournalFilter, type JournalRow } from './journal'
 
 const CONNECTOR_TAGS: Record<string, string> = {
   ...Object.fromEntries(CONNECTORS.map((c) => [c.id, c.name])),
   hub: 'hub',
-  auth: 'вход',
+  auth: 'sign-in',
 }
 
-export const JOURNAL_CONNECTOR_OPTIONS = Object.entries(CONNECTOR_TAGS).map(([value, label]) => ({ value, label }))
+/** Built per request: labels in the hub language. */
+export const journalConnectorOptions = () => Object.entries(CONNECTOR_TAGS).map(([value, label]) => ({ value, label: tr(label) }))
 
-export const PERIODS = [
-  { value: '1', label: 'Последние 24 часа' },
-  { value: '7', label: 'Последние 7 дней' },
-  { value: '30', label: 'Последние 30 дней' },
+const PERIOD_LIST = [
+  { value: '1', label: 'Last 24 hours' },
+  { value: '7', label: 'Last 7 days' },
+  { value: '30', label: 'Last 30 days' },
 ]
+
+export const periods = () => PERIOD_LIST.map((p) => ({ ...p, label: tr(p.label) }))
 
 export type JournalSearch = { connector?: string; status?: string; period?: string; q?: string; limit?: string }
 
@@ -27,7 +31,7 @@ export function filterFrom(sp: JournalSearch): JournalFilter {
 }
 
 export function toolLabel(row: JournalRow): { text: string; mono: boolean } {
-  if (row.connectorId === 'auth') return { text: AUTH_EVENT_LABELS[row.tool as AuthEvent] ?? row.tool, mono: false }
+  if (row.connectorId === 'auth') return { text: AUTH_EVENT_LABELS[row.tool as AuthEvent] ? tr(AUTH_EVENT_LABELS[row.tool as AuthEvent]) : row.tool, mono: false }
   return { text: row.tool, mono: true }
 }
 
@@ -36,11 +40,11 @@ export function connectorTag(row: JournalRow): string {
 }
 
 export function resultText(row: JournalRow): string {
-  if (!row.ok) return row.error ?? 'ошибка'
+  if (!row.ok) return row.error ?? t`error`
   return row.resultSummary ?? ''
 }
 
 export function formatDuration(ms: number | null): string {
   if (ms === null) return '—'
-  return `${(ms / 1000).toLocaleString('ru-RU', { maximumFractionDigits: 1, minimumFractionDigits: 1 })} с`
+  return t`${(ms / 1000).toLocaleString(localeTag(), { maximumFractionDigits: 1, minimumFractionDigits: 1 })} s`
 }

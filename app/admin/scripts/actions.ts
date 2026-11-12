@@ -9,6 +9,7 @@ import { deleteSecret, saveSecret } from '@/lib/scripts/secrets'
 import { approveScript, createScript, createTool, deleteScript, getScript, rejectScript, ScriptError, setScriptEnabled } from '@/lib/scripts/store'
 import type { ToolParam } from '@/lib/scripts/tool-spec'
 import { requireAdmin } from '@/lib/session'
+import { t } from '@/lib/i18n'
 
 export type ActionState = { error?: string; ok?: string }
 
@@ -18,10 +19,10 @@ export async function approveAction(id: string, codeHash: string): Promise<Actio
   await requireAdmin()
   try {
     approveScript(id, codeHash)
-    logAuthEvent({ event: 'auth.script_review', ok: true, detail: `одобрен «${getScript(id)?.name ?? id}»` })
+    logAuthEvent({ event: 'auth.script_review', ok: true, detail: t`approved “${getScript(id)?.name ?? id}”` })
     syncSchedules()
     refresh()
-    return { ok: 'Одобрено и включено' }
+    return { ok: t`Approved and turned on` }
   } catch (e) {
     return { error: e instanceof ScriptError ? e.message : String(e) }
   }
@@ -36,11 +37,11 @@ export async function rejectAction(id: string, codeHash: string, reason: string)
       // The admin's decision went through: not an error, whatever was decided.
       event: 'auth.script_review',
       ok: true,
-      detail: `${outcome === 'deleted' ? `отклонён и удалён «${name}»` : `отклонено изменение «${name}», возвращена одобренная версия`}${reason ? ` · причина: ${reason}` : ''}`,
+      detail: `${outcome === 'deleted' ? t`rejected and deleted “${name}”` : t`rejected a change to “${name}”, the approved version is back`}${reason ? t` · reason: ${reason}` : ''}`,
     })
     syncSchedules()
     refresh()
-    return { ok: outcome === 'deleted' ? 'Отклонено, скрипт удалён' : 'Изменение отклонено, работает прежняя версия' }
+    return { ok: outcome === 'deleted' ? t`Rejected, the script is deleted` : t`Change rejected, the previous version runs` }
   } catch (e) {
     return { error: e instanceof ScriptError ? e.message : String(e) }
   }
@@ -49,7 +50,7 @@ export async function rejectAction(id: string, codeHash: string, reason: string)
 export async function setEnabledAction(id: string, enabled: boolean): Promise<ActionState> {
   await requireAdmin()
   const s = getScript(id)
-  if (!s) return { error: 'Скрипт не найден' }
+  if (!s) return { error: t`Script not found` }
   try {
     setScriptEnabled(s, enabled)
     syncSchedules()
@@ -65,7 +66,7 @@ export async function runNowAction(id: string): Promise<ActionState & { output?:
   try {
     const r = await executeScript(id, 'manual')
     refresh()
-    return r.ok ? { ok: `Готово за ${(r.durationMs / 1000).toFixed(1)} с`, output: [r.output, ...r.logs].filter(Boolean).join('\n') } : { error: r.error ?? 'Ошибка', output: r.logs.join('\n') }
+    return r.ok ? { ok: t`Done in ${(r.durationMs / 1000).toFixed(1)} s`, output: [r.output, ...r.logs].filter(Boolean).join('\n') } : { error: r.error ?? t`Error`, output: r.logs.join('\n') }
   } catch (e) {
     return { error: e instanceof Error ? e.message : String(e) }
   }
@@ -88,7 +89,7 @@ export async function saveSecretAction(_prev: ActionState, form: FormData): Prom
       description: String(form.get('description') ?? ''),
     })
     refresh()
-    return { ok: 'Сохранено' }
+    return { ok: t`Saved` }
   } catch (e) {
     return { error: e instanceof Error ? e.message : String(e) }
   }
@@ -102,11 +103,11 @@ export async function deleteSecretAction(form: FormData): Promise<void> {
 
 export async function setConnectorSharedAction(id: string, shared: boolean): Promise<ActionState> {
   await requireAdmin()
-  if (!getConnector(id) || getConnector(id)!.builtin) return { error: 'Нет такого коннектора' }
+  if (!getConnector(id) || getConnector(id)!.builtin) return { error: t`No such connector` }
   setConnectorShared(id, shared)
-  logAuthEvent({ event: 'auth.script_review', ok: true, detail: `${shared ? 'скриптам открыты' : 'скриптам закрыты'} настройки ${getConnector(id)!.name}` })
+  logAuthEvent({ event: 'auth.script_review', ok: true, detail: t`${shared ? t`opened to scripts` : t`closed to scripts`} settings ${getConnector(id)!.name}` })
   refresh()
-  return { ok: shared ? 'Открыто скриптам' : 'Закрыто' }
+  return { ok: shared ? t`Open to scripts` : t`Closed` }
 }
 
 /** Admin-written tool: approved at once — the admin is the reviewer. */
@@ -117,9 +118,9 @@ export async function createToolAction(_prev: ActionState, form: FormData): Prom
     const raw = String(form.get('params') ?? '').trim()
     params = raw ? JSON.parse(raw) : []
   } catch {
-    return { error: 'Параметры — JSON-массив, см. пример в поле' }
+    return { error: t`Parameters are a JSON array, see the example in the field` }
   }
-  if (!Array.isArray(params)) return { error: 'Параметры — JSON-массив, см. пример в поле' }
+  if (!Array.isArray(params)) return { error: t`Parameters are a JSON array, see the example in the field` }
   try {
     const s = await createTool({
       name: String(form.get('name') ?? ''),
@@ -129,9 +130,9 @@ export async function createToolAction(_prev: ActionState, form: FormData): Prom
       code: String(form.get('code') ?? ''),
     })
     approveScript(s.id, s.codeHash)
-    logAuthEvent({ event: 'auth.script_review', ok: true, detail: `добавлен инструмент ${s.name}` })
+    logAuthEvent({ event: 'auth.script_review', ok: true, detail: t`added tool ${s.name}` })
     refresh()
-    return { ok: `Добавлен ${s.name} — появится у ассистента в новом чате` }
+    return { ok: t`Added ${s.name} — it reaches the assistant in a new chat` }
   } catch (e) {
     return { error: e instanceof ScriptError ? e.message : String(e) }
   }
@@ -148,10 +149,10 @@ export async function createCronAction(_prev: ActionState, form: FormData): Prom
       code: String(form.get('code') ?? ''),
     })
     approveScript(s.id, s.codeHash)
-    logAuthEvent({ event: 'auth.script_review', ok: true, detail: `добавлен скрипт «${s.name}»` })
+    logAuthEvent({ event: 'auth.script_review', ok: true, detail: t`added script “${s.name}”` })
     syncSchedules()
     refresh()
-    return { ok: `Добавлен «${s.name}» и включён` }
+    return { ok: t`Added “${s.name}” and turned it on` }
   } catch (e) {
     return { error: e instanceof ScriptError ? e.message : String(e) }
   }

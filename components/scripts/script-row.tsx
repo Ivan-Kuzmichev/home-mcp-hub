@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { ConfirmButton } from '@/components/ui/confirm-button'
 import { Pill, type PillTone } from '@/components/ui/pill'
 import { Switch } from '@/components/ui/switch'
+import { t } from '@/components/i18n-client'
 
 export type RunView = { id: number; when: string; trigger: string; ok: boolean; duration: string; error: string | null; output: string | null; logs: string | null }
 
@@ -44,9 +45,9 @@ export function ScriptRow({ s }: { s: ScriptView }) {
           })
         }
       >
-        Запустить
+        {t`Run`}
       </Button>
-      <ConfirmButton action={deleteScriptAction} fields={{ id: s.id }} label="Удалить" confirmLabel="Точно удалить" />
+      <ConfirmButton action={deleteScriptAction} fields={{ id: s.id }} label={t`Delete`} confirmLabel={t`Really delete`} />
     </>
   )
 
@@ -56,7 +57,7 @@ export function ScriptRow({ s }: { s: ScriptView }) {
         <Switch
           checked={enabled}
           disabled={pending || !s.approved}
-          label={s.tool ? `${s.name} доступен ассистенту` : `${s.name} включён`}
+          label={s.tool ? t`${s.name} is available to the assistant` : t`${s.name} is on`}
           onChange={(v) =>
             start(async () => {
               setEnabled(v)
@@ -75,14 +76,14 @@ export function ScriptRow({ s }: { s: ScriptView }) {
           <span className="text-xs break-words text-subtle">
             {s.tool ? (
               <>
-                <span className="font-mono">{s.tool.params}</span> · {s.tool.readOnly ? 'только чтение' : 'меняет данные'}
-                {s.last && ` · последний вызов ${s.last}`}
+                <span className="font-mono">{s.tool.params}</span> · {s.tool.readOnly ? t`read only` : t`changes data`}
+                {s.last && t` · last call ${s.last}`}
               </>
             ) : (
               <>
                 <span className="font-mono">{s.schedule}</span>
-                {s.next && ` · следующий ${s.next}`}
-                {s.last && ` · последний ${s.last}`}
+                {s.next && t` · next ${s.next}`}
+                {s.last && t` · last ${s.last}`}
               </>
             )}
           </span>
@@ -98,7 +99,7 @@ export function ScriptRow({ s }: { s: ScriptView }) {
       {/* Phone: the buttons get their own row so the name keeps the width. */}
       <div className="flex gap-2 pl-[52px] lg:hidden">{actions}</div>
       {s.description && <p className="text-[13px] text-muted-foreground">{s.description}</p>}
-      {s.rejectReason && <p className="text-[13px] text-err">Отклонён: {s.rejectReason}</p>}
+      {s.rejectReason && <p className="text-[13px] text-err">{t`Rejected:`} {s.rejectReason}</p>}
       {result && (
         <div className={`rounded-md border border-border bg-background p-2.5 text-xs ${result.ok ? 'text-ok' : 'text-err'}`}>
           {result.text}
@@ -106,13 +107,13 @@ export function ScriptRow({ s }: { s: ScriptView }) {
         </div>
       )}
       <details className="text-[13px]">
-        <summary className="cursor-pointer text-muted-foreground">Код и запуски ({s.runs.length})</summary>
+        <summary className="cursor-pointer text-muted-foreground">{t`Code and runs (`}{s.runs.length})</summary>
         <pre className="mt-2 max-h-72 overflow-auto rounded-md border border-border bg-background p-3 font-mono text-xs leading-5">{s.code}</pre>
         {s.runs.length > 0 && (
           <div className="mt-2 flex flex-col gap-1.5">
             {s.runs.map((r) => (
               <div key={r.id} className="rounded-md border border-divider p-2 text-xs">
-                <span className={r.ok ? 'text-ok' : 'text-err'}>{r.ok ? 'ок' : 'ошибка'}</span>
+                <span className={r.ok ? 'text-ok' : 'text-err'}>{r.ok ? t`ok` : t`error`}</span>
                 <span className="text-subtle">
                   {' '}
                   · {r.when} · {r.trigger} · {r.duration}

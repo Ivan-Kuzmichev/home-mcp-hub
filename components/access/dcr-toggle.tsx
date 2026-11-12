@@ -3,6 +3,7 @@
 import { useOptimistic, useTransition } from 'react'
 import { setDcrAction } from '@/app/admin/access/actions'
 import { Switch } from '@/components/ui/switch'
+import { t } from '@/components/i18n-client'
 
 export function DcrToggle({ allowed }: { allowed: boolean }) {
   const [pending, startTransition] = useTransition()
@@ -13,7 +14,7 @@ export function DcrToggle({ allowed }: { allowed: boolean }) {
       <Switch
         checked={value}
         disabled={pending}
-        label="Разрешить регистрацию новых клиентов"
+        label={t`Allow registration of new clients`}
         onChange={(next) =>
           startTransition(async () => {
             setValue(next)
@@ -24,9 +25,9 @@ export function DcrToggle({ allowed }: { allowed: boolean }) {
         }
       />
       <div className="flex flex-col">
-        <span className="font-medium">Регистрация новых клиентов (DCR)</span>
+        <span className="font-medium">{t`New client registration (DCR)`}</span>
         <span className={value ? 'text-xs text-warn' : 'text-xs text-subtle'}>
-          {value ? 'Включена · выключится сама после «Разрешить»' : 'Выключена · включай только на время подключения'}
+          {value ? t`On · turns off by itself after “Allow”` : t`Off · turn on only while connecting`}
         </span>
       </div>
     </div>

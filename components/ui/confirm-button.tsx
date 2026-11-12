@@ -3,13 +3,14 @@
 import { useState } from 'react'
 import { useFormStatus } from 'react-dom'
 import { Button } from '@/components/ui/button'
+import { t } from '@/components/i18n-client'
 
 /** Destructive action behind an inline «Точно?» step. Renders its own form. */
 export function ConfirmButton({
   action,
   fields,
   label,
-  confirmLabel = 'Точно отозвать',
+  confirmLabel = t`Really revoke`,
 }: {
   action: (formData: FormData) => Promise<void>
   fields: Record<string, string>
@@ -30,7 +31,7 @@ export function ConfirmButton({
         <input key={k} type="hidden" name={k} value={v} />
       ))}
       <Button size="sm" variant="ghost" onClick={() => setAsking(false)}>
-        Отмена
+        {t`Cancel`}
       </Button>
       <SubmitDanger label={confirmLabel} />
     </form>

@@ -22,14 +22,14 @@ export const CLIENT_PRESETS: ClientPreset[] = [
   {
     id: 'claude',
     name: 'Claude',
-    hint: 'claude.ai, приложения Claude на телефоне и компьютере',
+    hint: 'claude.ai, the Claude apps on phone and desktop',
     examples: ['https://claude.ai/api/mcp/auth_callback', 'https://claude.com/api/mcp/auth_callback'],
     matches: exact(['https://claude.ai/api/mcp/auth_callback', 'https://claude.com/api/mcp/auth_callback']),
   },
   {
     id: 'chatgpt',
     name: 'ChatGPT',
-    hint: 'плагины и коннекторы ChatGPT',
+    hint: 'ChatGPT plugins and connectors',
     examples: ['https://chatgpt.com/connector_platform_oauth_redirect', 'https://chatgpt.com/connector/oauth/{id}'],
     // Stable URI when the server returns `iss` (the hub does); the per-connector one otherwise.
     matches: (u) =>
@@ -40,8 +40,8 @@ export const CLIENT_PRESETS: ClientPreset[] = [
   },
   {
     id: 'loopback',
-    name: 'Claude Code и локальные клиенты',
-    hint: 'redirect на localhost (RFC 8252): код уходит только на машину, где запущен клиент',
+    name: 'Claude Code and local clients',
+    hint: 'redirect to localhost (RFC 8252): the code goes only to the machine the client runs on',
     examples: ['http://localhost:{port}/callback', 'http://127.0.0.1:{port}/callback'],
     matches: (u) => u.protocol === 'http:' && isLoopback(u),
   },

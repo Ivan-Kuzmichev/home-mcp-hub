@@ -12,6 +12,7 @@ import { Switch } from '@/components/ui/switch'
 import type { FieldDescriptor, ToolDescriptor } from '@/lib/connectors/form'
 import type { TestResult } from '@/lib/connectors/types'
 import { cn } from '@/lib/utils'
+import { t } from '@/components/i18n-client'
 
 type Props = {
   id: string
@@ -69,8 +70,8 @@ export function ConnectorForm(props: Props) {
       setValues((v) => Object.fromEntries(Object.entries(v).map(([k, val]) => [k, fields.find((f) => f.name === k)?.secret ? '' : val])))
     })
 
-  const status = check ? { ok: check.result.ok, text: check.result.ok ? `Соединение есть · ${check.result.summary}` : check.result.summary } : props.lastCheck
-    ? { ok: props.lastCheck.ok, text: `${props.lastCheck.ok ? 'Соединение есть' : 'Ошибка'} · проверено ${props.lastCheck.ago}` }
+  const status = check ? { ok: check.result.ok, text: check.result.ok ? t`Connected · ${check.result.summary}` : check.result.summary } : props.lastCheck
+    ? { ok: props.lastCheck.ok, text: t`${props.lastCheck.ok ? t`Connected` : t`Error`} · checked ${props.lastCheck.ago}` }
     : null
 
   return (
@@ -84,7 +85,7 @@ export function ConnectorForm(props: Props) {
               <>
                 {' · '}
                 <a href={props.docsUrl} target="_blank" rel="noreferrer noopener" className="no-underline">
-                  документация API
+                  {t`API docs`}
                 </a>
               </>
             )}
@@ -110,9 +111,9 @@ export function ConnectorForm(props: Props) {
 
       <div className="flex flex-col gap-3 rounded-md border border-border bg-background p-3.5">
         <div className="flex items-center justify-between gap-3">
-          <span className="font-medium">Проверка соединения</span>
+          <span className="font-medium">{t`Connection check`}</span>
           <Button size="sm" onClick={onTest} disabled={testing || saving}>
-            {testing ? 'Проверяю…' : 'Проверить'}
+            {testing ? t`Checking…` : t`Check`}
           </Button>
         </div>
         {check && (
@@ -128,28 +129,28 @@ export function ConnectorForm(props: Props) {
       </div>
 
       <div className="flex flex-col gap-2">
-        <span className="font-medium">Инструменты для ассистента</span>
+        <span className="font-medium">{t`Tools for the assistant`}</span>
         <div className="grid gap-x-4 gap-y-2 sm:grid-cols-2">
-          {tools.map((t) => (
-            <label key={t.name} className="flex cursor-pointer items-center gap-2.5">
+          {tools.map((item) => (
+            <label key={item.name} className="flex cursor-pointer items-center gap-2.5">
               <Switch
-                checked={!off.has(t.name)}
-                label={t.name}
+                checked={!off.has(item.name)}
+                label={item.name}
                 onChange={(on) => {
                   setOff((s) => {
                     const next = new Set(s)
-                    if (on) next.delete(t.name)
-                    else next.add(t.name)
+                    if (on) next.delete(item.name)
+                    else next.add(item.name)
                     return next
                   })
                   setSaved(false)
                 }}
               />
               <span className="flex min-w-0 flex-col">
-                <span className="truncate font-mono text-[13px]">{t.name}</span>
+                <span className="truncate font-mono text-[13px]">{item.name}</span>
                 <span className="truncate text-xs text-subtle">
-                  {t.title}
-                  {t.destructive ? ' · с подтверждением' : t.readOnly ? ' · только чтение' : ''}
+                  {item.title}
+                  {item.destructive ? t` · with confirmation` : item.readOnly ? t` · read only` : ''}
                 </span>
               </span>
             </label>
@@ -182,12 +183,12 @@ export function ConnectorForm(props: Props) {
       />
 
       <div className="fixed inset-x-0 bottom-[var(--tabs-h,80px)] z-10 flex gap-2.5 border-t border-border bg-panel px-4 py-3 md:static md:justify-end md:border-0 md:bg-transparent md:p-0">
-        {saved && <span className="hidden self-center text-[13px] text-ok md:inline">Сохранено</span>}
+        {saved && <span className="hidden self-center text-[13px] text-ok md:inline">{t`Saved`}</span>}
         <Link href={props.backHref} className="flex-1 md:flex-none">
-          <Button className="w-full">Отмена</Button>
+          <Button className="w-full">{t`Cancel`}</Button>
         </Link>
         <Button variant="primary" className="flex-1 md:flex-none" onClick={onSave} disabled={saving}>
-          {saving ? 'Сохраняю…' : saved ? 'Сохранено' : 'Сохранить'}
+          {saving ? t`Saving…` : saved ? t`Saved` : t`Save`}
         </Button>
       </div>
     </Card>
@@ -204,26 +205,26 @@ function InstructionsBlock(p: {
   toolsChanged: boolean
   error?: string
   onMode: (m: 'append' | 'replace') => void
-  onText: (t: string) => void
+  onText: (item: string) => void
   onReset: () => void
 }) {
   const modes = [
-    { value: 'append', label: 'Дополнить' },
-    { value: 'replace', label: 'Заменить' },
+    { value: 'append', label: t`Extend` },
+    { value: 'replace', label: t`Replace` },
   ] as const
   const pristine = p.mode === 'append' && !p.text.trim()
   return (
     <div className="flex flex-col gap-2.5">
       <div className="flex items-center justify-between gap-3">
-        <span className="font-medium">Инструкция для ассистента</span>
+        <span className="font-medium">{t`Instructions for the assistant`}</span>
         <Button size="sm" onClick={p.onReset} disabled={pristine}>
-          Сбросить
+          {t`Reset`}
         </Button>
       </div>
       <span className="text-xs text-subtle">
-        Попадает в инструкции сервера, пока коннектор включён: ассистент читает её в начале каждого чата.
+        {t`Goes into the server instructions while the connector is on: the assistant reads it at the start of every chat.`}
       </span>
-      <div role="radiogroup" aria-label="Режим инструкции" className="grid auto-cols-fr grid-flow-col gap-1 rounded-md border border-border bg-background p-1">
+      <div role="radiogroup" aria-label={t`Instructions mode`} className="grid auto-cols-fr grid-flow-col gap-1 rounded-md border border-border bg-background p-1">
         {modes.map((m) => (
           <button
             key={m.value}
@@ -242,23 +243,23 @@ function InstructionsBlock(p: {
       </div>
       {p.mode === 'append' && (
         <div className="flex flex-col gap-1">
-          <span className="text-xs text-subtle">Стандартная инструкция</span>
+          <span className="text-xs text-subtle">{t`Standard instructions`}</span>
           <div className="rounded-md bg-secondary/60 px-3 py-2 font-mono text-xs leading-5 whitespace-pre-wrap text-muted-foreground">
-            {p.standard ?? 'Нет — для включённых инструментов она не нужна.'}
+            {p.standard ?? t`None — the enabled tools do not need it.`}
           </div>
-          {p.toolsChanged && <span className="text-xs text-subtle">Набор инструментов изменён — стандартный текст обновится после сохранения.</span>}
+          {p.toolsChanged && <span className="text-xs text-subtle">{t`The tool set changed — the standard text updates after saving.`}</span>}
         </div>
       )}
       <textarea
-        aria-label={p.mode === 'append' ? 'Своя инструкция' : 'Инструкция'}
+        aria-label={p.mode === 'append' ? t`Custom instructions` : t`Instructions text`}
         rows={p.mode === 'replace' ? 6 : 3}
         className={TEXTAREA}
-        placeholder={p.mode === 'append' ? 'Своё дополнение, добавляемое в инструкцию' : 'Пусто — у коннектора не будет инструкции'}
+        placeholder={p.mode === 'append' ? t`Your addition to the instructions` : t`Empty — the connector will have no instructions`}
         value={p.text}
         onChange={(e) => p.onText(e.target.value)}
       />
       {p.mode === 'replace' && (
-        <span className="text-xs text-subtle">Стандартный текст не добавляется и не следит за выключенными инструментами — поправь вручную, если выключишь инструмент.</span>
+        <span className="text-xs text-subtle">{t`The standard text is not added and does not follow turned-off tools — edit by hand if you turn a tool off.`}</span>
       )}
       {p.error && <span className="text-xs text-err">{p.error}</span>}
     </div>
@@ -320,14 +321,14 @@ function FieldControl({
             {current.help}
             {current.showHubNetwork && hubNetworks.length > 0 && (
               <div className="mt-1">
-                Адрес хаба:{' '}
+                {t`Hub address:`}{' '}
                 {hubNetworks.map((n, i) => (
                   <span key={n.address}>
                     {i > 0 && ', '}
-                    <span className="font-mono">{n.address}</span> → подсеть <span className="font-mono">{n.cidr}</span>
+                    <span className="font-mono">{n.address}</span> {t`→ subnet`} <span className="font-mono">{n.cidr}</span>
                   </span>
                 ))}
-                . Секреты для этого режима не нужны.
+                {t`. This mode needs no secrets.`}
               </div>
             )}
           </div>
@@ -354,12 +355,12 @@ function FieldControl({
     )
   }
 
-  const placeholder = f.secret && f.secretSet ? 'задан · оставь пустым, чтобы не менять' : f.placeholder
+  const placeholder = f.secret && f.secretSet ? t`set · leave empty to keep it` : f.placeholder
   return (
     <div className="flex flex-col gap-1.5">
       <Label htmlFor={id} className="flex items-center gap-2">
         {f.label}
-        {f.secret && f.secretSet && <span className="text-[11px] font-normal text-ok">задан</span>}
+        {f.secret && f.secretSet && <span className="text-[11px] font-normal text-ok">{t`set`}</span>}
       </Label>
       <Input
         id={id}

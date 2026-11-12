@@ -6,6 +6,7 @@ import { href } from '@/lib/prefix'
 import { clearData } from '@/lib/prototypes/data'
 import { getById, MAX_HTML_BYTES, PrototypeError, publish, remove, rollback, update, type Expiry } from '@/lib/prototypes/store'
 import { requireAdmin } from '@/lib/session'
+import { t } from '@/lib/i18n'
 
 export type ActionState = { error?: string; ok?: string }
 
@@ -16,9 +17,9 @@ function expiryFrom(v: FormDataEntryValue | null): Expiry | undefined {
 }
 
 async function htmlFrom(file: FormDataEntryValue | null): Promise<string> {
-  if (!(file instanceof File) || file.size === 0) throw new PrototypeError('Выбери HTML-файл')
-  if (file.size > MAX_HTML_BYTES) throw new PrototypeError('Файл больше 5 МБ')
-  if (!/\.html?$/i.test(file.name) && !file.type.includes('html')) throw new PrototypeError('Нужен .html файл')
+  if (!(file instanceof File) || file.size === 0) throw new PrototypeError(t`Pick an HTML file`)
+  if (file.size > MAX_HTML_BYTES) throw new PrototypeError(t`The file is over 5 MB`)
+  if (!/\.html?$/i.test(file.name) && !file.type.includes('html')) throw new PrototypeError(t`An .html file is needed`)
   return file.text()
 }
 
@@ -51,18 +52,18 @@ export async function savePrototypeAction(_prev: ActionState, form: FormData): P
   await requireAdmin()
   return run(async () => {
     const p = getById(String(form.get('id')))
-    if (!p) return { error: 'Прототип не найден' }
+    if (!p) return { error: t`Prototype not found` }
     const newPin = String(form.get('pin') ?? '').trim()
     const pinEnabled = form.get('pinEnabled') === 'on'
     let pin: string | null | undefined
     if (!pinEnabled && p.pinHash) pin = null
     else if (pinEnabled && newPin) pin = newPin
-    else if (pinEnabled && !p.pinHash) return { error: 'Задай пин из 4–8 цифр' }
+    else if (pinEnabled && !p.pinHash) return { error: t`Set a PIN of 4–8 digits` }
     const expiry = form.get('expiry') === 'keep' ? undefined : expiryFrom(form.get('expiry'))
     const title = String(form.get('title') ?? '').trim()
     await update(p, { title: title && title !== p.title ? title : undefined, pin, expiry })
     revalidatePath('/admin/prototypes', 'layout')
-    return { ok: 'Сохранено' }
+    return { ok: t`Saved` }
   })
 }
 
@@ -70,10 +71,10 @@ export async function uploadVersionAction(_prev: ActionState, form: FormData): P
   await requireAdmin()
   return run(async () => {
     const p = getById(String(form.get('id')))
-    if (!p) return { error: 'Прототип не найден' }
+    if (!p) return { error: t`Prototype not found` }
     const next = await update(p, { html: await htmlFrom(form.get('file')) })
     revalidatePath('/admin/prototypes', 'layout')
-    return { ok: `Загружена v${next.version}` }
+    return { ok: t`Uploaded v${next.version}` }
   })
 }
 

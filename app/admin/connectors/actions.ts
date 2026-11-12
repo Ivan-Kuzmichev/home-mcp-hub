@@ -5,6 +5,7 @@ import { getConnector } from '@/lib/connectors/registry'
 import { getConnectorRow, mergeWithStoredSecrets, recordCheck, saveConfig, setConnectorEnabled, setDisabledTools, setInstructions, type InstructionsMode } from '@/lib/connectors/store'
 import type { TestResult } from '@/lib/connectors/types'
 import { requireAdmin } from '@/lib/session'
+import { t } from '@/lib/i18n'
 
 export type FormValues = Record<string, string | boolean>
 
@@ -27,7 +28,7 @@ export async function saveConnectorAction(id: string, values: FormValues, disabl
   const { c, parsed } = prepare(id, values)
   if (!parsed.ok) return { ok: false, errors: parsed.errors }
   const text = instructions.text.trim()
-  if (text.length > MAX_INSTRUCTIONS) return { ok: false, errors: { _instructions: `Инструкция длиннее ${MAX_INSTRUCTIONS} символов` } }
+  if (text.length > MAX_INSTRUCTIONS) return { ok: false, errors: { _instructions: t`Instructions longer than ${MAX_INSTRUCTIONS} characters` } }
   const mode: InstructionsMode = instructions.mode === 'replace' ? 'replace' : 'append'
   saveConfig(c, parsed.config as Record<string, unknown>)
   const known = new Set(c.tools.map((t) => t.name))
